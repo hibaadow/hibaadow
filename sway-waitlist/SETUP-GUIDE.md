@@ -44,7 +44,7 @@ Your logo is `sway-waitlist/sway_girl_profile_picture.png`. To change it later, 
 2. Click **New project**.
    - **Name:** `sway`
    - **Database password:** click **Generate a password** and save it somewhere safe (you won't need it for this site).
-   - **Region:** choose **West EU (Ireland)**. This keeps your users' data in the EU, which is good for GDPR.
+   - **Region:** a European region such as **West EU (Ireland)** or **West Europe (London)**. Your project uses London. If you ever change it, update the "Who can see it" part of `privacy.html` to match.
    - Click **Create new project** and wait a minute or two.
 3. In the left menu, click **SQL Editor** (the `>_` icon).
 4. Open `supabase-setup.sql` from this folder on GitHub, click the **copy** icon (two squares, top right of the file), and paste it into the Supabase SQL Editor.
