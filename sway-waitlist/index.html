@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sway · Find your people.</title>
+  <meta name="description" content="A friendship app just for girls. Always a group of 4, never one-on-one. Join the Sway waitlist.">
+  <meta name="theme-color" content="#F4857C">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sway · Find your people.">
+  <meta property="og:description" content="A friendship app just for girls. Always a group of 4, never one-on-one. Join the waitlist.">
+  <meta property="og:image" content="/sway_girl_profile_picture.png">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="icon" href="/sway_girl_profile_picture.png">
+  <link rel="apple-touch-icon" href="/sway_girl_profile_picture.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- 1. Hero -->
+  <header class="hero gradient">
+    <div class="hero-inner">
+      <img class="hero-avatar" src="/sway_girl_profile_picture.png" alt="" width="96" height="96"
+           onerror="this.remove()">
+      <img class="hero-logo" src="/sway_logo_white.png" alt="Sway" width="200" height="80"
+           onerror="this.outerHTML='<span class=&quot;wordmark&quot;>sway</span>'">
+      <h1>Find your people.</h1>
+      <p class="sub">A friendship app just for girls. Always a group of 4, never one-on-one.</p>
+      <a class="btn btn-white" href="#join">Join the waitlist</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- 2. How it works -->
+    <section class="how" aria-labelledby="how-title">
+      <h2 id="how-title">How it works</h2>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <h3>Tell us your vibe</h3>
+            <p>What you love doing, where you are, and what kind of plans you're into.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <h3>Get grouped with 3 girls near you</h3>
+            <p>You're always a group of 4. Never one-on-one, never awkward.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <h3>Make plans together</h3>
+            <p>Sway suggests the plan: coffee, pilates, a walk, brunch. You just show up.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 3. Waitlist form -->
+    <section class="join" id="join" aria-labelledby="join-title">
+      <div class="card">
+        <div id="form-wrap">
+          <h2 id="join-title">Join the waitlist</h2>
+          <p class="card-intro">Be the first to know when Sway opens in your city.</p>
+
+          <form id="waitlist-form" novalidate>
+            <div class="field">
+              <label for="firstName">First name</label>
+              <input id="firstName" name="firstName" type="text" autocomplete="given-name" maxlength="60" required>
+              <p class="err" id="firstName-err"></p>
+            </div>
+
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
+              <p class="err" id="email-err"></p>
+            </div>
+
+            <div class="field">
+              <label for="city">City</label>
+              <input id="city" name="city" type="text" autocomplete="address-level2" maxlength="80"
+                     placeholder="e.g. Dublin, London, NYC" required>
+              <p class="err" id="city-err"></p>
+            </div>
+
+            <fieldset class="field">
+              <legend>Age range</legend>
+              <div class="pills">
+                <label class="pill"><input type="radio" name="ageRange" value="18–21"><span>18–21</span></label>
+                <label class="pill"><input type="radio" name="ageRange" value="22–25"><span>22–25</span></label>
+                <label class="pill"><input type="radio" name="ageRange" value="26–30"><span>26–30</span></label>
+                <label class="pill"><input type="radio" name="ageRange" value="30+"><span>30+</span></label>
+              </div>
+            </fieldset>
+
+            <fieldset class="field">
+              <legend>What would you want to do with your Sway girls?</legend>
+              <div class="pills">
+                <label class="pill"><input type="checkbox" name="activities" value="Coffee"><span>☕ Coffee</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Brunch"><span>🥞 Brunch</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Pilates/gym"><span>🧘‍♀️ Pilates/gym</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Walks"><span>🌿 Walks</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Shopping"><span>🛍️ Shopping</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Nights out"><span>🍸 Nights out</span></label>
+                <label class="pill"><input type="checkbox" name="activities" value="Other"><span>✨ Other</span></label>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label for="handle">TikTok or Instagram handle <span class="optional">(optional)</span></label>
+              <input id="handle" name="handle" type="text" autocomplete="off" autocapitalize="off"
+                     spellcheck="false" maxlength="60" placeholder="@yourname">
+            </div>
+
+            <!-- Honeypot: hidden from people, bots fill it in -->
+            <div class="hp" aria-hidden="true">
+              <label for="website">Leave this empty</label>
+              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="field">
+              <label class="consent">
+                <input id="consent" name="consent" type="checkbox" required>
+                <span>I agree to Sway emailing me about the launch.</span>
+              </label>
+              <p class="err" id="consent-err"></p>
+            </div>
+
+            <p class="form-error" id="form-error" role="alert" hidden></p>
+
+            <button class="btn btn-gradient" type="submit" id="submit-btn">Join the waitlist</button>
+
+            <p class="privacy-note">
+              We'll only use your details to tell you about Sway's launch. No spam, never sold or shared.
+              Unsubscribe any time. Read our <a href="/privacy">privacy policy</a>.
+            </p>
+          </form>
+        </div>
+
+        <!-- 4. Thank-you (shown after sign-up) -->
+        <div id="thanks" class="thanks" hidden tabindex="-1">
+          <p class="thanks-emoji" aria-hidden="true">💌</p>
+          <h2>You're on the list, Sway girl ✨</h2>
+          <p>We'll let you know when Sway opens in your city.</p>
+          <button class="btn btn-gradient" type="button" id="share-btn">Share with your girls</button>
+          <p class="share-msg" id="share-msg" role="status"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 5. Footer -->
+  <footer class="footer gradient">
+    <a href="https://www.tiktok.com/@swaygirls" target="_blank" rel="noopener">Follow @swaygirls on TikTok</a>
+    <p><a href="/privacy">Privacy policy</a> · © Sway</p>
+  </footer>
+
+  <script src="/script.js" defer></script>
+</body>
+</html>
