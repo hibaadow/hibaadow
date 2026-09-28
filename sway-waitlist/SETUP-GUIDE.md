@@ -2,7 +2,7 @@
 
 You'll do 4 things, about 20 minutes in total:
 
-1. Add your logos
+1. Add your logo (done)
 2. Create the database (Supabase)
 3. Put the site online (Vercel)
 4. Check it works
@@ -34,16 +34,9 @@ The site was built on a separate branch called `claude/sway-waitlist-site-cqre21
    (No yellow bar? Click **Pull requests** → **New pull request**, set **compare:** to `claude/sway-waitlist-site-cqre21`.)
 3. Click **Create pull request**, then **Merge pull request**, then **Confirm merge**.
 
-## Step 1: Add your logos
+## Step 1: Add your logo ✅ (done)
 
-1. On GitHub, open your repo, then click the **sway-waitlist** folder.
-2. Click **Add file** → **Upload files**.
-3. Drag in both files. The names must be exactly:
-   - `sway_logo_white.png`
-   - `sway_girl_profile_picture.png`
-4. Click **Commit changes**.
-
-Until you do this, the page shows the word "sway" in white as the logo, so nothing looks broken.
+Your logo is `sway-waitlist/sway_girl_profile_picture.png`. To change it later, upload a new square image with exactly that name into the `sway-waitlist` folder.
 
 ## Step 2: Create the database (Supabase)
 
