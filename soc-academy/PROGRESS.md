@@ -5,9 +5,10 @@ _Your teacher reads and updates this every session._
 ## Profile
 - Start date: Monday 9 November 2026 (target: job-ready by early May 2027)
 - Location / job market:
-- Hours per week:
+- Hours per week: 3 hours a day (~21 hrs/week): on track for the 6-month plan
 - Budget:
-- Background:
+- Background: complete beginner with computers and networks (has started learning JavaScript). Start every topic from zero.
+- Learning style: loves Professor Byte's video episodes (natural voice, gossip tone, explain like she's 10). Keep this exact style.
 
 ## Current week
 Week 1 (starts 9 Nov 2026) — How computers and networks talk
@@ -34,3 +35,4 @@ Week 1 (starts 9 Nov 2026) — How computers and networks talk
 ## Session log
 | Date | Covered | Next step |
 |---|---|---|
+| 2026-11-06 | Onboarding. Watched Episode 1 (How computers gossip) early. | Mon 9 Nov: Week 1 lesson on networking basics, then TryHackMe Pre Security |
