@@ -25,6 +25,19 @@ Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then gro
 
 ---
 
+## Hibo's free-only route 🇮🇪
+
+Hibo is in **Ireland** and studying **free only**. Where this plan says something paid, use the free swap:
+
+| Paid in the plan | Free swap |
+|---|---|
+| CompTIA Security+ exam | **ISC2 Certified in Cybersecurity (CC)** — free online training and, through ISC2's One Million Certified programme, a free exam (check it is still running on isc2.org). Still watch Professor Messer's free Security+ videos: same knowledge. |
+| BTL1 / CySA+ / SC-200 | **Google Cybersecurity Certificate** on Coursera with financial aid (apply per course), and **Fortinet** free training + FCF/FCA exams. Microsoft Learn SC-200 path is free to study. |
+| TryHackMe Premium (SOC Level 1) | TryHackMe free rooms, **LetsDefend** free tier, **Blue Team Labs Online** free challenges, **CyberDefenders** free labs, **Splunk** free courses, Malware-Traffic-Analysis.net |
+| Home lab software | All free: VirtualBox, Ubuntu, Windows evaluation VMs, Sysmon, Wazuh |
+
+**Ireland extras:** check **Springboard+** (springboardcourses.ie) and **Skillnet Ireland** for government-funded cyber courses that can be free if you're eligible; **Cyber Ireland** for events and meet-ups. Search job sites (IrishJobs.ie, Jobs.ie, LinkedIn) for "SOC Analyst" in Dublin, Cork and remote. Many employers will pay for Security+ after hiring you.
+
 ## Month 1 — Foundations (weeks 1–4)
 
 - **Week 1 — How computers and networks talk.** OSI and TCP/IP models, IP addresses, subnets, ports, TCP vs UDP. *Do:* TryHackMe Pre Security (Network Fundamentals); Messer Network+ sections 1.x.
@@ -37,11 +50,11 @@ Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then gro
 - **Week 5 — Core concepts.** CIA triad, threats vs vulnerabilities vs risk, attack types (phishing, malware, ransomware, brute force, MITM), social engineering. *Do:* Messer Security+ domain 1–2.
 - **Week 6 — Security architecture & controls.** Firewalls, IDS/IPS, VPN, proxies, EDR, SIEM, encryption, hashing, PKI, authentication/MFA. *Do:* Messer Security+ domain 3.
 - **Week 7 — Operations & IR.** Incident response lifecycle (NIST SP 800-61), vulnerability management, logging, governance basics. *Do:* Messer Security+ domains 4–5.
-- **Week 8 — Exam prep.** Practice exams (Messer, Jason Dion), review weak areas. **Book Security+** for end of week 9 or 10.
+- **Week 8 — Exam prep.** Free practice questions (Messer's free resources, ISC2 CC course quizzes), review weak areas. **Book the free ISC2 CC exam** (free route) or Security+ for end of week 9 or 10.
 
 ## Month 3 — SOC core skills (weeks 9–12)
 
-- **Week 9 — Security+ exam week** + intro to the SOC: tiers, shifts, tickets, SLAs, playbooks, true/false positives. *Do:* TryHackMe SOC Level 1 intro rooms.
+- **Week 9 — Exam week (ISC2 CC on the free route)** + intro to the SOC: tiers, shifts, tickets, SLAs, playbooks, true/false positives. *Do:* TryHackMe SOC Level 1 intro rooms.
 - **Week 10 — SIEM with Splunk.** Indexes, SPL searches, stats, timecharts, dashboards, alerts. *Do:* Splunk free "Intro to Splunk"; TryHackMe Splunk rooms; Boss of the SOC v1.
 - **Week 11 — Windows logs.** Event IDs that matter (4624, 4625, 4688, 4720, 4732, 7045, 1102), Sysmon, PowerShell logging. *Do:* TryHackMe Windows Event Logs, Sysmon rooms.
 - **Week 12 — MITRE ATT&CK & Cyber Kill Chain.** Map alerts to techniques. *Do:* TryHackMe MITRE, Pyramid of Pain, Cyber Kill Chain. **Alert drills ×3.**
@@ -58,7 +71,7 @@ Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then gro
 - **Week 17 — Build a home lab.** VirtualBox/VMware: Windows VM + Sysmon, Ubuntu VM, **Wazuh** or Elastic or Splunk Free as your SIEM. Document every step on GitHub.
 - **Week 18 — Attack & detect your own lab.** Run safe simulations (Atomic Red Team) against your own VMs and build detections for them. Write it up.
 - **Week 19 — Cloud & identity basics.** Microsoft Entra ID / Azure logs, AWS CloudTrail, impossible travel, MFA fatigue. *Do:* TryHackMe cloud rooms; SC-200 Microsoft Learn path (free).
-- **Week 20–21 — Second cert.** BTL1 (practical, 24-hr exam) *or* CySA+ *or* SC-200. Pick the one job ads near you mention most.
+- **Week 20–21 — Second cert.** Free route: finish the Google Cybersecurity Certificate (financial aid) or Fortinet FCF/FCA. Paid options for later: BTL1, CySA+, SC-200.
 
 ## Month 6 — Get hired (weeks 22–26)
 
