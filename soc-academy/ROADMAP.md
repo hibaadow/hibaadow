@@ -1,5 +1,7 @@
 # 6-Month SOC Analyst Roadmap
 
+Starts **Monday 9 November 2026** · finishes early May 2027.
+
 Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then grow into a **cybersecurity engineer**.
 
 > Prices, exam versions and free offers change. Check each official site before paying.
