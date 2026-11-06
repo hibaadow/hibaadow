@@ -19,6 +19,8 @@ Then say what you want:
 - **"mock interview"** — practise a SOC Analyst interview
 - **"review"** — am I on track?
 
+Every lesson comes with an animated video episode from Professor Byte, saved in [`videos/`](videos/). Episode 1: [How computers gossip](videos/week-01-how-computers-talk.html).
+
 The teacher remembers you through [`PROGRESS.md`](PROGRESS.md) and saves your notes in [`notes/`](notes/).
 
 - 📅 Plan: [`ROADMAP.md`](ROADMAP.md)

@@ -1,0 +1,534 @@
+<title>Professor Byte Episode 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a cartoon "TV" player on top, captions under it, then quiz + homework cards below. */
+:root {
+  --bg: #FFF5F9;
+  --fg: #2B1D3A;
+  --muted: #6E5A7E;
+  --card: #FFFFFF;
+  --line: #F1D6E4;
+  --pink: #E8478B;
+  --pink-soft: #FFD9E8;
+  --mint: #2FB592;
+  --sun: #FFC83D;
+  --screen: #241A3D;
+  --screen-ink: #FFF3FA;
+  --screen-dim: #B9A8D6;
+  --bad: #D93B3B;
+  --display: "Fredoka", "Nunito", ui-rounded, system-ui, sans-serif;
+  --body: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17111F; --fg: #F8EEF6; --muted: #BBA8C9; --card: #221A2E; --line: #3A2C48;
+    --pink: #FF6AA6; --pink-soft: #4A2238; --mint: #4FD6B1; --sun: #FFD36A; --bad: #FF7070;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17111F; --fg: #F8EEF6; --muted: #BBA8C9; --card: #221A2E; --line: #3A2C48;
+  --pink: #FF6AA6; --pink-soft: #4A2238; --mint: #4FD6B1; --sun: #FFD36A; --bad: #FF7070;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header { display: flex; flex-direction: column; gap: 4px; }
+.eyebrow { font-family: var(--display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; color: var(--pink); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 6vw, 42px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; }
+
+/* ---------- Player ---------- */
+.player { display: flex; flex-direction: column; gap: 0; border-radius: 26px; overflow: hidden; background: var(--screen); box-shadow: 0 0 0 6px var(--sun), 0 14px 40px rgba(60, 20, 60, .18); }
+.stage { position: relative; aspect-ratio: 16 / 10; container-type: inline-size; overflow: hidden; color: var(--screen-ink);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,.10) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 12%, rgba(255,255,255,.12) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 30%, rgba(255,255,255,.08) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 90% 60%, rgba(255,255,255,.10) 0 2px, transparent 3px),
+    var(--screen);
+}
+@media (max-width: 560px) { .stage { aspect-ratio: 4 / 5; } }
+.visual { position: absolute; inset: 4% 4% 6% 31%; display: flex; align-items: center; justify-content: center; font-size: clamp(11px, 2.2cqw, 19px); }
+@media (max-width: 560px) { .visual { inset: 4% 4% 33% 4%; font-size: 3.7cqw; } }
+.owl { position: absolute; left: 1.5%; bottom: -2%; width: 28%; animation: bob 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@media (max-width: 560px) { .owl { width: 36%; } }
+.owl .beak-low { transform-origin: 100px 124px; transition: transform .1s; }
+.owl.talking .beak-low { animation: yap .28s ease-in-out infinite alternate; }
+.owl .lids { transform-origin: 100px 95px; animation: blink 4.5s infinite; }
+.owl .specs { animation: slide 9s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-2.5%) rotate(1.5deg); } }
+@keyframes yap { from { transform: scaleY(1); } to { transform: scaleY(1.9); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(0); } 95% { transform: scaleY(1); } }
+@keyframes slide { 0%, 70%, 100% { transform: translateY(0); } 76%, 88% { transform: translateY(5px); } }
+
+.cover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; background: rgba(28, 18, 48, .55); padding: 16px; z-index: 3; }
+.cover h2 { font-family: var(--display); font-size: clamp(20px, 5cqw, 40px); margin: 0; line-height: 1.1; text-wrap: balance; }
+.cover p { margin: 0; color: var(--screen-dim); font-size: clamp(13px, 2.4cqw, 17px); max-width: 34ch; }
+.bigplay { font-family: var(--display); font-weight: 700; font-size: clamp(17px, 3.4cqw, 24px); border: 0; border-radius: 999px; padding: .6em 1.4em; background: var(--sun); color: #2B1D3A; cursor: pointer; box-shadow: 0 5px 0 #C9921A; }
+.bigplay:active { transform: translateY(3px); box-shadow: 0 2px 0 #C9921A; }
+
+.caption { background: #1B1330; color: var(--screen-ink); padding: 14px 18px; min-height: 92px; display: flex; flex-direction: column; gap: 2px; }
+.caption .who { font-family: var(--display); font-weight: 600; color: var(--sun); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.caption .say { font-size: 17px; line-height: 1.45; }
+.caption em { color: #FFB3D1; }
+
+.controls { background: #1B1330; display: flex; align-items: center; gap: 8px; padding: 0 12px 12px; flex-wrap: wrap; }
+.btn { font-family: var(--display); font-weight: 600; font-size: 15px; border: 0; border-radius: 12px; padding: 9px 13px; cursor: pointer; background: #352853; color: var(--screen-ink); }
+.btn:hover { background: #44346A; }
+.btn.primary { background: var(--pink); color: #fff; min-width: 92px; }
+.btn[aria-pressed="false"] { opacity: .6; }
+.btn:focus-visible, .chap:focus-visible, .opt:focus-visible, .bigplay:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.spacer { flex: 1; }
+.chapters { background: #1B1330; display: flex; gap: 6px; padding: 0 12px 14px; overflow-x: auto; scrollbar-width: none; }
+.chap { flex: 0 0 auto; font-family: var(--body); font-weight: 600; font-size: 12.5px; border: 0; border-radius: 999px; padding: 6px 11px; background: #2C2145; color: var(--screen-dim); cursor: pointer; }
+.chap.done { color: var(--screen-ink); }
+.chap.now { background: var(--sun); color: #2B1D3A; }
+
+/* ---------- Scene pieces (live inside the dark screen, fixed colors) ---------- */
+.pop { opacity: 0; transform: translateY(8px) scale(.92); transition: opacity .45s, transform .45s cubic-bezier(.3, 1.6, .5, 1); }
+.pop.on { opacity: 1; transform: none; }
+.scene { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1em; text-align: center; }
+.row { display: flex; gap: 1em; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%; }
+.tag { font-family: var(--display); font-weight: 600; background: var(--sun); color: #2B1D3A; border-radius: 999px; padding: .3em .9em; font-size: 1.05em; }
+.tag.pink { background: #FF6AA6; color: #fff; }
+.tag.mint { background: #4FD6B1; color: #12332A; }
+.box { background: #33265A; border: 2px solid #4A3A7A; border-radius: 1em; padding: .7em .9em; display: flex; flex-direction: column; align-items: center; gap: .25em; }
+.emoji { font-size: 2.6em; line-height: 1; }
+.addr { font-family: var(--mono); font-size: .95em; color: #FFE08A; }
+.label { font-size: .9em; color: var(--screen-dim); }
+.title-card { font-family: var(--display); font-weight: 700; font-size: 2.6em; line-height: 1.05; text-wrap: balance; }
+.title-card span { color: #FF6AA6; }
+.road { position: relative; width: 100%; height: 3.2em; border-bottom: 3px dashed #6B5A9A; }
+.env { position: absolute; bottom: .4em; left: 0; font-size: 1.6em; animation: fly 3.6s linear infinite; }
+.env b { position: absolute; top: -.55em; right: -.45em; font-family: var(--display); font-size: .45em; background: #FF6AA6; color: #fff; border-radius: 999px; padding: 0 .45em; }
+.env:nth-child(2) { animation-delay: .9s; } .env:nth-child(3) { animation-delay: 1.8s; } .env:nth-child(4) { animation-delay: 2.7s; }
+@keyframes fly { from { left: 0; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } to { left: calc(100% - 1.2em); opacity: 0; } }
+.arrow { font-size: 1.6em; color: #FF6AA6; }
+.doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6em; width: 100%; max-width: 30em; }
+.door { display: flex; align-items: center; gap: .6em; background: #33265A; border-radius: .8em; padding: .55em .7em; text-align: left; }
+.door .num { font-family: var(--mono); font-weight: 700; background: #FFC83D; color: #2B1D3A; border-radius: .4em; padding: .15em .45em; min-width: 3.1em; text-align: center; }
+.door .what { font-size: .9em; line-height: 1.25; }
+.phone { background: #F7F0FF; color: #2B1D3A; border: .35em solid #0F0A1C; border-radius: 1.6em; padding: .8em; width: 15em; max-width: 100%; display: flex; flex-direction: column; gap: .45em; text-align: left; }
+.phone .search { background: #E7DCF6; border-radius: .6em; padding: .4em .6em; font-family: var(--mono); font-size: .9em; }
+.phone .contact { display: flex; justify-content: space-between; gap: .4em; font-size: .9em; padding: .3em .2em; border-bottom: 1px solid #E2D6F1; }
+.phone .contact.hit { background: #FFE08A; border-radius: .4em; }
+.phone .contact span:last-child { font-family: var(--mono); font-size: .9em; }
+.duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8em; width: 100%; }
+.bub { border-radius: 1em; padding: .35em .7em; font-size: .9em; text-align: left; max-width: 95%; }
+.bub.l { background: #4A3A7A; align-self: flex-start; }
+.bub.r { background: #FF6AA6; align-self: flex-end; }
+.col { display: flex; flex-direction: column; gap: .4em; background: #2E2250; border-radius: 1em; padding: .7em; min-width: 0; }
+.col h3 { font-family: var(--display); margin: 0 0 .2em; font-size: 1.2em; }
+.log { width: 100%; max-width: 34em; background: #0F0A1C; border-radius: .8em; padding: .7em .8em; font-family: var(--mono); font-size: .8em; text-align: left; display: flex; flex-direction: column; gap: .2em; overflow: hidden; }
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .hot { color: #FF8FB8; }
+.log .dim { color: #8F80B0; }
+.alarm { font-family: var(--display); font-weight: 700; background: #FF4D6D; color: #fff; border-radius: .6em; padding: .3em .9em; font-size: 1.2em; animation: wobble .6s ease-in-out infinite alternate; }
+@keyframes wobble { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+.recap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6em; width: 100%; }
+@media (max-width: 560px) { .recap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.recap .box { padding: .55em .4em; }
+.recap .box strong { font-family: var(--display); font-size: 1.05em; }
+
+/* ---------- Below the player ---------- */
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.card h2 { font-family: var(--display); font-size: 24px; margin: 0; }
+.card p { margin: 0; }
+.q { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 2px dashed var(--line); }
+.q:first-of-type { border-top: 0; padding-top: 0; }
+.q .ask { font-weight: 800; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { font-family: var(--body); font-weight: 600; font-size: 15px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.opt:hover { border-color: var(--pink); }
+.opt.right { background: var(--mint); border-color: var(--mint); color: #0F2A22; }
+.opt.wrong { border-color: var(--bad); color: var(--bad); }
+.fb { font-size: 15px; color: var(--muted); min-height: 1.4em; }
+.score { font-family: var(--display); font-weight: 600; font-size: 18px; color: var(--pink); }
+.todo { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.todo li { display: flex; gap: 10px; align-items: flex-start; }
+.todo .n { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; background: var(--pink-soft); color: var(--pink); font-family: var(--display); font-weight: 700; display: grid; place-items: center; }
+a { color: var(--pink); font-weight: 700; }
+.note { font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .owl, .owl .specs, .env, .alarm { animation: none !important; }
+  .owl.talking .beak-low { animation: none; transform: scaleY(1.5); }
+  .pop { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">SOC Academy · Week 1 · Episode 1</div>
+    <h1>How computers gossip</h1>
+    <p class="sub">IP addresses, packets, routers, ports, DNS, and TCP vs UDP, explained by Professor Byte. About 6 minutes.</p>
+  </header>
+
+  <section class="player" aria-label="Video lesson">
+    <div class="stage" id="stage">
+      <div class="visual" id="visual"></div>
+      <svg class="owl" id="owl" viewBox="0 0 200 240" aria-hidden="true">
+        <path d="M52 52 L44 18 L78 40 Z M148 52 L156 18 L122 40 Z" fill="#9A6238"/>
+        <ellipse cx="100" cy="118" rx="64" ry="78" fill="#C98B5A"/>
+        <ellipse cx="100" cy="150" rx="38" ry="44" fill="#F2D3B3"/>
+        <path d="M34 160 Q100 140 166 160 L182 240 L18 240 Z" fill="#F7F3FF"/>
+        <path d="M100 168 L76 240 L124 240 Z" fill="#F2D3B3"/>
+        <path d="M70 160 L100 200 L130 160" fill="none" stroke="#D9D0EE" stroke-width="4"/>
+        <path d="M100 166 L82 156 L82 178 Z M100 166 L118 156 L118 178 Z" fill="#FF6AA6"/>
+        <circle cx="100" cy="166" r="5" fill="#E8478B"/>
+        <circle cx="74" cy="95" r="23" fill="#FFFFFF"/>
+        <circle cx="126" cy="95" r="23" fill="#FFFFFF"/>
+        <circle cx="77" cy="97" r="10" fill="#2B1D3A"/>
+        <circle cx="123" cy="97" r="10" fill="#2B1D3A"/>
+        <circle cx="80" cy="93" r="3.5" fill="#FFFFFF"/>
+        <circle cx="126" cy="93" r="3.5" fill="#FFFFFF"/>
+        <g class="lids"><circle cx="74" cy="95" r="24" fill="#C98B5A"/><circle cx="126" cy="95" r="24" fill="#C98B5A"/></g>
+        <g class="specs" fill="none" stroke="#2B1D3A" stroke-width="5">
+          <circle cx="74" cy="96" r="28"/><circle cx="126" cy="96" r="28"/><path d="M98 92 Q100 88 102 92"/>
+        </g>
+        <path d="M90 114 L110 114 L100 126 Z" fill="#FFB43D"/>
+        <path class="beak-low" d="M93 124 L107 124 L100 130 Z" fill="#E0901F"/>
+        <path d="M100 18 L162 34 L100 50 L38 34 Z" fill="#2B1D3A"/>
+        <rect x="74" y="40" width="52" height="14" rx="3" fill="#2B1D3A"/>
+        <path d="M152 36 L156 66" stroke="#FFC83D" stroke-width="3"/>
+        <circle cx="156" cy="68" r="5" fill="#FFC83D"/>
+      </svg>
+      <div class="cover" id="cover">
+        <h2>Episode 1: How computers gossip</h2>
+        <p>Turn your sound on. Professor Byte talks using your device's built-in voice, and captions show below.</p>
+        <button class="bigplay" id="bigplay">▶ Play episode</button>
+      </div>
+    </div>
+    <div class="caption" aria-live="polite">
+      <div class="who">Professor Byte 🦉</div>
+      <div class="say" id="say">Tap play, babe. I have tea. ☕</div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="prev" aria-label="Previous scene">⏮</button>
+      <button class="btn primary" id="play">▶ Play</button>
+      <button class="btn" id="next" aria-label="Next scene">⏭</button>
+      <span class="spacer"></span>
+      <button class="btn" id="voice" aria-pressed="true">🔊 Voice on</button>
+    </div>
+    <div class="chapters" id="chapters" role="tablist" aria-label="Scenes"></div>
+  </section>
+
+  <section class="card" id="quiz" aria-labelledby="quiz-h">
+    <h2 id="quiz-h">Pop quiz, bestie 📝</h2>
+    <div id="questions"></div>
+    <div class="score" id="score"></div>
+  </section>
+
+  <section class="card" aria-labelledby="hw-h">
+    <h2 id="hw-h">Homework 📚</h2>
+    <ol class="todo">
+      <li><span class="n">1</span><span>On TryHackMe, do the <strong>Pre Security</strong> path, <strong>Network Fundamentals</strong> module: "What is Networking?", "Intro to LAN", "OSI Model", "Packets &amp; Frames". <a href="https://tryhackme.com/path/outline/presecurity" target="_blank" rel="noopener">Open TryHackMe</a></span></li>
+      <li><span class="n">2</span><span>Watch a real teacher explain it again: Professor Messer's free Network+ course on ports and protocols. <a href="https://www.professormesser.com/network-plus/n10-009/n10-009-video/n10-009-training-course/" target="_blank" rel="noopener">Professor Messer Network+</a></span></li>
+      <li><span class="n">3</span><span>Learn these four doors by heart: <strong>80</strong> HTTP, <strong>443</strong> HTTPS, <strong>22</strong> SSH, <strong>53</strong> DNS. Then tell Professor Byte them back in your next session.</span></li>
+    </ol>
+    <p class="note">The voice comes from your phone or browser, so it sounds different on each device. If you hear nothing, check your sound and silent switch, or turn the voice off and read the captions.</p>
+  </section>
+</div>
+
+<script>
+const scenes = [
+  { short: "Intro", visual: `
+    <div class="scene">
+      <div class="title-card pop" data-at="0">How computers <span>gossip</span></div>
+      <div class="row pop" data-at="1"><span class="tag">IP</span><span class="tag pink">Packets</span><span class="tag mint">Ports</span><span class="tag">DNS</span></div>
+      <div class="emoji pop" data-at="2">📮</div>
+    </div>`,
+    lines: [
+      "*pushes glasses up* Okay babe, sit down. I have TEA. ☕",
+      "Today's gossip: how computers actually talk to each other across the internet.",
+      "And honestly? It's giving… post office. Let me explain."
+    ] },
+  { short: "IP address", visual: `
+    <div class="scene">
+      <div class="row">
+        <div class="box pop" data-at="0"><div class="emoji">🏠</div><div>Your phone</div><div class="addr">192.168.1.10</div></div>
+        <div class="box pop" data-at="1"><div class="emoji">🏰</div><div>Netflix</div><div class="addr">203.0.113.7</div></div>
+      </div>
+      <div class="tag pop" data-at="2">IP address = your house address</div>
+      <div class="label pop" data-at="3">IPv4: four numbers from 0 to 255, with dots</div>
+    </div>`,
+    lines: [
+      "Every device on a network has an IP address. Think of it like a house address.",
+      "Your phone is one house. Netflix is a giant castle far away, with its own address.",
+      "No address, no mail. The computer literally can't get its messages. Tragic.",
+      "Grown-up words: IP means Internet Protocol. An IPv4 address is four numbers from 0 to 255, with dots in between."
+    ] },
+  { short: "Packets", visual: `
+    <div class="scene">
+      <div class="box pop on" data-at="0"><div class="emoji">🎬</div><div>One big video</div></div>
+      <div class="road pop" data-at="1"><span class="env">✉️<b>1</b></span><span class="env">✉️<b>2</b></span><span class="env">✉️<b>3</b></span><span class="env">✉️<b>4</b></span></div>
+      <div class="row pop" data-at="2"><span class="tag">FROM 203.0.113.7</span><span class="tag pink">TO 192.168.1.10</span><span class="tag mint">#3 of 4</span></div>
+      <div class="label pop" data-at="3">👀 FROM and TO = the receipts</div>
+    </div>`,
+    lines: [
+      "Now here's the twist. Computers don't send one big thing in one go.",
+      "They chop it into tiny letters called packets. Like when your friend tells a story in twenty separate text bubbles.",
+      "Each letter has a FROM address, a TO address, and a number, so the other side can put the story back in order.",
+      "Remember the FROM and TO addresses. They're the receipts. We'll need them later. 👀"
+    ] },
+  { short: "Router", visual: `
+    <div class="scene">
+      <div class="row">
+        <div class="box pop" data-at="0"><div class="emoji">🏠</div><div class="label">You</div></div>
+        <span class="arrow pop" data-at="1">➜</span>
+        <div class="box pop" data-at="1"><div class="emoji">📮</div><div class="label">Router</div></div>
+        <span class="arrow pop" data-at="2">➜</span>
+        <div class="box pop" data-at="2"><div class="emoji">☁️</div><div class="label">Internet routers</div></div>
+        <span class="arrow pop" data-at="2">➜</span>
+        <div class="box pop" data-at="2"><div class="emoji">🏰</div><div class="label">Netflix</div></div>
+      </div>
+      <div class="tag pop" data-at="1">Router = the post office</div>
+    </div>`,
+    lines: [
+      "So who carries the letters? The router. It's the post office.",
+      "Your home router reads the TO address on every packet and sends it the right way.",
+      "Packets hop from router to router across the internet, like a note passed desk to desk in class, until they reach the castle."
+    ] },
+  { short: "Ports", visual: `
+    <div class="scene">
+      <div class="tag pop" data-at="0">Ports = the doors on a house</div>
+      <div class="doors">
+        <div class="door pop" data-at="1"><span class="num">80</span><span class="what">HTTP<br>normal websites</span></div>
+        <div class="door pop" data-at="2"><span class="num">443</span><span class="what">HTTPS 🔒<br>secure websites</span></div>
+        <div class="door pop" data-at="3"><span class="num">22</span><span class="what">SSH<br>remote control</span></div>
+        <div class="door pop" data-at="4"><span class="num">53</span><span class="what">DNS<br>name look-ups</span></div>
+      </div>
+    </div>`,
+    lines: [
+      "Okay, but a house has lots of doors. So does a computer. We call them ports.",
+      "Door 80 is for normal websites. That's HTTP.",
+      "Door 443 is for secure websites, the ones with the little padlock. That's HTTPS.",
+      "Door 22 is SSH, for controlling a computer from far away. Hackers LOVE knocking on that one.",
+      "And door 53 is DNS. Which is our next bit of gossip."
+    ] },
+  { short: "DNS", visual: `
+    <div class="scene">
+      <div class="phone pop" data-at="0">
+        <div class="search">🔎 netflix.com</div>
+        <div class="contact"><span>💖 Bestie</span><span>07700 900123</span></div>
+        <div class="contact hit pop" data-at="1"><span>netflix.com</span><span>203.0.113.7</span></div>
+        <div class="contact"><span>google.com</span><span>142.250.x.x</span></div>
+      </div>
+      <div class="tag pop" data-at="2">DNS = Domain Name System</div>
+    </div>`,
+    lines: [
+      "You don't remember your bestie's phone number, right? You just tap her name in your contacts.",
+      "DNS is the internet's contacts list. You type netflix dot com, and DNS finds the IP address for you.",
+      "Grown-up words: DNS means Domain Name System. It turns names into IP addresses."
+    ] },
+  { short: "TCP vs UDP", visual: `
+    <div class="scene">
+      <div class="duo">
+        <div class="col pop" data-at="1">
+          <h3>TCP 🤝</h3>
+          <div class="bub l pop" data-at="2">SYN: hey, you there?</div>
+          <div class="bub r pop" data-at="2">SYN-ACK: yes! you there?</div>
+          <div class="bub l pop" data-at="2">ACK: yes! let's talk</div>
+          <div class="label pop" data-at="3">✓✓ read receipts · websites, email</div>
+        </div>
+        <div class="col pop" data-at="4">
+          <h3>UDP 📣</h3>
+          <div class="emoji">🗣️</div>
+          <div class="label">just shouts, no checking</div>
+          <div class="label">fast · video calls, games</div>
+        </div>
+      </div>
+    </div>`,
+    lines: [
+      "Last bit of tea. There are two ways to send the letters.",
+      "TCP is the polite one. Before talking, it does a three-step handshake.",
+      "SYN means: hey, are you there? SYN-ACK means: yes, are YOU there? ACK means: yes, let's talk.",
+      "TCP checks every letter arrived, like read receipts. Websites and emails use it.",
+      "UDP is the chaotic one. It just shouts the message and doesn't check. It's fast, so video calls and games use it."
+    ] },
+  { short: "Why SOC cares", visual: `
+    <div class="scene">
+      <div class="log pop" data-at="1">
+        <div class="dim">time      action  from            to</div>
+        <div class="pop" data-at="2">09:14:01  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">21</span></div>
+        <div class="pop" data-at="2">09:14:01  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">22</span></div>
+        <div class="pop" data-at="2">09:14:02  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">23</span></div>
+        <div class="pop" data-at="2">09:14:02  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">80</span></div>
+        <div class="pop" data-at="2">09:14:03  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">443</span></div>
+        <div class="pop" data-at="2">09:14:03  DENY  198.51.100.66 → 10.0.0.5:<span class="hot">3389</span></div>
+      </div>
+      <div class="alarm pop" data-at="3">🚨 PORT SCAN</div>
+    </div>`,
+    lines: [
+      "So why does a SOC analyst care about any of this? Because of the receipts. 💅",
+      "Every packet can leave a log: who it came from, where it went, and which door it knocked on.",
+      "Look at this firewall log. One stranger is knocking on door after door, seconds apart.",
+      "That's called a port scan. The hacker is checking which doors are unlocked. The audacity!",
+      "And YOU, my bestie, spot it in the logs and raise the alarm. That is literally the job."
+    ] },
+  { short: "Recap", visual: `
+    <div class="scene">
+      <div class="recap">
+        <div class="box pop" data-at="0"><strong>IP address</strong><span class="label">house address</span></div>
+        <div class="box pop" data-at="0"><strong>Packet</strong><span class="label">tiny letter</span></div>
+        <div class="box pop" data-at="0"><strong>Router</strong><span class="label">post office</span></div>
+        <div class="box pop" data-at="1"><strong>Port</strong><span class="label">door</span></div>
+        <div class="box pop" data-at="1"><strong>DNS</strong><span class="label">contacts list</span></div>
+        <div class="box pop" data-at="1"><strong>TCP / UDP</strong><span class="label">receipts / shouting</span></div>
+      </div>
+    </div>`,
+    lines: [
+      "Recap time! The IP address is the house address. Packets are the tiny letters. The router is the post office.",
+      "Ports are the doors. DNS is the contacts list. TCP has read receipts, and UDP just shouts.",
+      "*flaps wings* Now scroll down and take the quiz. Let's see if you were listening, babe! 🦉"
+    ] }
+];
+
+const $ = id => document.getElementById(id);
+const visual = $("visual"), owl = $("owl"), say = $("say"), playBtn = $("play"), voiceBtn = $("voice"), cover = $("cover");
+const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+let sceneIdx = 0, lineIdx = 0, playing = false, voiceOn = !!synth, runId = 0, timer = null, voice = null;
+
+function pickVoice() {
+  if (!synth) return;
+  const vs = synth.getVoices().filter(v => /^en/i.test(v.lang));
+  const likes = ["Samantha", "Google UK English Female", "Serena", "Karen", "Moira", "Tessa", "Female", "Zira", "Libby", "Sonia"];
+  voice = vs.find(v => likes.some(n => v.name.includes(n))) || vs.find(v => /GB/i.test(v.lang)) || vs[0] || null;
+}
+if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+else { voiceBtn.textContent = "🔇 No voice here"; voiceBtn.disabled = true; voiceBtn.setAttribute("aria-pressed", "false"); }
+
+const chapWrap = $("chapters");
+scenes.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.className = "chap"; b.textContent = (i + 1) + ". " + s.short; b.setAttribute("role", "tab");
+  b.onclick = () => { goScene(i); if (!playing) play(); };
+  chapWrap.appendChild(b);
+});
+
+function fmt(line) {
+  const esc = line.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return esc.replace(/\*(.+?)\*/g, "<em>*$1*</em>");
+}
+function speakable(line) {
+  return line.replace(/\*(.+?)\*/g, "").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "").replace(/…/g, "...").trim();
+}
+function showSteps() {
+  visual.querySelectorAll("[data-at]").forEach(el => el.classList.toggle("on", +el.dataset.at <= lineIdx));
+}
+function renderScene() {
+  visual.innerHTML = scenes[sceneIdx].visual;
+  [...chapWrap.children].forEach((c, i) => {
+    c.classList.toggle("now", i === sceneIdx); c.classList.toggle("done", i < sceneIdx);
+    c.setAttribute("aria-selected", i === sceneIdx);
+  });
+  chapWrap.children[sceneIdx].scrollIntoView({ block: "nearest", inline: "nearest" });
+  showSteps();
+  say.innerHTML = fmt(scenes[sceneIdx].lines[lineIdx]);
+}
+function stopAudio() {
+  runId++; clearTimeout(timer);
+  if (synth) synth.cancel();
+  owl.classList.remove("talking");
+}
+function speakLine() {
+  const my = ++runId;
+  const line = scenes[sceneIdx].lines[lineIdx];
+  say.innerHTML = fmt(line); showSteps();
+  owl.classList.add("talking");
+  const words = speakable(line).split(/\s+/).length;
+  const readMs = 1400 + words * 330;
+  const done = () => { if (my !== runId) return; owl.classList.remove("talking"); timer = setTimeout(() => { if (my === runId) advance(); }, 450); };
+  if (voiceOn && synth) {
+    const u = new SpeechSynthesisUtterance(speakable(line));
+    if (voice) u.voice = voice;
+    u.pitch = 1.3; u.rate = 1.02;
+    u.onend = done; u.onerror = done;
+    synth.speak(u);
+    timer = setTimeout(done, readMs * 2.2 + 3000); // backup if the browser never says it finished
+  } else {
+    timer = setTimeout(done, readMs);
+  }
+}
+function advance() {
+  const s = scenes[sceneIdx];
+  if (lineIdx < s.lines.length - 1) { lineIdx++; speakLine(); return; }
+  if (sceneIdx < scenes.length - 1) { sceneIdx++; lineIdx = 0; renderScene(); speakLine(); return; }
+  finish();
+}
+function finish() {
+  playing = false; stopAudio(); playBtn.textContent = "↺ Replay";
+  [...chapWrap.children].forEach(c => c.classList.add("done"));
+  cover.innerHTML = `<h2>That's the tea! ☕</h2><p>Now prove you were listening. Four quick questions.</p><button class="bigplay" id="toquiz">📝 Take the quiz</button>`;
+  cover.hidden = false;
+  $("toquiz").onclick = () => $("quiz").scrollIntoView({ behavior: "smooth" });
+}
+function play() {
+  if (playBtn.textContent.startsWith("↺")) { sceneIdx = 0; lineIdx = 0; renderScene(); }
+  cover.hidden = true; playing = true; playBtn.textContent = "⏸ Pause";
+  speakLine();
+}
+function pause() { playing = false; stopAudio(); playBtn.textContent = "▶ Play"; }
+function goScene(i) {
+  stopAudio(); sceneIdx = Math.max(0, Math.min(scenes.length - 1, i)); lineIdx = 0;
+  if (playBtn.textContent.startsWith("↺")) playBtn.textContent = "▶ Play";
+  cover.hidden = true; renderScene();
+  if (playing) speakLine();
+}
+
+$("bigplay").onclick = play;
+playBtn.onclick = () => playing ? pause() : play();
+$("prev").onclick = () => goScene(lineIdx > 0 ? sceneIdx : sceneIdx - 1);
+$("next").onclick = () => goScene(sceneIdx + 1);
+voiceBtn.onclick = () => {
+  voiceOn = !voiceOn;
+  voiceBtn.textContent = voiceOn ? "🔊 Voice on" : "🔈 Voice off";
+  voiceBtn.setAttribute("aria-pressed", voiceOn);
+  if (playing) { stopAudio(); speakLine(); }
+};
+renderScene();
+scenes[0].lines.forEach(() => {}); visual.querySelectorAll("[data-at]").forEach(el => el.classList.add("on"));
+
+/* ---------- Quiz ---------- */
+const quiz = [
+  { q: "Your phone sends a photo to a website. What does it chop the photo into?", opts: ["Ports", "Packets", "Routers"], a: 1,
+    yes: "YES babe! Tiny letters called packets. ✉️", no: "Not quite. It chops it into packets, the tiny numbered letters." },
+  { q: "Which door (port) do secure websites with the padlock use?", opts: ["80", "22", "443"], a: 2,
+    yes: "Iconic. 443 is HTTPS, the padlock door. 🔒", no: "Close! 443 is HTTPS. 80 is plain HTTP and 22 is SSH." },
+  { q: "You type google.com. Who finds its IP address for you?", opts: ["DNS", "UDP", "The router"], a: 0,
+    yes: "Correct! DNS is the internet's contacts list. 📱", no: "It's DNS, the contacts list that turns names into IP addresses." },
+  { q: "In the logs, one IP knocks on ports 21, 22, 23, 80 and 443 within seconds. What's the tea?", opts: ["A video call", "A normal DNS lookup", "A port scan"], a: 2,
+    yes: "THE AUDACITY. Yes, that's a port scan, and you'd raise the alarm. 🚨", no: "That's a port scan: someone checking which doors are unlocked." }
+];
+let answered = 0, right = 0;
+const qWrap = $("questions");
+quiz.forEach((item, qi) => {
+  const d = document.createElement("div"); d.className = "q";
+  d.innerHTML = `<div class="ask">${qi + 1}. ${item.q}</div><div class="opts"></div><div class="fb" aria-live="polite"></div>`;
+  const opts = d.querySelector(".opts"), fb = d.querySelector(".fb");
+  item.opts.forEach((o, oi) => {
+    const b = document.createElement("button"); b.className = "opt"; b.textContent = o;
+    b.onclick = () => {
+      if (d.dataset.done) return; d.dataset.done = "1"; answered++;
+      if (oi === item.a) { right++; b.classList.add("right"); fb.textContent = item.yes; }
+      else { b.classList.add("wrong"); opts.children[item.a].classList.add("right"); fb.textContent = item.no; }
+      if (answered === quiz.length) {
+        $("score").textContent = right === quiz.length ? `${right}/${quiz.length}! You're a genius, babe. Week 1 queen. 👑`
+          : right >= 2 ? `${right}/${quiz.length}. Good start! Rewatch the scenes you missed. 💛`
+          : `${right}/${quiz.length}. No stress, rewatch the episode and try again. That's how we learn. 💛`;
+      }
+    };
+    opts.appendChild(b);
+  });
+  qWrap.appendChild(d);
+});
+</script>

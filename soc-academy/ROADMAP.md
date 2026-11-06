@@ -19,6 +19,8 @@ Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then gro
 | [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) | Linux command line by playing | Free |
 | [MITRE ATT&CK](https://attack.mitre.org) | The common language of every SOC | Free |
 
+**Real YouTube teachers (free):** [Professor Messer](https://www.youtube.com/@professormesser) (Network+ / Security+), [Practical Networking](https://www.youtube.com/@PracticalNetworking) (networking explained simply), [NetworkChuck](https://www.youtube.com/@NetworkChuck) (fun intros, Linux, labs), [MyDFIR](https://www.youtube.com/@MyDFIR) (SOC analyst life and home labs), [John Hammond](https://www.youtube.com/@_JohnHammond) (malware and CTFs), [13Cubed](https://www.youtube.com/@13Cubed) (Windows forensics), [Simply Cyber](https://www.youtube.com/@SimplyCyber) (careers and getting hired).
+
 **Certs, in order:** CompTIA **Security+** (most UK/US SOC job ads ask for it) → **BTL1** (Security Blue Team, practical) *or* **CySA+** *or* Microsoft **SC-200** (pick one based on job ads near you). Optional to fill gaps: Google Cybersecurity Certificate (Coursera, financial aid available).
 
 ---
