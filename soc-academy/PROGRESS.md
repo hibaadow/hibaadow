@@ -36,3 +36,4 @@ Week 1 (starts 9 Nov 2026) — How computers and networks talk
 | Date | Covered | Next step |
 |---|---|---|
 | 2026-11-06 | Onboarding. Watched Episode 1 (How computers gossip) early. | Mon 9 Nov: Week 1 lesson on networking basics, then TryHackMe Pre Security |
+| 2026-11-09 | Prepared Episode 2 (OSI model, 7-layer cake). Session tonight 18:00–19:00 start, 3 hours. | Warm-up quiz on Ep 1 → TryHackMe What is Networking? + Intro to LAN → Episode 2 → find own IP address → recap |

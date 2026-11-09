@@ -19,7 +19,7 @@ Then say what you want:
 - **"mock interview"** — practise a SOC Analyst interview
 - **"review"** — am I on track?
 
-Every lesson comes with an animated video episode from Professor Byte, saved in [`videos/`](videos/). Episode 1: [How computers gossip](videos/week-01-how-computers-talk.html).
+Every lesson comes with an animated video episode from Professor Byte, saved in [`videos/`](videos/). Episode 1: [How computers gossip](videos/week-01-how-computers-talk.html). Episode 2: [The 7-layer cake](videos/week-01-osi-model.html).
 
 The teacher remembers you through [`PROGRESS.md`](PROGRESS.md) and saves your notes in [`notes/`](notes/).
 

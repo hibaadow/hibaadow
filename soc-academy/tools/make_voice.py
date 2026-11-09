@@ -9,7 +9,7 @@ src, outdir, voice = sys.argv[1], sys.argv[2], sys.argv[3]
 html = open(src).read()
 blocks = re.findall(r'lines: \[(.*?)\]\s*\}', html, re.S)
 scenes = [re.findall(r'"((?:[^"\\]|\\.)*)"', b) for b in blocks]
-KEEP = {"IP","HTTP","HTTPS","SSH","DNS","TCP","UDP","SOC"}
+KEEP = {"IP","HTTP","HTTPS","SSH","DNS","TCP","UDP","SOC","OSI","MAC","LAN","ARP","TLS"}
 def speak(t):
     t = re.sub(r'\*(.+?)\*', '', t)
     t = re.sub(r'[\U0001F300-\U0001FAFF☀-➿️]', '', t)
