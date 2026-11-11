@@ -1,0 +1,9 @@
+[project]
+name = "opsengine"
+version = "0.1.0"
+description = "AI-first compliance operations engine for Irish construction subcontractors"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+opsengine = "opsengine.cli:main"

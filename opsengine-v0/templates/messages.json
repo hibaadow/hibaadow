@@ -1,0 +1,47 @@
+{
+  "_about": "Message templates in plain English. The engine translates to the recipient's language via Claude when an API key is set; otherwise it flags the message for translation. Every translated safety message needs native-speaker review before go-live.",
+  "training_renewal": {
+    "subject": "Your {requirement_name} - {status_phrase}",
+    "body": "Hi {first_name}, this is the compliance team for {company_name}. Your {requirement_name} {status_phrase}. Without it you cannot go on site. We are finding a course for you now. Which days next week can you NOT attend? Reply here."
+  },
+  "send_new_card": {
+    "subject": "Please send a photo of your new {requirement_name}",
+    "body": "Hi {first_name}, when you finish the course, please send a clear photo of the front and back of your new {requirement_name} card here. Thank you."
+  },
+  "site_induction": {
+    "subject": "Site induction needed: {site_name}",
+    "body": "Hi {first_name}, before you start at {site_name} you must complete the site induction. We are arranging it with {main_contractor_name}, in {language_name} if available. We will send you the time and place."
+  },
+  "insurance_renewal_request": {
+    "subject": "{company_name}: {requirement_name} renewal certificate",
+    "body": "Hello, we manage compliance for {company_name}. Their {requirement_name} (policy {policy_number}) {status_phrase}. Please send the renewal certificate showing insurer, policy number, limit of indemnity and expiry date."
+  },
+  "insurance_limit_gap": {
+    "subject": "Action needed: {requirement_name} limit too low for {main_contractor_name}",
+    "body": "Hi {owner_first_name}, {main_contractor_name} requires a {requirement_name} limit of at least EUR {required_value}. Your current policy is EUR {current_value}. With your approval we will ask your broker for a quote to increase the limit."
+  },
+  "insurance_limit_increase": {
+    "subject": "{company_name}: quote to increase {requirement_name} limit",
+    "body": "Hello, {company_name} needs its {requirement_name} limit increased to at least EUR {required_value} (currently EUR {current_value}, policy {policy_number}). Please send a quote and, once accepted, the updated certificate."
+  },
+  "tax_clearance_ros": {
+    "subject": "Action needed: tax clearance",
+    "body": "Hi {owner_first_name}, your tax clearance {status_phrase}. Only you can apply on ROS (Revenue Online Service). It usually takes a few minutes. When you have your Tax Clearance Access Number (TCAN), reply with it and we will update every main contractor."
+  },
+  "send_tcan": {
+    "subject": "Please reply with your TCAN",
+    "body": "Hi {owner_first_name}, please reply with your new Tax Clearance Access Number and its expiry date."
+  },
+  "induction_record_request": {
+    "subject": "Induction record for {worker_name} at {site_name}",
+    "body": "Hello, please confirm the induction date for {worker_name} ({company_name}) at {site_name}, and send the induction record once completed."
+  },
+  "generic_document_request": {
+    "subject": "{requirement_name} needed",
+    "body": "Hi {owner_first_name}, the {requirement_name} for {holder_name} {status_phrase}. Please upload the current document and we will check it and send it on."
+  },
+  "generic_document_fix": {
+    "subject": "{requirement_name} incomplete",
+    "body": "Hi {owner_first_name}, the {requirement_name} for {holder_name} is incomplete: {detail}. Please send an updated version."
+  }
+}

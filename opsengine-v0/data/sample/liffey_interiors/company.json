@@ -1,0 +1,12 @@
+{
+  "id": "liffey_interiors",
+  "name": "Liffey Interiors Ltd (fictional sample)",
+  "trade": "drylining",
+  "owner": {"name": "Ciara Byrne", "email": "ciara@liffey-interiors.example.ie", "phone": "+353 87 000 0001", "language": "en"},
+  "broker": {"name": "Sample Insurance Brokers", "email": "renewals@sample-brokers.example.ie"},
+  "approval_limits": {"auto_approve_up_to_eur": 0},
+  "sites": [
+    {"id": "s1", "name": "Data centre, Blanchardstown", "main_contractor": "northgate_build", "workers": ["w01", "w02", "w03", "w04"]},
+    {"id": "s2", "name": "Apartments, Sandyford", "main_contractor": "harbour_construction", "workers": ["w01", "w05", "w06"]}
+  ]
+}

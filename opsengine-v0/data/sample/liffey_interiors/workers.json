@@ -1,0 +1,8 @@
+[
+  {"id": "w01", "name": "Sean Kelly", "role": "Foreman", "language": "en", "phone": "+353 87 000 0101", "tasks": ["drylining"]},
+  {"id": "w02", "name": "Joao Silva", "role": "Drylining operative", "language": "pt", "phone": "+353 87 000 0102", "tasks": ["drylining"]},
+  {"id": "w03", "name": "Andrei Popescu", "role": "Scaffolder", "language": "ro", "phone": "+353 87 000 0103", "tasks": ["scaffolding"]},
+  {"id": "w04", "name": "Piotr Nowak", "role": "Drylining operative", "language": "pl", "phone": "+353 87 000 0104", "tasks": ["drylining"]},
+  {"id": "w05", "name": "Tomas Kazlauskas", "role": "Drylining operative", "language": "lt", "phone": "+353 87 000 0105", "tasks": ["drylining"]},
+  {"id": "w06", "name": "Lucas Pereira", "role": "Apprentice (new starter)", "language": "pt", "phone": "+353 87 000 0106", "tasks": ["drylining"]}
+]
