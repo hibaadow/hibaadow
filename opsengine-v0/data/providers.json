@@ -1,0 +1,11 @@
+{
+  "_about": "Sample provider network. All names, prices and contacts are fictional placeholders - replace with vetted real providers.",
+  "providers": [
+    {"id": "p-sp-1", "name": "Example Safety Training (Dublin 15)", "category": "safe_pass_course", "price_eur": 165, "lead_days": 4, "languages": ["en", "pt", "pl"], "email": "bookings@example-safety.example.ie", "rating": 4.6},
+    {"id": "p-sp-2", "name": "Sample Skills Centre (Dublin 12)", "category": "safe_pass_course", "price_eur": 150, "lead_days": 9, "languages": ["en", "ro"], "email": "courses@sample-skills.example.ie", "rating": 4.2},
+    {"id": "p-sp-3", "name": "Demo Training Group (Dublin 1)", "category": "safe_pass_course", "price_eur": 180, "lead_days": 2, "languages": ["en", "pt", "ro", "pl", "lt"], "email": "hello@demo-training.example.ie", "rating": 4.8},
+    {"id": "p-mh-1", "name": "Example Safety Training (Dublin 15)", "category": "manual_handling_course", "price_eur": 95, "lead_days": 5, "languages": ["en", "pt", "pl"], "email": "bookings@example-safety.example.ie", "rating": 4.6},
+    {"id": "p-mh-2", "name": "Demo Training Group (Dublin 1)", "category": "manual_handling_course", "price_eur": 110, "lead_days": 3, "languages": ["en", "pt", "ro", "pl", "lt"], "email": "hello@demo-training.example.ie", "rating": 4.8},
+    {"id": "p-cs-1", "name": "Sample Scaffold Academy", "category": "cscs_scaffolding_course", "price_eur": 450, "lead_days": 14, "languages": ["en"], "email": "info@sample-scaffold.example.ie", "rating": 4.4}
+  ]
+}

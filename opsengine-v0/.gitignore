@@ -1,0 +1,9 @@
+state/
+__pycache__/
+*.pyc
+.env
+
+# Real customer data is personal data (GDPR): never commit it.
+data/customers/*
+!data/customers/_template/
+!data/customers/README.md

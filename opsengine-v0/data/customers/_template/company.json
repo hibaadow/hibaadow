@@ -1,0 +1,11 @@
+{
+  "id": "REPLACE_with_short_id_eg_acme_drylining",
+  "name": "REPLACE Company Ltd",
+  "trade": "REPLACE eg drylining",
+  "owner": {"name": "REPLACE Owner Name", "email": "REPLACE", "phone": "REPLACE +353 ...", "language": "en"},
+  "broker": {"name": "REPLACE Broker", "email": "REPLACE"},
+  "approval_limits": {"auto_approve_up_to_eur": 0},
+  "sites": [
+    {"id": "s1", "name": "REPLACE Site name, area", "main_contractor": "REPLACE id of a file in rules/main_contractors/", "workers": ["w01"]}
+  ]
+}

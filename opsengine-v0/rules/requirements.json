@@ -1,0 +1,99 @@
+{
+  "_about": "Rules library v0. Each requirement is a machine-checkable rule. 'basis' is a plain-English pointer, not legal advice; every rule must be checked by a competent person before customer use.",
+  "requirements": [
+    {
+      "id": "safety_statement",
+      "name": "Safety Statement",
+      "scope": "company",
+      "review_every_months": 12,
+      "warn_days": 45,
+      "required_fields": ["issued", "signed_by"],
+      "blocks_site_access": true,
+      "basis": "Safety, Health and Welfare at Work Act 2005, s.20 (written Safety Statement, kept under review)"
+    },
+    {
+      "id": "employers_liability",
+      "name": "Employer's liability insurance",
+      "scope": "company",
+      "warn_days": 45,
+      "required_fields": ["insurer", "policy_number", "limit_eur", "expires"],
+      "field_minimums": {"limit_eur": 13000000},
+      "blocks_site_access": true,
+      "basis": "Main contractor subcontract requirement"
+    },
+    {
+      "id": "public_liability",
+      "name": "Public liability insurance",
+      "scope": "company",
+      "warn_days": 45,
+      "required_fields": ["insurer", "policy_number", "limit_eur", "expires"],
+      "field_minimums": {"limit_eur": 6500000},
+      "blocks_site_access": true,
+      "basis": "Main contractor subcontract requirement"
+    },
+    {
+      "id": "tax_clearance",
+      "name": "Tax clearance (TCAN)",
+      "scope": "company",
+      "warn_days": 30,
+      "required_fields": ["tcan", "expires"],
+      "blocks_site_access": false,
+      "basis": "Revenue tax clearance, requested by main contractors and public clients"
+    },
+    {
+      "id": "rams",
+      "name": "Risk assessment and method statement (RAMS)",
+      "scope": "site",
+      "required_fields": ["activities", "approved_by_main_contractor", "briefed_workers"],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013 (contractor duties) and main contractor site rules"
+    },
+    {
+      "id": "safe_pass",
+      "name": "SOLAS Safe Pass",
+      "scope": "worker",
+      "applies_if": {"all_workers": true},
+      "warn_days": 45,
+      "required_fields": ["number", "expires"],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013: Safe Pass required for site workers"
+    },
+    {
+      "id": "cscs_scaffolding",
+      "name": "CSCS card - Scaffolding",
+      "scope": "worker",
+      "applies_if": {"tasks_any": ["scaffolding"]},
+      "warn_days": 45,
+      "required_fields": ["number", "expires"],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013: CSCS card for specified tasks"
+    },
+    {
+      "id": "manual_handling",
+      "name": "Manual handling training",
+      "scope": "worker",
+      "applies_if": {"required_by_main_contractor": true},
+      "warn_days": 45,
+      "required_fields": ["provider", "expires"],
+      "blocks_site_access": false,
+      "basis": "General Application Regulations 2007 (manual handling training); required on site by some main contractors"
+    },
+    {
+      "id": "written_terms",
+      "name": "Written terms of employment (signed)",
+      "scope": "worker",
+      "applies_if": {"all_workers": true},
+      "required_fields": ["signed"],
+      "blocks_site_access": false,
+      "basis": "Terms of Employment (Information) Acts: core terms in writing shortly after starting"
+    },
+    {
+      "id": "site_induction",
+      "name": "Site induction",
+      "scope": "worker_site",
+      "required_fields": ["completed_on", "language"],
+      "blocks_site_access": true,
+      "basis": "Main contractor / PSCS site induction, delivered in a language the worker understands (2005 Act, ss.9-10)"
+    }
+  ]
+}

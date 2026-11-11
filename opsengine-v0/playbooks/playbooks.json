@@ -1,0 +1,108 @@
+{
+  "_about": "Playbooks: for each requirement (and optionally each issue category), the ordered steps that resolve it. 'approval' names who must approve before the step runs (customer | safety_reviewer | ops). 'waits_for': 'document' pauses until proof is ingested.",
+  "_default": {
+    "validity": [
+      {"action": "request_document", "from": "customer", "template": "generic_document_request", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ],
+    "completeness": [
+      {"action": "request_document", "from": "customer", "template": "generic_document_fix", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "safe_pass": {
+    "validity": [
+      {"action": "message_worker", "template": "training_renewal"},
+      {"action": "find_provider", "category": "safe_pass_course"},
+      {"action": "book_service", "approval": "customer"},
+      {"action": "request_document", "from": "worker", "template": "send_new_card", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "cscs_scaffolding": {
+    "validity": [
+      {"action": "message_worker", "template": "training_renewal"},
+      {"action": "find_provider", "category": "cscs_scaffolding_course"},
+      {"action": "book_service", "approval": "customer"},
+      {"action": "request_document", "from": "worker", "template": "send_new_card", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "manual_handling": {
+    "validity": [
+      {"action": "message_worker", "template": "training_renewal"},
+      {"action": "find_provider", "category": "manual_handling_course"},
+      {"action": "book_service", "approval": "customer"},
+      {"action": "request_document", "from": "worker", "template": "send_new_card", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "public_liability": {
+    "validity": [
+      {"action": "request_document", "from": "broker", "template": "insurance_renewal_request", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ],
+    "completeness": [
+      {"action": "message_customer", "template": "insurance_limit_gap"},
+      {"action": "request_document", "from": "broker", "template": "insurance_limit_increase", "approval": "customer", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "employers_liability": {
+    "validity": [
+      {"action": "request_document", "from": "broker", "template": "insurance_renewal_request", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "safety_statement": {
+    "validity": [
+      {"action": "draft_document", "doc_type": "safety_statement"},
+      {"action": "request_signature", "from": "customer", "approval": "safety_reviewer", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "rams": {
+    "validity": [
+      {"action": "draft_document", "doc_type": "rams"},
+      {"action": "request_signature", "from": "customer", "approval": "safety_reviewer", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "written_terms": {
+    "validity": [
+      {"action": "draft_document", "doc_type": "written_terms"},
+      {"action": "request_signature", "from": "worker", "approval": "customer", "waits_for": "document"},
+      {"action": "verify"}
+    ],
+    "completeness": [
+      {"action": "request_signature", "from": "worker", "approval": "customer", "waits_for": "document"},
+      {"action": "verify"}
+    ]
+  },
+  "site_induction": {
+    "validity": [
+      {"action": "message_worker", "template": "site_induction"},
+      {"action": "request_document", "from": "main_contractor", "template": "induction_record_request", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  },
+  "tax_clearance": {
+    "validity": [
+      {"action": "message_customer", "template": "tax_clearance_ros"},
+      {"action": "request_document", "from": "customer", "template": "send_tcan", "waits_for": "document"},
+      {"action": "verify"},
+      {"action": "distribute"}
+    ]
+  }
+}

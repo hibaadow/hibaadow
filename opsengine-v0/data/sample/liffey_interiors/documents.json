@@ -1,0 +1,32 @@
+[
+  {"id": "d-ss-2025", "type": "safety_statement", "holder": "company", "issued": "2025-09-01", "signed_by": "Ciara Byrne", "file": "safety_statement_2025.pdf"},
+  {"id": "d-el-2026", "type": "employers_liability", "holder": "company", "insurer": "Sample Insurer DAC", "policy_number": "EL-55012", "limit_eur": 13000000, "expires": "2027-03-31"},
+  {"id": "d-pl-2025", "type": "public_liability", "holder": "company", "insurer": "Sample Insurer DAC", "policy_number": "PL-55013", "limit_eur": 6500000, "expires": "2026-12-05"},
+  {"id": "d-tc-2026", "type": "tax_clearance", "holder": "company", "tcan": "1234567T", "expires": "2027-06-30"},
+  {"id": "d-rams-s1", "type": "rams", "holder": "company", "context": "s1", "activities": ["partition walls", "ceilings", "working at height on podiums"], "approved_by_main_contractor": "2026-09-15", "briefed_workers": ["w01", "w02", "w03", "w04"]},
+
+  {"id": "d-sp-w01", "type": "safe_pass", "holder": "w01", "number": "SP-100001", "expires": "2028-04-30"},
+  {"id": "d-sp-w02", "type": "safe_pass", "holder": "w02", "number": "SP-100002", "expires": "2026-10-20"},
+  {"id": "d-sp-w03", "type": "safe_pass", "holder": "w03", "number": "SP-100003", "expires": "2026-12-10"},
+  {"id": "d-sp-w04", "type": "safe_pass", "holder": "w04", "number": "SP-100004", "expires": "2029-01-31"},
+  {"id": "d-sp-w05", "type": "safe_pass", "holder": "w05", "number": "SP-100005", "expires": "2027-08-31"},
+  {"id": "d-cscs-w03", "type": "cscs_scaffolding", "holder": "w03", "number": "CS-200003", "expires": "2028-02-28"},
+
+  {"id": "d-mh-w01", "type": "manual_handling", "holder": "w01", "provider": "Sample Training", "expires": "2028-01-31"},
+  {"id": "d-mh-w02", "type": "manual_handling", "holder": "w02", "provider": "Sample Training", "expires": "2027-05-31"},
+  {"id": "d-mh-w03", "type": "manual_handling", "holder": "w03", "provider": "Sample Training", "expires": "2027-05-31"},
+
+  {"id": "d-wt-w01", "type": "written_terms", "holder": "w01", "signed": "2021-03-01"},
+  {"id": "d-wt-w02", "type": "written_terms", "holder": "w02", "signed": "2024-02-12"},
+  {"id": "d-wt-w03", "type": "written_terms", "holder": "w03", "signed": "2023-06-05"},
+  {"id": "d-wt-w04", "type": "written_terms", "holder": "w04", "signed": "2025-01-20"},
+  {"id": "d-wt-w05", "type": "written_terms", "holder": "w05", "signed": ""},
+  {"id": "d-wt-w06", "type": "written_terms", "holder": "w06", "signed": "2026-11-03"},
+
+  {"id": "d-ind-w01-s1", "type": "site_induction", "holder": "w01", "context": "s1", "completed_on": "2026-09-16", "language": "en"},
+  {"id": "d-ind-w02-s1", "type": "site_induction", "holder": "w02", "context": "s1", "completed_on": "2026-09-16", "language": "pt"},
+  {"id": "d-ind-w03-s1", "type": "site_induction", "holder": "w03", "context": "s1", "completed_on": "2026-09-16", "language": "ro"},
+  {"id": "d-ind-w04-s1", "type": "site_induction", "holder": "w04", "context": "s1", "completed_on": "2026-09-17", "language": "pl"},
+  {"id": "d-ind-w01-s2", "type": "site_induction", "holder": "w01", "context": "s2", "completed_on": "2026-10-05", "language": "en"},
+  {"id": "d-ind-w05-s2", "type": "site_induction", "holder": "w05", "context": "s2", "completed_on": "2026-10-05", "language": "lt"}
+]
