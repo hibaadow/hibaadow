@@ -16,27 +16,40 @@ def available():
     return bool(os.environ.get("ANTHROPIC_API_KEY")) and os.environ.get("OPSENGINE_OFFLINE") != "1"
 
 
-def complete(system, prompt, max_tokens=1500):
-    """Return Claude's text reply, or None if unavailable or the call fails."""
+def call(body, betas=None):
+    """POST one Messages API request; return the parsed response dict, or None if unavailable or failed."""
     if not available():
         return None
-    body = json.dumps({
+    headers = {
+        "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    if betas:
+        headers["anthropic-beta"] = ",".join(betas)
+    req = urllib.request.Request(API_URL, data=json.dumps(body).encode(), method="POST", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.load(resp)
+    except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError):
+        return None
+
+
+def text_of(response):
+    """The reply text, or None if there is no usable reply (including a safety refusal)."""
+    if not response or response.get("stop_reason") == "refusal":
+        return None
+    return "".join(b.get("text", "") for b in response.get("content", []) if b.get("type") == "text") or None
+
+
+def complete(system, prompt, max_tokens=1500):
+    """Return Claude's text reply, or None if unavailable or the call fails."""
+    return text_of(call({
         "model": DEFAULT_MODEL,
         "max_tokens": max_tokens,
         "system": system,
         "messages": [{"role": "user", "content": prompt}],
-    }).encode()
-    req = urllib.request.Request(API_URL, data=body, method="POST", headers={
-        "x-api-key": os.environ["ANTHROPIC_API_KEY"],
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.load(resp)
-        return "".join(b.get("text", "") for b in data.get("content", []))
-    except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError):
-        return None
+    }))
 
 
 TRANSLATE_SYSTEM = ("You translate short construction-site compliance messages for Irish subcontractors. "

@@ -7,15 +7,23 @@
     python -m opsengine ingest path/to/doc.json --customer ...
     python -m opsengine report    --customer ...
     python -m opsengine audit     --customer ... [--verify]
+    python -m opsengine new-customer acme_drylining --name "Acme Drylining Ltd"
+    python -m opsengine check     --customer data/customers/acme_drylining
+    python -m opsengine read-photo photo.jpg --holder w02 [--type safe_pass] --customer ...
+    python -m opsengine reviews   --customer ...
+    python -m opsengine review-accept REV-0001 --by "Name" [--type safe_pass] [--set number=SP-1 ...]
+    python -m opsengine review-reject REV-0001 --by "Name" --reason "..."
+    python -m opsengine daily     [--root data/customers] [--customer folder ...]
     python -m opsengine demo      (full scripted walkthrough on the sample firm)
 """
 import argparse
 import json
 import shutil
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
+from . import onboarding, scheduler
 from .engine import Engine
 from .knowledge import ROOT
 from .report import metrics, weekly_summary
@@ -82,6 +90,76 @@ def cmd_audit(args):
         print(f"{row['seq']:>4} {row['ts']} {row['actor']:<22} {row['event']:<20} {row['ref']}")
 
 
+def cmd_new_customer(args):
+    dest = onboarding.create_customer(args.id, args.name)
+    print(f"Created {dest} (git-ignored). Fill in company.json, workers.json and documents.json, then run:")
+    print(f"  python -m opsengine check --customer {dest}")
+
+
+def cmd_check(args):
+    problems = onboarding.check_customer(args.customer)
+    if not problems:
+        print("Ready: no missing information found.")
+    for p in problems:
+        print(f"  - {p}")
+    sys.exit(1 if problems else 0)
+
+
+def cmd_read_photo(args):
+    r = _engine(args).ingest_photo(args.file, args.holder, context=args.context, expected_type=args.type,
+                                   received_via=args.via)
+    if r["status"] == "ingested":
+        print(f"Read {r['document']} with {r['confidence']:.0%} confidence; ingested.")
+        _print_events(r["events"])
+    else:
+        print(f"Sent to human review as {r['review']} ({r['confidence']:.0%} confidence):")
+        for reason in r["reasons"]:
+            print(f"  - {reason}")
+
+
+def cmd_reviews(args):
+    q = _engine(args).review_queue()
+    if not q:
+        print("Nothing waiting for review.")
+    for r in q:
+        ex = r["extraction"]
+        print(f"  {r['id']}  {r['holder']:<8} {ex.get('document_type') or '?':<20} {r['confidence']:.0%}  {r['file']}")
+        print(f"           read: {json.dumps(ex.get('values') or {})}")
+        for reason in r["reasons"]:
+            print(f"           - {reason}")
+
+
+def cmd_review_accept(args):
+    corrections = {}
+    for item in args.set or []:
+        k, _, v = item.partition("=")
+        corrections[k] = int(v) if k == "limit_eur" else v
+    _print_events(_engine(args).accept_review(args.review, args.by, doc_type=args.type, corrections=corrections))
+
+
+def cmd_review_reject(args):
+    _engine(args).reject_review(args.review, args.by, args.reason)
+    print(f"Rejected {args.review}.")
+
+
+def cmd_daily(args):
+    today = date.fromisoformat(args.today) if args.today else None
+    folders = [Path(c) for c in args.customer] if args.customer else scheduler.customer_folders(args.root)
+    if not folders:
+        print(f"No customers found under {args.root}.")
+        return
+    failed = 0
+    for r in scheduler.daily_run(folders, state_dir=args.state, today=today):
+        if r["status"] != "ok":
+            failed += 1
+            print(f"  {r['customer']:<24} FAILED: {r['error']}")
+            continue
+        print(f"  {r['customer']:<24} opened {len(r['opened'])}, closed {len(r['closed'])}, actions {r['actions']}, "
+              f"chased {len(r['chased'])}, escalated {len(r['escalated'])}, approvals waiting "
+              f"{r['approvals_waiting']}, reviews waiting {r['reviews_waiting']}")
+    sys.exit(1 if failed else 0)
+
+
 def cmd_demo(args):
     state = Path(args.state or ROOT / "state" / "demo")
     if state.exists():
@@ -116,11 +194,33 @@ def cmd_demo(args):
     h("6. BAD PROOF: Andrei sends an unreadable card - the engine rejects it and asks again")
     _print_events(e.ingest(json.loads((incoming / "wrong_card_w03.json").read_text())))
 
-    h("7. RECORD: weekly summary sent to the owner")
+    h("7. PHOTO: Lucas sends a photo of his Safe Pass - Claude vision reads it")
+    r = e.ingest_photo(incoming / "photo_safe_pass_w06.png", "w06", expected_type="safe_pass")
+    if r["status"] == "ingested":
+        print(f"  Read with {r['confidence']:.0%} confidence and ingested")
+        _print_events(r["events"])
+    else:
+        print(f"  Not confident enough ({r['confidence']:.0%}) - sent to human review as {r['review']}:")
+        for reason in r["reasons"]:
+            print(f"    - {reason}")
+        print("  Ops reviewer checks the photo and types in the card details:")
+        _print_events(e.accept_review(r["review"], "Ops reviewer", doc_type="safe_pass",
+                                      corrections={"number": "SP-300006", "expires": "2030-11-20"}))
+
+    h("8. DAILY RUN, 2 days later: reminders for anything still waiting")
+    for days in (2, 5):
+        if days == 5:
+            h("9. DAILY RUN, 5 days later: stalled items escalated to the ops team")
+        r = scheduler.run_customer(SAMPLE, state_dir=state, today=today + timedelta(days=days))
+        print(f"  chased {len(r['chased'])}: {', '.join(r['chased']) or '-'}")
+        print(f"  escalated {len(r['escalated'])}: {', '.join(r['escalated']) or '-'}")
+
+    h("10. RECORD: weekly summary sent to the owner")
+    e = Engine(SAMPLE, state_dir=state, today=today + timedelta(days=5))
     print(weekly_summary(e))
 
     ok, _ = e.store.verify_audit()
-    h(f"8. AUDIT: {len(e.store.audit_rows())} entries, hash chain {'intact' if ok else 'BROKEN'}")
+    h(f"11. AUDIT: {len(e.store.audit_rows())} entries, hash chain {'intact' if ok else 'BROKEN'}")
     print(f"  Outbox (messages, bookings, drafts): {e.outbox}")
     print(f"  Metrics: {json.dumps(metrics(e))}")
 
@@ -147,6 +247,19 @@ def main(argv=None):
     add("report", cmd_report)
     sp = add("audit", cmd_audit); sp.add_argument("--verify", action="store_true")
     add("demo", cmd_demo, customer=False)
+    sp = add("new-customer", cmd_new_customer, customer=False); sp.add_argument("id"); sp.add_argument("--name", required=True)
+    add("check", cmd_check)
+    sp = add("read-photo", cmd_read_photo); sp.add_argument("file"); sp.add_argument("--holder", required=True)
+    sp.add_argument("--type", help="what the sender says it is, e.g. safe_pass"); sp.add_argument("--context")
+    sp.add_argument("--via", default="whatsapp")
+    add("reviews", cmd_reviews)
+    sp = add("review-accept", cmd_review_accept); sp.add_argument("review"); sp.add_argument("--by", required=True)
+    sp.add_argument("--type"); sp.add_argument("--set", action="append", metavar="FIELD=VALUE")
+    sp = add("review-reject", cmd_review_reject); sp.add_argument("review"); sp.add_argument("--by", required=True)
+    sp.add_argument("--reason", required=True)
+    sp = add("daily", cmd_daily, customer=False)
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
+    sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")
 
     args = p.parse_args(argv)
     args.fn(args)

@@ -26,7 +26,9 @@ The demo runs a sample drylining firm (Liffey Interiors, 6 workers, 2 sites) thr
 4. **Verify:** a new Safe Pass photo arrives and the engine checks it against the rules,
    closes the issue and sends the update to the main contractor.
 5. **Reject bad proof:** an unreadable card is rejected and the worker is asked again.
-6. **Record:** weekly owner summary, engine metrics and a tamper-evident audit trail.
+6. **Read a photo:** a card photo is read by Claude, or sent to human review if it can't be read confidently.
+7. **Daily run:** two days later reminders go out; five days later stalled items are escalated.
+8. **Record:** weekly owner summary, engine metrics and a tamper-evident audit trail.
 
 Look in `state/demo/liffey_interiors/outbox/` to see every message, booking request,
 provider comparison and draft the engine produced.
@@ -44,6 +46,40 @@ python -m opsengine audit --verify
 ```
 
 Run the tests with `python -m unittest discover -s tests -v`.
+
+## Add a real customer
+
+```bash
+python -m opsengine new-customer acme_drylining --name "Acme Drylining Ltd"
+# fill in data/customers/acme_drylining/{company,workers,documents}.json
+python -m opsengine check --customer data/customers/acme_drylining   # lists anything missing
+```
+
+Real customer folders are git-ignored: they never go into the repository.
+
+## Read card and certificate photos
+
+```bash
+python -m opsengine read-photo photo.jpg --holder w02 --type safe_pass --customer data/customers/acme_drylining
+python -m opsengine reviews --customer ...                     # reads that need a human
+python -m opsengine review-accept REV-0001 --by "Name" --set number=SP-123456 --customer ...
+```
+
+Claude reads Safe Pass and CSCS cards and insurance certificates (images or PDF). A read is
+accepted automatically only at 90% confidence or more, with the right document type, the right
+name and every required field. Anything else waits for a person. Without an API key every photo
+goes to a person. Model: `OPSENGINE_VISION_MODEL` (default `claude-opus-5-5`).
+
+## Daily run
+
+```bash
+python -m opsengine daily            # every customer in data/customers/
+```
+
+Scans and advances every customer, sends a reminder to whoever a step is waiting on after
+2 days (including approvers - a reminder never approves anything), and escalates to the ops
+team after 5 days. Every action goes into that customer's audit trail. Schedule it with cron:
+`5 7 * * * cd /path/to/opsengine-v0 && python -m opsengine daily`.
 
 ## Turn on Claude (optional)
 

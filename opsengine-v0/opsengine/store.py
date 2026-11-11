@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS steps (
     state TEXT, approval_role TEXT, approved_by TEXT, approved_at TEXT,
     result TEXT, updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS reviews (
+    id TEXT PRIMARY KEY, file TEXT, holder TEXT, context TEXT, extraction TEXT,
+    confidence REAL, reasons TEXT, status TEXT, created_at TEXT,
+    decided_by TEXT, decided_at TEXT, decision TEXT, document_id TEXT
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
@@ -152,4 +157,38 @@ class Store:
 
     def step(self, step_id):
         found = [s for s in self.steps() if s["id"] == step_id]
+        return found[0] if found else None
+
+    # ---------- human review queue (low-confidence document reads) ----------
+    def add_review(self, review):
+        n = self.db.execute("SELECT COUNT(*) c FROM reviews").fetchone()["c"] + 1
+        review = {**review, "id": f"REV-{n:04d}", "status": "pending", "created_at": now_iso()}
+        for k in ("extraction", "reasons"):
+            review[k] = json.dumps(review[k], default=str)
+        cols = ",".join(review.keys())
+        self.db.execute(f"INSERT INTO reviews ({cols}) VALUES ({','.join('?' for _ in review)})", list(review.values()))
+        self.db.commit()
+        return review["id"]
+
+    def update_review(self, review_id, **fields):
+        if "decision" in fields:
+            fields["decision"] = json.dumps(fields["decision"], default=str)
+        sets = ",".join(f"{k}=?" for k in fields)
+        self.db.execute(f"UPDATE reviews SET {sets} WHERE id=?", [*fields.values(), review_id])
+        self.db.commit()
+
+    def reviews(self, status=None):
+        sql, args = "SELECT * FROM reviews", []
+        if status:
+            sql, args = sql + " WHERE status=?", [status]
+        out = []
+        for r in self.db.execute(sql + " ORDER BY id", args):
+            d = dict(r)
+            for k in ("extraction", "reasons", "decision"):
+                d[k] = json.loads(d[k]) if d[k] else None
+            out.append(d)
+        return out
+
+    def review(self, review_id):
+        found = [r for r in self.reviews() if r["id"] == review_id]
         return found[0] if found else None

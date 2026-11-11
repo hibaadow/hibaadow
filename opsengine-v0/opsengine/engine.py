@@ -7,6 +7,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+from . import vision
 from .actions import EXECUTORS, ActionContext
 from .detect import _best_doc, detect
 from .knowledge import ROOT, Customer, Knowledge
@@ -92,7 +93,8 @@ class Engine:
             if nxt["state"] in STOPS:
                 return events
             if nxt["approval_role"] and not nxt["approved_by"]:
-                self.store.update_step(nxt["id"], state="awaiting_approval")
+                self.store.update_step(nxt["id"], state="awaiting_approval",
+                                       result=json.dumps({"awaiting_since": self.today.isoformat()}))
                 self.store.audit("engine", "approval_requested", nxt["id"],
                                  {"role": nxt["approval_role"], "summary": self.approval_summary(nxt, prior)})
                 events.append((nxt["id"], "awaiting_approval"))
@@ -111,6 +113,8 @@ class Engine:
                 events.append((nxt["id"], "blocked"))
                 return events
             waits = nxt["spec"].get("waits_for")
+            if waits:
+                result = {**result, "waiting_since": self.today.isoformat()}  # lets the scheduler chase stalls
             self.store.update_step(nxt["id"], state="waiting" if waits else "done", result=json.dumps(result))
             self.store.audit("engine", "action_taken", nxt["id"],
                              {"action": nxt["action"], "approved_by": nxt["approved_by"], "result": result})
@@ -214,3 +218,56 @@ class Engine:
             events.append((waiter["id"], "proof_received"))
             events += self._advance_issue(issue["id"])
         return events
+
+    # ---------------- inbound photos (Claude vision) ----------------
+    def ingest_photo(self, path, holder, context=None, expected_type=None, received_via="whatsapp", call=None):
+        """Read a card/certificate photo. Confident, consistent reads go straight into ingest();
+        everything else waits in the human review queue. Nothing is ever guessed."""
+        if holder != "company" and holder not in self.customer.workers:
+            raise ValueError(f"unknown holder {holder}")
+        ex = vision.read_photo(path, self.kb, expected_type=expected_type, call=call)
+        confidence, reasons, values = vision.assess(ex, self.kb, self.customer, holder, expected_type)
+        self.store.audit("engine", "photo_read", str(Path(path).name),
+                         {"holder": holder, "source": ex["source"], "model": ex.get("model"),
+                          "document_type": ex.get("document_type"), "confidence": confidence, "reasons": reasons})
+        if not reasons:
+            doc = vision.to_document(ex, values, holder, context, received_via, confidence=confidence)
+            return {"status": "ingested", "document": doc["id"], "confidence": confidence,
+                    "events": self.ingest(doc, source="photo")}
+        review_id = self.store.add_review({"file": str(path), "holder": holder, "context": context,
+                                           "extraction": {**ex, "received_via": received_via, "values": values},
+                                           "confidence": confidence, "reasons": reasons})
+        self.store.audit("engine", "review_queued", review_id,
+                         {"file": str(Path(path).name), "holder": holder, "confidence": confidence, "reasons": reasons})
+        return {"status": "needs_review", "review": review_id, "confidence": confidence, "reasons": reasons}
+
+    def review_queue(self):
+        return self.store.reviews("pending")
+
+    def accept_review(self, review_id, by, doc_type=None, corrections=None):
+        """A human has looked at the photo: accept the read (with any corrections) and ingest it."""
+        r = self.store.review(review_id)
+        if not r or r["status"] != "pending":
+            raise ValueError(f"{review_id} is not pending review")
+        ex = r["extraction"]
+        ex = {**ex, "document_type": doc_type or ex.get("document_type")}
+        if ex["document_type"] not in self.kb.requirements:
+            raise ValueError("say which document type this is (doc_type)")
+        values = {**(ex.get("values") or {}), **(corrections or {})}
+        values = {k: v for k, v in values.items() if v not in (None, "")}
+        doc = vision.to_document(ex, values, r["holder"], r["context"], ex.get("received_via", "whatsapp"),
+                                 confidence=r["confidence"], reviewed_by=by)
+        self.store.update_review(review_id, status="accepted", decided_by=by, decided_at=now_iso(),
+                                 decision={"corrections": corrections or {}, "doc_type": ex["document_type"]},
+                                 document_id=doc["id"])
+        self.store.audit(f"human:{by}", "review_accepted", review_id,
+                         {"document": doc["id"], "corrections": corrections or {}})
+        return self.ingest(doc, source="human_review")
+
+    def reject_review(self, review_id, by, reason):
+        r = self.store.review(review_id)
+        if not r or r["status"] != "pending":
+            raise ValueError(f"{review_id} is not pending review")
+        self.store.update_review(review_id, status="rejected", decided_by=by, decided_at=now_iso(),
+                                 decision={"reason": reason})
+        self.store.audit(f"human:{by}", "review_rejected", review_id, {"reason": reason})
