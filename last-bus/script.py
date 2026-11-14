@@ -26,7 +26,7 @@ LINES = [
     (64.5, "mum", "Come on, love. Get off the bus.", "COME ON, *LOVE*|GET OFF _THE BUS_."),
     (67.3, "narr",  "She never waits up for you.", "SHE *NEVER*|WAITS UP|FOR _YOU_."),
     (70.4, "narr",  "The sign flickers... and spells out your name.", "THE SIGN|*FLICKERS*...|SPELLS OUT|YOUR _NAME_."),
-    (74.3, "whisper", "That's not the sign.", None),
+    (74.2, "whisper", "That's not the sign.", None),
     (75.9, "narr",  "And your mum... has no shadow.", "AND YOUR _MUM_...|HAS NO|*SHADOW*."),
     (78.75, "narr",  "So who do you trust... the sign, or your mum?", "SO WHO DO|YOU *TRUST*...|THE _SIGN_,|OR YOUR *MUM*?"),
     (85.6, "narr",  "Follow, for night two.", None),

@@ -389,7 +389,7 @@ def stick_figure(cv, x, head_y, scale=1.0, eyes=None, look=0.0, sit=True, wave=N
             cv.circ(hx + dx * s + ex, head_y - 6 * s, 7.5 * s, NAVY0)
 
 
-def creature(cv, x, head_y, turn=0.0, eye_a=1.0, scale=1.0):
+def creature(cv, x, head_y, turn=0.0, eye_a=1.0, scale=1.0, stretch=0.0, smile=0.0):
     """tall black figure, oval head, two small white eyes. turn: 0 = facing camera, 1 = facing left (you)"""
     s = scale
     rim = (58, 60, 140)
@@ -399,7 +399,9 @@ def creature(cv, x, head_y, turn=0.0, eye_a=1.0, scale=1.0):
     torso = [(x - 70 * s, head_y + 130 * s), (x + 70 * s, head_y + 130 * s), (x + 34 * s, hip), (x - 34 * s, hip)]
     cv.poly([(px - 3, py) for px, py in torso], rim)
     cv.poly(torso, BLACK)
-    cv.line([(x, head_y + ry - 10), (x, head_y + 140 * s)], BLACK, 30 * s)
+    hy = head_y - stretch
+    cv.line([(x, hy + ry - 10), (x, head_y + 140 * s)], rim, 34 * s)
+    cv.line([(x, hy + ry - 10), (x, head_y + 140 * s)], BLACK, 28 * s)
     for sgn in (-1, 1):
         arm = [(x + sgn * 66 * s, head_y + 140 * s), (x + sgn * 92 * s, head_y + 420 * s), (x + sgn * 70 * s, hip + 90 * s)]
         cv.line(arm, rim, 26 * s)
@@ -407,15 +409,20 @@ def creature(cv, x, head_y, turn=0.0, eye_a=1.0, scale=1.0):
         leg = [(x + sgn * 26 * s, hip), (x + sgn * 70 * s, hip + 80 * s), (x + sgn * 68 * s, hip + 380 * s), (x + sgn * 100 * s, hip + 386 * s)]
         cv.line(leg, rim, 30 * s)
         cv.line(leg, BLACK, 24 * s)
-    cv.ell(x - turn * 6 * s, head_y, rx + 3, ry + 3, rim)
-    cv.ell(x - turn * 6 * s, head_y, rx, ry, BLACK)
+    cv.ell(x - turn * 6 * s, hy, rx + 3, ry + 3, rim)
+    cv.ell(x - turn * 6 * s, hy, rx, ry, BLACK)
+    ex = -turn * 30 * s
     if eye_a > 0.02:
-        ex = -turn * 30 * s
+        close = 1 - 0.35 * turn - 0.3 * clamp(stretch / 60)
         for dx in (-17, 17):
-            ddx = dx * (1 - 0.35 * turn)
+            ddx = dx * close
             c = mix(BLACK, (255, 255, 255), eye_a)
-            cv.ell(x + ddx * s + ex, head_y - 8 * s, 7 * s, 8 * s, c)
-            cv.glow(x + ddx * s + ex, head_y - 8 * s, 18 * s, (200, 200, 230), int(120 * eye_a))
+            cv.ell(x + ddx * s + ex, hy - 8 * s, 7 * s, 8 * s, c)
+            cv.glow(x + ddx * s + ex, hy - 8 * s, 18 * s, (200, 200, 230), int(120 * eye_a))
+    if smile > 0.02:
+        mx, my = x + ex, hy + 24 * s
+        c = mix(BLACK, (255, 255, 255), smile)
+        cv.d.arc([(mx - 30 * s) * SS, (my - 22 * s) * SS, (mx + 30 * s) * SS, (my + 14 * s) * SS], 15, 165, fill=c, width=int(4 * s * SS))
 
 
 # ---------------------------------------------------------------- environment pieces
@@ -573,13 +580,17 @@ def shot_ext_bus(cv, t, lt, speed=1.0, bx=0, stop_at=None, z0=1.0, z1=1.1, cyc=1
 
 
 def row_scene(cv, t, figure_eyes=None, look=0.0, creature_on=False, c_turn=0.0, c_eyes=1.0,
-              sweep=None, handprint=0.0, dim=1.0, fig=True):
+              sweep=None, handprint=0.0, dim=1.0, fig=True, window_eyes=False, reflection=0.0,
+              lights_off=False, c_stretch=0.0, c_smile=0.0):
     """inside the top deck looking at the back seat + rear window"""
     cv.rect(0, 0, W, H, (18, 21, 54))
     # ceiling
     cv.poly([(0, 0), (W, 0), (930, 300), (150, 300)], (11, 13, 36))
-    cv.rect(380, 120, 700, 140, (60, 62, 110))   # strip light
-    cv.glow(540, 140, 160, (110, 110, 170), 60)
+    if lights_off:
+        cv.rect(380, 120, 700, 140, (24, 26, 50))
+    else:
+        cv.rect(380, 120, 700, 140, (60, 62, 110))   # strip light
+        cv.glow(540, 140, 160, (110, 110, 170), 60)
     # side walls
     cv.poly([(0, 0), (150, 300), (150, 1460), (0, 1700)], (14, 16, 44))
     cv.poly([(W, 0), (930, 300), (930, 1460), (W, 1700)], (14, 16, 44))
@@ -631,6 +642,14 @@ def row_scene(cv, t, figure_eyes=None, look=0.0, creature_on=False, c_turn=0.0, 
             cv.glow(lx, ly - ph, 20 + 70 * sp, AMBER, int(90 + 80 * sp))
     rain(cv, t, (WX0, WY0, WX1, WY1), alpha=60, n=120, slant=0.05, speed=0.5)
     glass_drops(cv, t, (WX0, WY0, WX1, WY1), n=36)
+    if reflection > 0:   # faint reflection of something sitting beside you
+        a = int(34 * reflection)
+        cv.ell(730, 600, 58, 90, (150, 160, 230, a))
+        cv.poly([(660, 700), (800, 700), (840, 880), (620, 880)], (150, 160, 230, a))
+    if window_eyes:      # two tiny eyes behind the bus, for a few frames
+        for ex in (772, 796):
+            cv.circ(ex, 610, 4, (255, 255, 255))
+            cv.glow(ex, 610, 14, (220, 220, 255), 200)
     if handprint > 0:
         a = int(110 * handprint)
         hx, hy = 500, 650
@@ -654,7 +673,9 @@ def row_scene(cv, t, figure_eyes=None, look=0.0, creature_on=False, c_turn=0.0, 
     if fig:
         you_seated(cv, 350, 820, eyes=figure_eyes, look=look)
     if creature_on:
-        creature(cv, 730, 560, turn=c_turn, eye_a=c_eyes)
+        creature(cv, 730, 560, turn=c_turn, eye_a=c_eyes, stretch=c_stretch, smile=c_smile)
+    if lights_off:
+        cv.rect(0, 0, W, H, (0, 0, 6, 80))
     if dim < 1:
         cv.rect(0, 0, W, H, (0, 0, 0, int(255 * (1 - dim))))
 
@@ -815,7 +836,7 @@ def stair_scene(cv, t, shadow=None, glow_amt=1.0):
         cv.line([(sx + 60 * sc, base_y - 400 * sc), (sx + 85 * sc, base_y)], sh, 22 * sc)
 
 
-def shelter_scene(cv, t, wave=True, flick=1.0, mum=True):
+def shelter_scene(cv, t, wave=True, flick=1.0, mum=True, lc=AMBER):
     cv.im.paste(gradient(W, 1300, (5, 7, 24), (28, 26, 74), "shsky"), (0, 0))
     stars(cv, (0, 0, W, 600), seed=21)
     moon(cv, 230, 300, 60)
@@ -827,8 +848,8 @@ def shelter_scene(cv, t, wave=True, flick=1.0, mum=True):
         cv.rect(0, 1420 + k * 90 + k * k * 6, W, 1424 + k * 90 + k * k * 6, (28, 30, 66))
     lx, ly = 930, 430                      # lamp head
     # light pool on ground
-    cv.ell(560, 1500, 520, 150, AMBER + (int(46 * flick),))
-    cv.glow_ell(560, 1480, 480, 170, AMBER, int(90 * flick))
+    cv.ell(560, 1500, 520, 150, lc + (int(46 * flick),))
+    cv.glow_ell(560, 1480, 480, 170, lc, int(90 * flick))
     # shadows from the shelter posts and bench (lamp at right -> shadows fall left)
     sh = (6, 7, 20, 190)
     for px in (200, 740):
@@ -847,15 +868,15 @@ def shelter_scene(cv, t, wave=True, flick=1.0, mum=True):
     cv.rect(316, 1258, 326, 1330, (36, 40, 94))
     cv.rect(624, 1258, 634, 1330, (36, 40, 94))
     # shelter light strip (warm)
-    cv.rect(220, 800, 720, 812, mix((60, 40, 20), AMBER, flick))
-    cv.glow_rect(220, 790, 720, 840, AMBER, int(200 * flick))
-    cv.poly([(220, 812), (720, 812), (780, 1330), (180, 1330)], AMBER + (int(36 * flick),))
+    cv.rect(220, 800, 720, 812, mix((60, 40, 20), lc, flick))
+    cv.glow_rect(220, 790, 720, 840, lc, int(200 * flick))
+    cv.poly([(220, 812), (720, 812), (780, 1330), (180, 1330)], lc + (int(36 * flick),))
     # lamp post
     cv.rect(970, 400, 986, 1330, (24, 26, 60))
     cv.rect(900, 400, 986, 414, (24, 26, 60))
-    cv.ell(lx - 20, ly + 10, 40, 14, mix((60, 40, 20), (255, 214, 140), flick))
-    cv.glow(lx - 20, ly + 20, 170, AMBER, int(170 * flick))
-    cv.poly([(lx - 60, ly + 18), (lx + 20, ly + 18), (1040, 1330), (420, 1330)], AMBER + (int(22 * flick),))
+    cv.ell(lx - 20, ly + 10, 40, 14, mix((60, 40, 20), mix(lc, (255, 255, 255), 0.4), flick))
+    cv.glow(lx - 20, ly + 20, 170, lc, int(170 * flick))
+    cv.poly([(lx - 60, ly + 18), (lx + 20, ly + 18), (1040, 1330), (420, 1330)], lc + (int(22 * flick),))
     # bus-stop flag pole (casts a long shadow across the pavement)
     cv.poly([(854, 1336), (868, 1336), (640, 1760), (610, 1760)], (6, 7, 20, 200))
     cv.rect(854, 640, 866, 1336, (40, 44, 96))
@@ -864,10 +885,10 @@ def shelter_scene(cv, t, wave=True, flick=1.0, mum=True):
     cv.text((860, 641), "13", "interx", 30, (20, 22, 60))
     if mum:
         stick_figure(cv, 560, 950, sit=False, wave=(t * 7.0 if wave else None), color=WHITE, lw=14, bun=True)
-        cv.glow(560, 1100, 220, AMBER, int(50 * flick))
+        cv.glow(560, 1100, 220, lc, int(50 * flick))
     rain(cv, t, (0, 0, W, H), alpha=55, n=220)
     # puddle reflection of lamp
-    cv.ell(800, 1600, 120, 16, AMBER + (int(50 * flick),))
+    cv.ell(800, 1600, 120, 16, lc + (int(50 * flick),))
 
 
 def doors_scene(cv, t, open_u):
@@ -1164,6 +1185,33 @@ def led_name(t):
     return [("GET OFF", LIME, "c", 1), ("NOW.", LIME, "c", 9)], fl
 
 
+TAPS = [26.5, 27.15, 27.4, 28.25, 29.3, 29.55]
+CUTS = [3.4, 8.2, 10.8, 20.2, 22.4, 25.8, 30.2, 33.8, 38.2, 41.7, 43.9, 46.2, 49.6, 52.4, 55.0, 57.6,
+        58.4, 60.8, 70.2, 73.8, 75.8, 78.4]
+TENSE = [(46.2, 58.4), (70.2, 78.4)]
+
+
+def vhs(img, t, amt):
+    """horizontal band tearing + colour split"""
+    a = np.asarray(img).copy()
+    y = 0
+    k = 0
+    while y < H:
+        hgt = int(20 + hrand(k, int(t * 30)) * 160)
+        off = int((hrand(k, int(t * 30) + 7) - 0.5) * 2 * amt)
+        a[y:y + hgt] = np.roll(a[y:y + hgt], off, axis=1)
+        y += hgt
+        k += 1
+    return chroma(Image.fromarray(a), max(2, int(amt / 4)))
+
+
+def tilt_img(img, ang):
+    img = img.rotate(ang, resample=Image.BILINEAR)
+    z = 1.045
+    w, h = int(W / z), int(H / z)
+    return img.resize((W, H), Image.BILINEAR, box=((W - w) / 2, (H - h) / 2, (W + w) / 2, (H + h) / 2))
+
+
 def frame(t):
     """returns final RGB image for global time t"""
     cv = Cv()
@@ -1179,7 +1227,8 @@ def frame(t):
         cam = shot_ext_bus(cv, t, t, z0=1.0, z1=1.1, cyc=1020, dur=3.4)
     elif t < 8.2:
         lt = t - 3.4
-        cam = shot_row(cv, t, lt, z0=1.0, z1=1.16, c0=(540, 960), c1=(470, 930), dur=4.8)
+        cam = shot_row(cv, t, lt, z0=1.0, z1=1.16, c0=(540, 960), c1=(470, 930), dur=4.8,
+                       reflection=ease(prog(t, 5.2, 6.6)) * (1 - prog(t, 7.6, 8.2)))
     elif t < 10.8:
         cam = shot_front(cv, t, t - 8.2, led_front_layers, dur=2.6, z0=1.0, z1=1.35)
         if 9.7 <= t < 10.8:
@@ -1221,7 +1270,7 @@ def frame(t):
         row_scene(cv, t, figure_eyes=True, look=look, handprint=hp)
         z = lerp(2.3, 2.75, ease(prog(t, 25.8, 30.2)))
         cam = (lerp(380, 420, ease(prog(t, 25.8, 30.2))), 820, z)
-        if 26.9 <= t < 27.05 or 27.4 <= t < 27.55:
+        if any(p <= t < p + 0.1 for p in TAPS):
             shake = 6
     elif t < 33.8:
         row_scene(cv, t, dim=0.9, fig=True)
@@ -1232,7 +1281,8 @@ def frame(t):
         ph = (t - 33.8) % 2.2
         sweep = math.sin(clamp(ph / 1.2) * math.pi) ** 2 if ph < 1.2 else 0
         sweep = max(sweep, 0.35)
-        row_scene(cv, t, sweep=sweep, figure_eyes=t > 36.0, look=0.5 * ease(prog(t, 36.0, 37.0)))
+        row_scene(cv, t, sweep=sweep, figure_eyes=t > 36.0, look=0.5 * ease(prog(t, 36.0, 37.0)),
+                  window_eyes=36.6 <= t < 36.6 + 4 / FPS)
         u = ease(prog(t, 33.8, 38.2))
         cam = (lerp(640, 690, u), lerp(1020, 1060, u), lerp(1.45, 1.75, u))
     elif t < 41.7:
@@ -1272,28 +1322,38 @@ def frame(t):
         fl_a = cut_flash(46.2, a=0.3)
     elif t < 52.4:
         # footsteps: shadow rises in steps
-        steps = [49.9, 50.5, 51.1, 51.7, 52.2]
+        steps = [49.9, 50.5, 51.1, 51.65]
         k = sum(1 for s in steps if t >= s)
         frac = 0
         for s in steps:
             if s <= t < s + 0.25:
                 frac = eout((t - s) / 0.25)
         rise = (max(0, k - 1) + frac) / len(steps) if k else 0
-        stair_scene(cv, t, shadow=0.1 + rise * 0.9, glow_amt=1.0 - 0.3 * rise)
+        dying = 1.0 if hrand(int(t * 14), 61) > 0.15 + 0.6 * prog(t, 50.3, 51.9) else 0.15
+        if t >= 51.9:
+            dying = 0.05
+        stair_scene(cv, t, shadow=0.1 + rise * 0.9, glow_amt=(1.0 - 0.3 * rise) * dying)
         u = ease(prog(t, 49.6, 52.4))
         cam = (760, lerp(1000, 900, u), lerp(1.1, 1.22, u))
         if any(s <= t < s + 0.08 for s in steps):
             shake = 4
     elif t < 55.0:
-        row_scene(cv, t, figure_eyes=True, look=0.0, creature_on=True, c_turn=0.0)
+        row_scene(cv, t, figure_eyes=True, look=0.0, creature_on=True, c_turn=0.0, lights_off=True)
         u = ease(prog(t, 52.4, 55.0))
         cam = (lerp(540, 560, u), lerp(900, 880, u), lerp(1.12, 1.24, u))
         fl_a = cut_flash(52.4, d=0.2, a=0.85)
         if t < 52.6:
             shake = 8
     elif t < 57.6:
-        turn = ease(prog(t, 55.3, 57.4))
-        row_scene(cv, t, figure_eyes=True, look=0.15, creature_on=True, c_turn=turn)
+        if t < 57.0:
+            turn = 0.55 * ease(prog(t, 55.4, 57.0))
+            stretch = 45 * ease(prog(t, 55.8, 57.0))
+        else:
+            turn, stretch = 1.0, 75.0
+        row_scene(cv, t, figure_eyes=True, look=0.15, creature_on=True, c_turn=turn, c_stretch=stretch, lights_off=True)
+        fl_a = cut_flash(57.0, d=0.1, a=0.5)
+        if 57.0 <= t < 57.15:
+            shake = 10
         u = ease(prog(t, 55.0, 57.6))
         cam = (lerp(600, 680, u), lerp(760, 640, u), lerp(1.8, 2.5, u))
     elif t < 58.4:
@@ -1305,7 +1365,13 @@ def frame(t):
         doors_scene(cv, t, prog(t, 58.6, 59.8))
         cam = (540, 1000, lerp(1.0, 1.12, ease(prog(t, 58.4, 60.8))))
     elif t < 70.2:
-        shelter_scene(cv, t)
+        fk = 1.0
+        if 66.75 <= t < 67.25:
+            fk = 0.2 if hrand(int(t * 30), 71) < 0.5 else 1.0
+        gone = 66.93 <= t < 66.93 + 2 / FPS
+        if gone:
+            fk = 0.25
+        shelter_scene(cv, t, flick=fk, mum=not gone)
         u = ease(prog(t, 60.8, 70.2))
         cam = (lerp(540, 560, u), lerp(1000, 1060, u), lerp(1.0, 1.22, u))
         fl_a = cut_flash(60.8, a=0.25)
@@ -1327,22 +1393,24 @@ def frame(t):
             chrom = 7
         fl_a = cut_flash(70.2, a=0.5)
     elif t < 75.8:
-        row_scene(cv, t, figure_eyes=True, look=0.6, creature_on=True, c_turn=1.0)
+        row_scene(cv, t, figure_eyes=True, look=0.6, creature_on=True, c_turn=1.0, c_stretch=75,
+                  c_smile=eout(prog(t, 74.3, 74.9)), lights_off=True)
         u = ease(prog(t, 73.8, 75.8))
         cam = (lerp(640, 660, u), lerp(660, 640, u), lerp(2.3, 2.6, u))
 
         def whisper(im, t=t):
-            a = eout(prog(t, 74.3, 74.6)) * (1 - prog(t, 75.5, 75.8))
+            a = eout(prog(t, 74.2, 74.5)) * (1 - prog(t, 75.3, 75.5))
             if a <= 0:
                 return
             d = ImageDraw.Draw(im, "RGBA")
             txt = "THAT'S NOT THE SIGN."
-            n = int(len(txt) * clamp((t - 74.35) / 0.9))
+            n = int(len(txt) * clamp((t - 74.25) / 0.9))
             d.text((540, 1150), txt[:n], font=F("vt", 64), fill=(255, 184, 74, int(235 * a)), anchor="mm")
         extra.append(whisper)
     elif t < 78.4:
         fl_ = 0.35 + 0.65 * (hrand(int(t * 10), 55) > 0.25)
-        shelter_scene(cv, t, wave=True, flick=fl_)
+        red = 75.8 <= t < 76.4
+        shelter_scene(cv, t, wave=True, flick=1.0 if red else fl_, lc=(235, 30, 36) if red else AMBER)
         u = ease(prog(t, 75.8, 78.4))
         cam = (lerp(600, 590, u), lerp(1440, 1480, u), lerp(1.45, 1.7, u))
         fl_a = cut_flash(75.8, d=0.12, a=0.9)
@@ -1358,8 +1426,10 @@ def frame(t):
             x1, y1 = to_screen(cam, 650, 1600)
             d.rounded_rectangle([x0, y0, x1, y1], radius=20, outline=(232, 36, 46, int(220 * a)), width=4)
         extra.append(noshadow)
-    elif t < 85.2:
+    elif t < 83.4:
         return choice_frame(t)
+    elif t < 85.2:
+        return scare_frame(t)
     else:
         return outro_frame(t)
 
@@ -1368,8 +1438,13 @@ def frame(t):
         dx = int((hrand(int(t * 60), 3) - 0.5) * 2 * shake)
         dy = int((hrand(int(t * 60), 4) - 0.5) * 2 * shake)
         img = ImageChops.offset(img, dx, dy)
+    if any(a <= t < b for a, b in TENSE):
+        img = tilt_img(img, 0.9 * math.sin(t * 0.7) + 0.4 * math.sin(t * 1.9))
     if chrom:
         img = chroma(img, chrom)
+    for c in CUTS:
+        if c <= t < c + 0.1:
+            img = vhs(img, t, 26)
     for fn in extra:
         fn(img)
     img = post(img, t)
@@ -1445,9 +1520,45 @@ def choice_frame(t):
     return img
 
 
+def scare_frame(t):
+    if t < 84.0 or t >= 84.2:
+        # black, with a little static fading in after the scare
+        img = Image.new("RGB", (W, H), (0, 0, 0))
+        if t >= 84.2:
+            n = (np.random.default_rng(int(t * 30)).random((H // 4, W // 4)) * 60 * (1 - prog(t, 84.2, 85.2))).astype(np.uint8)
+            img = Image.fromarray(np.stack([n] * 3, -1)).resize((W, H), Image.NEAREST)
+        return img
+    # its face, right up against the lens
+    cv = Cv(bg=(2, 2, 6))
+    k = (t - 84.0) / 0.2
+    sc = 5.2 + 0.8 * k
+    cv.ell(540, 900, 58 * sc + 10, 90 * sc + 10, (80, 82, 170))
+    cv.ell(540, 900, 58 * sc, 90 * sc, BLACK)
+    for dx, ey in ((-9, 856), (9, 852)):
+        cv.ell(540 + dx * sc, ey, 5 * sc, 6.5 * sc, (255, 255, 255))
+        cv.glow(540 + dx * sc, ey, 9 * sc, (200, 200, 255), 90)
+        cv.circ(540 + dx * sc + 1.5 * sc, ey + sc, 1.4 * sc, (0, 0, 0))
+    cv.d.arc([(540 - 50 * sc) * SS, (880 - 4 * sc) * SS, (540 + 50 * sc) * SS, (880 + 22 * sc) * SS], 18, 162,
+             fill=(255, 255, 255), width=int(2.4 * sc * SS))
+    img = camera(cv, 540, 960, 1.0)
+    dx = int((hrand(int(t * 60), 8) - 0.5) * 40)
+    img = ImageChops.offset(img, dx, int((hrand(int(t * 60), 9) - 0.5) * 30))
+    img = vhs(img, t, 40)
+    img = post(img, t)
+    return flash(img, 0.35 if t < 84.04 else 0, (255, 30, 40))
+
+
 def outro_frame(t):
     lt = t - 85.2
-    img = Image.new("RGB", (W, H), (5, 5, 14))
+    lcv = Cv(bg=(5, 5, 14))
+    txt = "I WARNED YOU.    "
+    wdt = led_width(txt)
+    off = (t - 85.2) * 30
+    layers = [(txt, RED, 78 - off + k * wdt, 5) for k in range(4)]
+    cv_y = 1580
+    lcv.rrect(16, cv_y - 40, 1064, cv_y + 260, 26, (8, 6, 10), outline=(30, 26, 50), w=4)
+    draw_led(lcv, LED_X, cv_y, LED_COLS, LED_ROWS, LED_P, layers, off_col=(22, 10, 10), flick=0.55)
+    img = camera(lcv, 540, 960, 1.0)
     dim = eout(lt / 0.6)
     gl = Image.new("RGB", (W, H), (0, 0, 0))
     gd = ImageDraw.Draw(gl)
