@@ -156,21 +156,10 @@ supporting evidence without falsely claiming to certify compliance itself.
 
 ---
 
-## Build status (v0, Nov 2026)
+## Build status
 
-Every capability above exists in the engine and is tested (`tests/test_capabilities.py` has one
-test class per section). Limits that remain are listed honestly.
-
-| # | Capability | Status | How it works / remaining limits |
-| --- | --- | --- | --- |
-| 1 | Compliance monitoring | Built | Rules for company, sites, workers, subcontractors and plant/equipment; daily run; `register` (central record of every requirement) and `risks` (what can stop work, what lapses soon, by site) |
-| 2 | Document management | Built | Records with every version kept (`documents`); evidence files stored by SHA-256; photo reading; content checks: RAMS covers the tasks on site and briefs every worker, Safety Statement signed by owner/director, insurance names the right company; drafts for human review. Limit: checks structured fields; reading the free text of uploaded PDFs needs the API key and is not built yet |
-| 3 | Automated problem resolution | Built | Playbook per issue; acts where permitted; approval gates; follow-up; escalation; verify before close |
-| 4 | Training and certification | Built | Finds and compares providers, requests quotes from up to 3, books with approval, appointment and attendance tracked (`appointment`), no-show sends it back for rebooking, new card updates the record. Limit: providers' quote replies are entered by a person |
-| 5 | Subcontractor management | Built | Your subcontractors' insurance, tax clearance, Safety Statement and operatives' Safe Pass register; flagged to you and chased directly; `subcontractors` shows who meets requirements |
-| 6 | Inspection and maintenance | Built | Plant/equipment register (`assets.json`); thorough examinations, accessories, plant service, fire extinguishers, cabin electrics, 110V tools; finds a qualified inspector in the area, requests quotes, books with approval, collects the report; failed results and defects become corrective actions. Intervals are marked [CHECK] for a competent person |
-| 7 | Provider network | Built | Vetted flag, qualifications, insurance, service areas; expired or out-of-area providers are never recommended; track record from completed/no-show bookings; all spec categories have SAMPLE providers. Limit: the network is fictional until real providers are added |
-| 8 | Corrective actions | Built | `raise-action` with owner, deadline and evidence required; from inspections automatically; closes only with evidence; critical/high need safety reviewer sign-off; overdue ones remind the owner and escalate |
-| 9 | Communication | Built | Every message in the outbox and the communication history (`comms`); real email via SMTP when `EMAIL_MODE=smtp`; approvals and decisions recorded. Limits: WhatsApp needs a Meta Business account (messages stay queued); no inbound email capture or calendar integration yet |
-| 10 | Reporting and audit | Built | Weekly summary, metrics, `history` per issue (AI and human actions, messages, evidence), `export` of everything for auditors, hash-chained audit log |
-| 11 | Continuous improvement | Built | `insights` across customers: most common, frequently missing, recurring, hotspots by site, time to close, provider reliability, and recommendations. Recommendations are for a person to accept; the engine does not change its own rules |
+See **`AUDIT.md`** (14 Nov 2026) for the honest, capability-by-capability status. In short: the
+rules and workflow engine is real and tested on SAMPLE data, but everything that touches the
+outside world (sending messages, reading real documents with AI, real providers, quotes,
+bookings, approvals with identity) is simulated or blocked, and there is no security layer yet.
+An earlier version of this section marked every capability "Built"; that overstated it.
