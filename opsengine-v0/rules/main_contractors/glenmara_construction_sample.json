@@ -1,0 +1,20 @@
+{
+  "sample": true,
+  "id": "glenmara_construction_sample",
+  "name": "Glenmara Construction Ltd (SAMPLE main contractor)",
+  "form": "rules/main_contractors/forms/glenmara_construction_SAMPLE_PQQ.md",
+  "extra_requirements": [
+    "company_details",
+    "professional_indemnity",
+    "safety_certification",
+    "accident_incident_history",
+    "trade_references",
+    "manual_handling"
+  ],
+  "field_minimums": {
+    "employers_liability": {"limit_eur": 13000000},
+    "public_liability": {"limit_eur": 13000000},
+    "professional_indemnity": {"limit_eur": 1000000}
+  },
+  "submission": {"method": "portal", "to": "supplychain-portal.glenmara-construction.example.ie"}
+}

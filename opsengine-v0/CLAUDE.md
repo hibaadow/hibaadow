@@ -35,7 +35,11 @@ These are product rules, not style preferences. Never weaken them in code.
    append-only and hash-chained; never update or delete audit rows.
 7. **Customer data is personal data (GDPR).** Keep real customer data out of the repo;
    `state/` and `data/customers/*` (except `_template/` and its README) are git-ignored.
-8. **Never guess a document.** A photo read is only accepted on its own at >= 90% confidence
+8. **SAMPLE data stays SAMPLE.** Every fictional customer and main contractor has `"sample": true`
+   and SAMPLE in its name. Samples live in `data/sample/` (committed); real customers only in
+   `data/customers/` (git-ignored). `check` and `daily` refuse to mix them, and a real
+   customer on SAMPLE contractor rules is flagged.
+9. **Never guess a document.** A photo read is only accepted on its own at >= 90% confidence
    with the right type, the right name and every required field. Everything else goes to the
    human review queue. Reminders and escalations never approve anything.
 
@@ -48,7 +52,9 @@ These are product rules, not style preferences. Never weaken them in code.
 | `playbooks/playbooks.json` | Steps that resolve each requirement, per issue category (`validity`, `completeness`) |
 | `templates/messages.json` | Plain-English message templates (translated at send time) |
 | `data/providers.json` | Provider network (sample data, fictional) |
-| `data/sample/liffey_interiors/` | Fictional customer: company, workers, documents, incoming proof |
+| `data/sample/liffey_interiors/` | SAMPLE customer: drylining, 6 workers (the scripted demo) |
+| `data/sample/bremore_groundworks/` | SAMPLE pilot customer: groundworks, Dublin, 16 workers, 2 sites, 19 designed gaps |
+| `rules/main_contractors/forms/` | SAMPLE prequalification form(s) the contractor rules were built from |
 | `data/customers/` | Real customers (git-ignored). `_template/` is the starting point |
 | `opsengine/detect.py` | Pure detection: rules + documents + date -> findings |
 | `opsengine/engine.py` | The loop: scan, advance, approve/reject, ingest, verify |
@@ -84,7 +90,12 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   so it is easy to test. Any new rule logic goes there, with a test.
 - **Add knowledge as data before code.** A new requirement is a JSON entry in
   `rules/requirements.json` plus a playbook entry. Only write code when the data model
-  can't express it.
+  can't express it. `applies_if: {"required_by_main_contractor": true}` makes a company,
+  site or worker rule apply only where a contractor lists it in `extra_requirements`;
+  `field_allowed_values` restricts a field (e.g. scheme: Safe-T-Cert or CIRI).
+- **New main contractor:** a `rules/main_contractors/<id>.json` (extra requirements, minimums,
+  submission) built from their form, with the form or a summary in `forms/` and a mapping
+  of each question to a rule id. `test_sample_pilot.py` checks the library stays consistent.
 - **New action type:** add an executor in `actions.py`, register it in `EXECUTORS`, use it
   in a playbook, and add a test. Executors return a result dict; return
   `{"status": "blocked", ...}` to escalate to the ops team.
@@ -95,7 +106,7 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   transport (`tests/helpers.py`) that returns recorded replies.
 - **Mock mode:** `USE_MOCK_AI=true` means no Claude calls at all, even with a key. It may only
   replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
-  or a read of any other photo (boundaries 5 and 8 still hold). Tests force `USE_MOCK_AI=false`
+  or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
   and turn it on explicitly where needed, so a local `.env` can't change results.
 - **Waiting clocks:** steps record `waiting_since` / `awaiting_since` (the engine's `today`) in
   their result; the scheduler uses them and stores `chased_on` / `escalated_on` so each
@@ -113,7 +124,8 @@ per customer falling**. When adding features, ask whether they remove human work
    (WhatsApp photos, email attachments) feeding `engine.ingest()`.
 2. **Document reading (v0 done: `vision.py`):** use Claude vision to extract fields from card photos and certificates
    into document JSON, with a confidence score; low confidence goes to a human.
-3. **Rules library depth:** build from real main contractor prequalification forms; add CIRI
+3. **Rules library depth (started: SAMPLE Glenmara form adds PI, Safe-T-Cert/CIRI, accident history,
+   references, plant CSCS cards):** build from real main contractor prequalification forms; add
    registration, Sectoral Employment Order (SEO) pay/pension evidence, RCT, plant inspections
    (GA2/GA3 style registers), working-at-height and silica controls.
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall

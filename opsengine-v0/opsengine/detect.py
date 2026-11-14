@@ -30,10 +30,23 @@ def _targets(req, customer, kb):
     """Yield (holder, context, required_by) for every place this requirement applies."""
     scope = req["scope"]
     sites = customer.company.get("sites", [])
+    cond = req.get("applies_if", {})
+
+    def demanding(mcs):
+        """Main contractors (of mcs) that list this requirement in their extra requirements."""
+        return [m for m in mcs if req["id"] in kb.main_contractors.get(m, {}).get("extra_requirements", [])]
+
     if scope == "company":
-        yield "company", None, sorted({s["main_contractor"] for s in sites})
+        mcs = sorted({s["main_contractor"] for s in sites})
+        if cond.get("required_by_main_contractor"):
+            mcs = demanding(mcs)
+            if not mcs:
+                return
+        yield "company", None, mcs
     elif scope == "site":
         for s in sites:
+            if cond.get("required_by_main_contractor") and not demanding([s["main_contractor"]]):
+                continue
             yield "company", s["id"], [s["main_contractor"]]
     elif scope == "worker_site":
         for s in sites:
@@ -48,9 +61,8 @@ def _targets(req, customer, kb):
             elif cond.get("tasks_any") and set(cond["tasks_any"]) & set(w.get("tasks", [])):
                 yield wid, None, mcs
             elif cond.get("required_by_main_contractor"):
-                demanding = [m for m in mcs if req["id"] in kb.main_contractors.get(m, {}).get("extra_requirements", [])]
-                if demanding:
-                    yield wid, None, demanding
+                if demanding(mcs):
+                    yield wid, None, demanding(mcs)
 
 
 REQUIRED_FIELDS = {}  # requirement id -> required fields; refreshed by detect() from the rules library
@@ -113,6 +125,11 @@ def detect(kb, customer, docs, today):
             missing = _missing_fields(doc, req)
             if missing:
                 add("completeness", "incomplete", f"Missing: {', '.join(missing)}")
+
+            for fname, allowed in req.get("field_allowed_values", {}).items():
+                value = doc.get(fname)
+                if value not in (None, "", []) and value not in allowed:
+                    add("completeness", "incomplete", f"{fname} {value!r} is not accepted (accepted: {', '.join(allowed)})")
 
             # minimum values: rule baseline plus stricter main contractor overrides
             mins = dict(req.get("field_minimums", {}))

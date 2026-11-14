@@ -1,7 +1,15 @@
 {
+  "sample": true,
   "id": "harbour_construction",
   "name": "Harbour Construction (sample main contractor)",
   "extra_requirements": [],
-  "field_minimums": {"public_liability": {"limit_eur": 10000000}},
-  "submission": {"method": "portal", "to": "supplier-portal.harbour.example.ie"}
+  "field_minimums": {
+    "public_liability": {
+      "limit_eur": 10000000
+    }
+  },
+  "submission": {
+    "method": "portal",
+    "to": "supplier-portal.harbour.example.ie"
+  }
 }

@@ -47,6 +47,18 @@ python -m opsengine audit --verify
 
 Run the tests with `python -m unittest discover -s tests -v`.
 
+## SAMPLE pilot customer
+
+Until a real pilot is signed, `data/sample/bremore_groundworks/` is a realistic fictional one:
+a 16-person Dublin groundworks firm with two sites, one for **Glenmara Construction (SAMPLE)**.
+Glenmara's sample prequalification form is in `rules/main_contractors/forms/` and its rules in
+`rules/main_contractors/glenmara_construction_sample.json`. Everything is marked SAMPLE.
+
+```bash
+python -m opsengine --today 2026-11-11 daily --customer data/sample/bremore_groundworks
+python -m opsengine queue --customer data/sample/bremore_groundworks
+```
+
 ## Add a real customer
 
 ```bash

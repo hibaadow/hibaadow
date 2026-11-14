@@ -7,7 +7,10 @@
       "scope": "company",
       "review_every_months": 12,
       "warn_days": 45,
-      "required_fields": ["issued", "signed_by"],
+      "required_fields": [
+        "issued",
+        "signed_by"
+      ],
       "blocks_site_access": true,
       "basis": "Safety, Health and Welfare at Work Act 2005, s.20 (written Safety Statement, kept under review)"
     },
@@ -16,8 +19,15 @@
       "name": "Employer's liability insurance",
       "scope": "company",
       "warn_days": 45,
-      "required_fields": ["insurer", "policy_number", "limit_eur", "expires"],
-      "field_minimums": {"limit_eur": 13000000},
+      "required_fields": [
+        "insurer",
+        "policy_number",
+        "limit_eur",
+        "expires"
+      ],
+      "field_minimums": {
+        "limit_eur": 13000000
+      },
       "blocks_site_access": true,
       "basis": "Main contractor subcontract requirement"
     },
@@ -26,8 +36,15 @@
       "name": "Public liability insurance",
       "scope": "company",
       "warn_days": 45,
-      "required_fields": ["insurer", "policy_number", "limit_eur", "expires"],
-      "field_minimums": {"limit_eur": 6500000},
+      "required_fields": [
+        "insurer",
+        "policy_number",
+        "limit_eur",
+        "expires"
+      ],
+      "field_minimums": {
+        "limit_eur": 6500000
+      },
       "blocks_site_access": true,
       "basis": "Main contractor subcontract requirement"
     },
@@ -36,7 +53,10 @@
       "name": "Tax clearance (TCAN)",
       "scope": "company",
       "warn_days": 30,
-      "required_fields": ["tcan", "expires"],
+      "required_fields": [
+        "tcan",
+        "expires"
+      ],
       "blocks_site_access": false,
       "basis": "Revenue tax clearance, requested by main contractors and public clients"
     },
@@ -44,7 +64,11 @@
       "id": "rams",
       "name": "Risk assessment and method statement (RAMS)",
       "scope": "site",
-      "required_fields": ["activities", "approved_by_main_contractor", "briefed_workers"],
+      "required_fields": [
+        "activities",
+        "approved_by_main_contractor",
+        "briefed_workers"
+      ],
       "blocks_site_access": true,
       "basis": "Construction Regulations 2013 (contractor duties) and main contractor site rules"
     },
@@ -52,9 +76,14 @@
       "id": "safe_pass",
       "name": "SOLAS Safe Pass",
       "scope": "worker",
-      "applies_if": {"all_workers": true},
+      "applies_if": {
+        "all_workers": true
+      },
       "warn_days": 45,
-      "required_fields": ["number", "expires"],
+      "required_fields": [
+        "number",
+        "expires"
+      ],
       "blocks_site_access": true,
       "basis": "Construction Regulations 2013: Safe Pass required for site workers"
     },
@@ -62,9 +91,16 @@
       "id": "cscs_scaffolding",
       "name": "CSCS card - Scaffolding",
       "scope": "worker",
-      "applies_if": {"tasks_any": ["scaffolding"]},
+      "applies_if": {
+        "tasks_any": [
+          "scaffolding"
+        ]
+      },
       "warn_days": 45,
-      "required_fields": ["number", "expires"],
+      "required_fields": [
+        "number",
+        "expires"
+      ],
       "blocks_site_access": true,
       "basis": "Construction Regulations 2013: CSCS card for specified tasks"
     },
@@ -72,9 +108,14 @@
       "id": "manual_handling",
       "name": "Manual handling training",
       "scope": "worker",
-      "applies_if": {"required_by_main_contractor": true},
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
       "warn_days": 45,
-      "required_fields": ["provider", "expires"],
+      "required_fields": [
+        "provider",
+        "expires"
+      ],
       "blocks_site_access": false,
       "basis": "General Application Regulations 2007 (manual handling training); required on site by some main contractors"
     },
@@ -82,8 +123,12 @@
       "id": "written_terms",
       "name": "Written terms of employment (signed)",
       "scope": "worker",
-      "applies_if": {"all_workers": true},
-      "required_fields": ["signed"],
+      "applies_if": {
+        "all_workers": true
+      },
+      "required_fields": [
+        "signed"
+      ],
       "blocks_site_access": false,
       "basis": "Terms of Employment (Information) Acts: core terms in writing shortly after starting"
     },
@@ -91,9 +136,152 @@
       "id": "site_induction",
       "name": "Site induction",
       "scope": "worker_site",
-      "required_fields": ["completed_on", "language"],
+      "required_fields": [
+        "completed_on",
+        "language"
+      ],
       "blocks_site_access": true,
       "basis": "Main contractor / PSCS site induction, delivered in a language the worker understands (2005 Act, ss.9-10)"
+    },
+    {
+      "id": "company_details",
+      "name": "Company details (CRO, VAT, address)",
+      "scope": "company",
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
+      "required_fields": [
+        "cro_number",
+        "vat_number",
+        "registered_address",
+        "years_trading"
+      ],
+      "blocks_site_access": false,
+      "basis": "Main contractor prequalification: company identity (SAMPLE form section A)"
+    },
+    {
+      "id": "professional_indemnity",
+      "name": "Professional indemnity insurance",
+      "scope": "company",
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
+      "warn_days": 45,
+      "required_fields": [
+        "insurer",
+        "policy_number",
+        "limit_eur",
+        "expires"
+      ],
+      "blocks_site_access": true,
+      "basis": "Main contractor subcontract requirement where the package includes design (SAMPLE form section B)"
+    },
+    {
+      "id": "safety_certification",
+      "name": "Safety certification (Safe-T-Cert or CIRI)",
+      "scope": "company",
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
+      "warn_days": 45,
+      "required_fields": [
+        "scheme",
+        "number",
+        "expires"
+      ],
+      "field_allowed_values": {
+        "scheme": [
+          "Safe-T-Cert",
+          "CIRI"
+        ]
+      },
+      "blocks_site_access": false,
+      "basis": "Main contractor prequalification: independent safety certification or CIRI registration (SAMPLE form section F)"
+    },
+    {
+      "id": "accident_incident_history",
+      "name": "Accident and incident history (last 3 years)",
+      "scope": "company",
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "period",
+        "reportable_accidents",
+        "lost_time_injuries",
+        "hsa_notices",
+        "signed_by"
+      ],
+      "blocks_site_access": false,
+      "basis": "Main contractor prequalification: declared safety record, reviewed yearly (SAMPLE form section E)"
+    },
+    {
+      "id": "trade_references",
+      "name": "Trade references (2 main contractors)",
+      "scope": "company",
+      "applies_if": {
+        "required_by_main_contractor": true
+      },
+      "required_fields": [
+        "referee_1",
+        "referee_2"
+      ],
+      "blocks_site_access": false,
+      "basis": "Main contractor prequalification: references from recent main contractors (SAMPLE form section H)"
+    },
+    {
+      "id": "cscs_excavator",
+      "name": "CSCS card - 180° Excavator",
+      "scope": "worker",
+      "applies_if": {
+        "tasks_any": [
+          "excavator"
+        ]
+      },
+      "warn_days": 45,
+      "required_fields": [
+        "number",
+        "expires"
+      ],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)"
+    },
+    {
+      "id": "cscs_dumper",
+      "name": "CSCS card - Site Dumper",
+      "scope": "worker",
+      "applies_if": {
+        "tasks_any": [
+          "dumper"
+        ]
+      },
+      "warn_days": 45,
+      "required_fields": [
+        "number",
+        "expires"
+      ],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)"
+    },
+    {
+      "id": "cscs_slinger_signaller",
+      "name": "CSCS card - Slinger/Signaller",
+      "scope": "worker",
+      "applies_if": {
+        "tasks_any": [
+          "slinging"
+        ]
+      },
+      "warn_days": 45,
+      "required_fields": [
+        "number",
+        "expires"
+      ],
+      "blocks_site_access": true,
+      "basis": "Construction Regulations 2013: CSCS card for specified tasks (check against Schedule 4)"
     }
   ]
 }

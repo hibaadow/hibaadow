@@ -1,0 +1,11 @@
+{
+  "id": "sample-pi-2026",
+  "type": "professional_indemnity",
+  "holder": "company",
+  "insurer": "Sample Insurer DAC",
+  "policy_number": "PI-SAMPLE-9901",
+  "limit_eur": 1500000,
+  "expires": "2027-11-30",
+  "file": "SAMPLE_pi_certificate.pdf",
+  "received_via": "email"
+}

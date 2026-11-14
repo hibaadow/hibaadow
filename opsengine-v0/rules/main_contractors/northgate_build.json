@@ -1,7 +1,13 @@
 {
+  "sample": true,
   "id": "northgate_build",
   "name": "Northgate Build (sample main contractor)",
-  "extra_requirements": ["manual_handling"],
+  "extra_requirements": [
+    "manual_handling"
+  ],
   "field_minimums": {},
-  "submission": {"method": "email", "to": "compliance@northgate-build.example.ie"}
+  "submission": {
+    "method": "email",
+    "to": "compliance@northgate-build.example.ie"
+  }
 }

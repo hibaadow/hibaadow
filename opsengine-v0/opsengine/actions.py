@@ -191,7 +191,8 @@ def a_request_signature(ctx):
 
 
 def a_distribute(ctx):
-    mcs = ctx.customer.main_contractors_for(ctx.issue["holder"], ctx.issue["context"], ctx.kb)
+    mcs = json.loads(ctx.issue.get("required_by") or "[]") or \
+        ctx.customer.main_contractors_for(ctx.issue["holder"], ctx.issue["context"], ctx.kb)
     proof = ctx.issue.get("proof")
     sent = []
     for mc_id in mcs:

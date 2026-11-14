@@ -1,0 +1,18 @@
+[
+  {"id": "w01", "name": "Declan Murphy", "role": "Foreman", "language": "en", "phone": "+353 87 000 0201", "tasks": ["groundworks"]},
+  {"id": "w02", "name": "Tomasz Kowalski", "role": "Excavator operator", "language": "pl", "phone": "+353 87 000 0202", "tasks": ["excavator", "groundworks"]},
+  {"id": "w03", "name": "Ciarán Doyle", "role": "Excavator operator", "language": "en", "phone": "+353 87 000 0203", "tasks": ["excavator"]},
+  {"id": "w04", "name": "Mantas Petrauskas", "role": "Excavator operator", "language": "lt", "phone": "+353 87 000 0204", "tasks": ["excavator"]},
+  {"id": "w05", "name": "Bogdan Ionescu", "role": "Dumper driver", "language": "ro", "phone": "+353 87 000 0205", "tasks": ["dumper"]},
+  {"id": "w06", "name": "Rafael Costa", "role": "Dumper driver", "language": "pt", "phone": "+353 87 000 0206", "tasks": ["dumper", "groundworks"]},
+  {"id": "w07", "name": "Paddy Walsh", "role": "Slinger/signaller", "language": "en", "phone": "+353 87 000 0207", "tasks": ["slinging"]},
+  {"id": "w08", "name": "Marcin Zieliński", "role": "Pipelayer", "language": "pl", "phone": "+353 87 000 0208", "tasks": ["groundworks", "slinging"]},
+  {"id": "w09", "name": "Eoin Kavanagh", "role": "Pipelayer", "language": "en", "phone": "+353 87 000 0209", "tasks": ["groundworks"]},
+  {"id": "w10", "name": "Vasile Popa", "role": "General operative", "language": "ro", "phone": "+353 87 000 0210", "tasks": ["groundworks"]},
+  {"id": "w11", "name": "Gintaras Jonaitis", "role": "General operative", "language": "lt", "phone": "+353 87 000 0211", "tasks": ["groundworks"]},
+  {"id": "w12", "name": "Thiago Almeida", "role": "General operative", "language": "pt", "phone": "+353 87 000 0212", "tasks": ["groundworks"]},
+  {"id": "w13", "name": "Seán O'Reilly", "role": "Apprentice", "language": "en", "phone": "+353 87 000 0213", "tasks": ["groundworks"]},
+  {"id": "w14", "name": "Piotr Wójcik", "role": "Kerbs and drainage operative", "language": "pl", "phone": "+353 87 000 0214", "tasks": ["groundworks"]},
+  {"id": "w15", "name": "Niamh Gallagher", "role": "Site engineer", "language": "en", "phone": "+353 87 000 0215", "tasks": ["setting_out"]},
+  {"id": "w16", "name": "Andriy Kovalenko", "role": "General operative (new starter)", "language": "uk", "phone": "+353 87 000 0216", "tasks": ["groundworks"]}
+]

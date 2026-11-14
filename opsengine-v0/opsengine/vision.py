@@ -23,9 +23,12 @@ CONFIDENCE_THRESHOLD = 0.90
 VISION_MODEL = os.environ.get("OPSENGINE_VISION_MODEL", "claude-opus-5-5")
 
 # Document types the reader knows how to extract. Fields come from rules/requirements.json.
-READABLE_TYPES = ("safe_pass", "cscs_scaffolding", "public_liability", "employers_liability")
+READABLE_TYPES = ("safe_pass", "cscs_scaffolding", "cscs_excavator", "cscs_dumper", "cscs_slinger_signaller",
+                  "public_liability", "employers_liability", "professional_indemnity")
 EXTRA_FIELDS = {"safe_pass": ["issued"], "cscs_scaffolding": ["issued", "category"],
-                "public_liability": ["issued"], "employers_liability": ["issued"]}
+                "cscs_excavator": ["issued", "category"], "cscs_dumper": ["issued", "category"],
+                "cscs_slinger_signaller": ["issued", "category"], "public_liability": ["issued"],
+                "employers_liability": ["issued"], "professional_indemnity": ["issued"]}
 DATE_FIELDS = ("expires", "issued")
 NUMBER_FIELDS = ("limit_eur",)
 

@@ -52,6 +52,7 @@ def check_customer(folder, kb=None):
         return [f"cannot read customer files: {exc}"]
     for fname, data in (("company.json", company), ("workers.json", workers), ("documents.json", docs)):
         problems += [f"{fname}: {p} still needs filling in" for p in _placeholders(data)]
+    problems += sample_problems(folder, company, kb)
     worker_ids = {w.get("id") for w in workers}
     for w in workers:
         if w.get("language", "en") not in LANGUAGE_NAMES:
@@ -86,3 +87,26 @@ def check_customer(folder, kb=None):
                 except ValueError:
                     problems.append(f"documents.json: {d.get('id')} {key} is not a date (YYYY-MM-DD)")
     return problems
+
+
+def is_sample(company):
+    return bool(company.get("sample")) or "SAMPLE" in str(company.get("name", "")).upper()
+
+
+def sample_problems(folder, company, kb):
+    """Keep SAMPLE data and real customers apart, in both directions."""
+    folder = Path(folder).resolve()
+    real_folder = CUSTOMERS.resolve() in folder.parents
+    if is_sample(company):
+        if real_folder:
+            return ["company.json: this is SAMPLE data but it sits in data/customers/ (real customers only) - move it to data/sample/"]
+        return []
+    out = []
+    if not real_folder and (ROOT / "data" / "sample").resolve() in folder.parents:
+        out.append("company.json: a real customer is in data/sample/, which is committed to git - move it to data/customers/")
+    for s in company.get("sites", []):
+        mc = kb.main_contractors.get(s.get("main_contractor"), {})
+        if mc.get("sample"):
+            out.append(f"company.json: site {s.get('id')} uses SAMPLE main contractor rules ({mc.get('name')}) - "
+                       f"replace with rules from the real contractor's prequalification form")
+    return out

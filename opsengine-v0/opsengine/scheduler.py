@@ -125,6 +125,8 @@ def chase_stalled(engine):
 
 def run_customer(folder, state_dir=None, today=None):
     engine = Engine(folder, state_dir=state_dir, today=today)
+    if engine.customer.company.get("sample") and CUSTOMERS_ROOT.resolve() in Path(folder).resolve().parents:
+        raise ValueError("SAMPLE data found in data/customers/ - move it to data/sample/ (real customers only there)")
     engine.store.audit("scheduler", "daily_run_started", engine.customer.company["id"],
                        {"date": engine.today.isoformat()})
     scan = engine.scan()

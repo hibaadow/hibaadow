@@ -43,5 +43,21 @@
   "generic_document_fix": {
     "subject": "{requirement_name} incomplete",
     "body": "Hi {owner_first_name}, the {requirement_name} for {holder_name} is incomplete: {detail}. Please send an updated version."
+  },
+  "safety_cert_renewal": {
+    "subject": "Action needed: {requirement_name}",
+    "body": "Hi {owner_first_name}, your {requirement_name} {status_phrase}. {main_contractor_name} asks for it at prequalification. Renewal is done with the scheme (for example a Safe-T-Cert audit or CIRI renewal), so only you can book it. When you have the renewed certificate, send it here and we will update every main contractor."
+  },
+  "send_safety_cert": {
+    "subject": "Please send your renewed {requirement_name}",
+    "body": "Hi {owner_first_name}, please reply with the renewed certificate showing the scheme, certificate or registration number and expiry date."
+  },
+  "incident_history_request": {
+    "subject": "{requirement_name} for {main_contractor_name}",
+    "body": "Hi {owner_first_name}, {main_contractor_name} asks for your safety record for the last 3 years: number of accidents reported to the HSA, lost-time injuries, and any HSA improvement or prohibition notices (with what was done about them). Please send the figures signed by a director. The current record {status_phrase}."
+  },
+  "references_request": {
+    "subject": "Trade references needed for {main_contractor_name}",
+    "body": "Hi {owner_first_name}, {main_contractor_name} asks for 2 references from main contractors you have worked for in the last 3 years: company, contact name, phone or email, project and value. {detail}."
   }
 }
