@@ -179,7 +179,7 @@ meta = json.load(open(f"{SCR}/vo/vo.json"))
 for m in meta:
     a = np.load(f"{SCR}/vo/vo_{m['i']:02d}.npy").astype(np.float32)
     a = a / (np.max(np.abs(a)) + 1e-9)
-    g = {"alan": 0.85, "jenny": 0.7, "whisper": 0.75}[m["voice"]]
+    g = {"narr": 0.85, "mum": 0.7, "whisper": 0.75}[m["voice"]]
     place(vo, a, m["start"], g)
 
 # duck music/sfx beds under voice
