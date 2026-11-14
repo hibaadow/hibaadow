@@ -20,6 +20,17 @@ VOICE = {"narr": os.environ.get("NARR", "am_puck"), "agent": "am_onyx"}
 ELLIPSIS_PAUSE = 0.38
 REVEAL_PAUSE = 0.55            # lines whose "..." leads into a reveal
 REVEALS = {20, 28}
+# delivery per line: (speed multiplier, pitch in semitones, gain in dB)
+MOODS = {
+    0: (0.96, 0.0, 0), 1: (0.97, -0.3, 0), 2: (1.03, 0.4, 0.5), 3: (1.06, 1.3, 2.0), 4: (0.97, -0.4, 0),
+    5: (1.07, 0.6, 1.0), 6: (0.94, -0.6, 0.5), 7: (1.05, 0.3, 0.5), 8: (0.94, -0.6, 0.5), 9: (1.0, 0.0, 0.5),
+    10: (0.94, -0.6, 0.5), 11: (1.0, 0.2, 0.5), 12: (1.06, 0.9, 1.0), 13: (1.05, 0.6, 0.5), 14: (1.1, 1.2, 2.0),
+    15: (1.12, 0.9, 1.5), 16: (1.02, 0.2, 0.5), 17: (0.97, -0.3, 0), 18: (1.0, 0.0, 0), 19: (0.96, -0.2, 0),
+    20: (0.95, -0.6, 0), 21: (1.05, 0.5, 1.0), 22: (1.0, 0.0, 0), 23: (1.0, 0.6, 0.5), 24: (0.98, -0.2, 0),
+    25: (0.95, 0.0, 0.5), 26: (0.95, -0.2, 0), 27: (1.03, 0.3, 0.5), 28: (0.9, -0.9, 0.5), 29: (1.0, 0.4, 0.5),
+}
+EMPH_PITCH, EMPH_GAIN = 1.0, 2.5      # lift on the chunk holding the lime-highlighted key word
+QUESTION_RISE = 1.6                   # last chunk of a question
 OLD_END = 132.0
 
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
@@ -68,7 +79,7 @@ def synth_line(voice, chunks, speed, reveal):
         phrases.append(cur)
     audio, times, t = [], [], 0.0
     for pi, ph in enumerate(phrases):
-        text = " ".join(sp for sp, _ in ph).replace("...", ",")
+        text = " ".join(sp for sp, _ in ph).replace("!...", "!").replace("...", ",")
         a, sr = kk.create(text, voice=VOICE[voice], speed=speed, lang="en-us",
                           sentence_pause=0.14, clause_pause=0.04)
         a = trim(np.asarray(a, np.float32))
@@ -94,6 +105,43 @@ def synth_line(voice, chunks, speed, reveal):
     return np.concatenate(audio), times
 
 
+def shift(seg, semis):
+    """pitch-shift a segment, same length (Rubber Band via ffmpeg, formants preserved)"""
+    if abs(semis) < 0.05 or len(seg) < 400:
+        return seg
+    r = 2 ** (semis / 12)
+    p = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
+                        "-af", f"rubberband=pitch={r:.4f}:formant=preserved:pitchq=quality", "-f", "f32le", "-"],
+                       input=seg.astype(np.float32).tobytes(), capture_output=True, check=True)
+    out = np.frombuffer(p.stdout, np.float32)
+    if len(out) < len(seg):
+        out = np.pad(out, (0, len(seg) - len(out)))
+    return out[:len(seg)]
+
+
+def perform(a, times, i):
+    """give the line its mood: pitch/level per chunk, lift on the key word, rise on questions"""
+    _, semis, gain = MOODS.get(i, (1, 0, 0))
+    out = a.copy()
+    for k, (c0, c1, cap) in enumerate(times):
+        s0, s1 = int(c0 * SR), int(c1 * SR)
+        seg = a[s0:s1]
+        p, g = semis, gain
+        if cap and "*" in cap:
+            p += EMPH_PITCH
+            g += EMPH_GAIN
+        is_last = k == len(times) - 1
+        if is_last and LINES[i][1][-1][0].rstrip().endswith("?"):
+            p += QUESTION_RISE
+        seg = shift(seg, p) * (10 ** (g / 20))
+        f = min(len(seg) // 4, int(0.008 * SR))
+        if f > 0:
+            seg[:f] *= np.linspace(0, 1, f)
+            seg[-f:] *= np.linspace(1, 0, f)
+        out[s0:s1] = seg
+    return out
+
+
 def words(chunks):
     return sum(len(sp.split()) for sp, _ in chunks)
 
@@ -104,7 +152,7 @@ for _ in range(3):
     w = d = 0
     for i, (v, ch) in enumerate(LINES):
         if v == "narr":
-            a, _ = synth_line(v, ch, speed, i in REVEALS)
+            a, _ = synth_line(v, ch, speed * MOODS.get(i, (1,))[0], i in REVEALS)
             w += words(ch)
             d += len(a) / SR
     wpm = w / d * 60
@@ -115,7 +163,9 @@ agent_speed = 0.765   # agent (Onyx) keeps the delivery from the approved sample
 # ---- synthesize
 meta = []
 for i, (v, ch) in enumerate(LINES):
-    a, times = synth_line(v, ch, agent_speed if v == "agent" else speed, i in REVEALS)
+    a, times = synth_line(v, ch, agent_speed if v == "agent" else speed * MOODS.get(i, (1,))[0], i in REVEALS)
+    if v == "narr":
+        a = perform(a, times, i)
     raw = f"{OUT}/raw_{i:02d}.wav"
     sf.write(raw, a, SR)
     fin = f"{OUT}/vo_{i:02d}.wav"
