@@ -47,6 +47,34 @@ python -m opsengine audit --verify
 
 Run the tests with `python -m unittest discover -s tests -v`.
 
+## SAMPLE pilot customer
+
+Until a real pilot is signed, `data/sample/bremore_groundworks/` is a realistic fictional one:
+a 16-person Dublin groundworks firm with two sites, one for **Glenmara Construction (SAMPLE)**.
+Glenmara's sample prequalification form is in `rules/main_contractors/forms/` and its rules in
+`rules/main_contractors/glenmara_construction_sample.json`. Everything is marked SAMPLE.
+
+```bash
+python -m opsengine --today 2026-11-11 daily --customer data/sample/bremore_groundworks
+python -m opsengine queue --customer data/sample/bremore_groundworks
+```
+
+## Everything it can do (commands)
+
+| Command | What it does |
+| --- | --- |
+| `daily` | Scan and work every customer; chase stalled steps (2 days), escalate (5 days), chase overdue corrective actions, ask providers what happened after a booked date |
+| `register` / `risks` | Central compliance record; what could stop work, what lapses soon, by site |
+| `subcontractors` / `assets` | Your subcontractors and your plant/equipment, with what each is missing |
+| `providers` | The provider network with credential status and track record |
+| `queue`, `approve`, `reject` | Approvals: bookings, insurance changes, safety documents, high-risk closures |
+| `raise-action`, `actions` | Corrective actions with an owner, deadline and evidence required |
+| `appointments`, `appointment` | Training and inspection bookings; mark attended, completed, no-show (rebooks) |
+| `read-photo`, `reviews`, `review-accept` | Read card/certificate photos; low-confidence reads go to a person |
+| `ingest` | Add a document or evidence that arrived |
+| `documents`, `history`, `comms` | Document versions, one issue's full story, communication history |
+| `report`, `export`, `insights` | Weekly summary, full record export for audits, patterns and recommendations |
+
 ## Add a real customer
 
 ```bash
@@ -81,11 +109,36 @@ Scans and advances every customer, sends a reminder to whoever a step is waiting
 team after 5 days. Every action goes into that customer's audit trail. Schedule it with cron:
 `5 7 * * * cd /path/to/opsengine-v0 && python -m opsengine daily`.
 
-## Turn on Claude (optional)
+## Settings and the Claude API key
 
-Set `ANTHROPIC_API_KEY` and the engine will use Claude to translate worker messages and draft
-documents (model set by `OPSENGINE_MODEL`, default `claude-sonnet-5-5`). Without a key it uses
-templates and flags translations as needed. It never pretends.
+Settings live in a `.env` file in this folder (git-ignored). Start from the example:
+
+```bash
+cp .env.example .env
+```
+
+**Where the real key goes:** when you have a key from https://platform.claude.com/settings/keys,
+put it on the `ANTHROPIC_API_KEY=` line of `.env` and set `USE_MOCK_AI=false`:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+USE_MOCK_AI=false
+```
+
+In a Claude Code cloud session, add the same two values as environment variables in the
+environment settings instead (they override `.env`), then start a new session.
+Never commit `.env` or paste the key into chat.
+
+| Mode | Photos | Translations | Drafts |
+| --- | --- | --- | --- |
+| `USE_MOCK_AI=true` (default in `.env.example`) | Sample photos get recorded reads; any other photo goes to human review | Flagged `[TRANSLATION NEEDED]` | Template DRAFT |
+| No key, mock off | Every photo goes to human review | Flagged | Template DRAFT |
+| Key set, mock off | Claude reads them; below 90% goes to human review | Claude translates; native-speaker review flagged | Claude DRAFT for safety reviewer |
+
+Mock mode never calls Claude, even if a key is set, and never fakes a translation or a read of
+a real photo. `python -m opsengine demo` prints which mode is active. Models can be changed with
+`OPSENGINE_MODEL` (drafting and translation, default `claude-sonnet-5-5`) and
+`OPSENGINE_VISION_MODEL` (photos, default `claude-opus-5-5`).
 
 ## How it's built
 

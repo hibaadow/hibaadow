@@ -1,0 +1,9 @@
+[
+  {"id": "a01", "name": "Excavator 14t EX-01 (SAMPLE)", "type": "excavator", "uses": ["digging", "lifting"], "serial": "SAMPLE-EX-0141", "sites": ["s1"]},
+  {"id": "a02", "name": "Telehandler TH-02 (SAMPLE)", "type": "telehandler", "uses": ["lifting"], "serial": "SAMPLE-TH-0207", "sites": ["s2"]},
+  {"id": "a03", "name": "Lifting chains and slings LA-03 (SAMPLE)", "type": "lifting_accessories", "serial": "SAMPLE-LA-0300", "sites": ["s1"]},
+  {"id": "a04", "name": "Fire extinguishers, s1 compound (SAMPLE)", "type": "fire_extinguisher", "sites": ["s1"]},
+  {"id": "a05", "name": "Welfare cabin WC-05, s1 (SAMPLE)", "type": "site_cabin", "serial": "SAMPLE-WC-0505", "sites": ["s1"]},
+  {"id": "a06", "name": "110V power tools kit PT-06 (SAMPLE)", "type": "power_tools", "sites": ["s1", "s2"]},
+  {"id": "a07", "name": "Site dumper 6t DU-07 (SAMPLE)", "type": "dumper", "uses": ["carrying"], "serial": "SAMPLE-DU-0712", "sites": ["s1"]}
+]

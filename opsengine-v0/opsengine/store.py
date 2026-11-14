@@ -25,6 +25,19 @@ CREATE TABLE IF NOT EXISTS reviews (
     confidence REAL, reasons TEXT, status TEXT, created_at TEXT,
     decided_by TEXT, decided_at TEXT, decision TEXT, document_id TEXT
 );
+CREATE TABLE IF NOT EXISTS appointments (
+    id TEXT PRIMARY KEY, issue_id TEXT, step_id TEXT, provider_id TEXT, provider_name TEXT,
+    holder TEXT, kind TEXT, date TEXT, status TEXT, price_eur REAL, notes TEXT,
+    created_at TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS comms (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, direction TEXT, channel TEXT, to_name TEXT,
+    address TEXT, subject TEXT, issue_id TEXT, step_id TEXT, status TEXT, outbox TEXT
+);
+CREATE TABLE IF NOT EXISTS quotes (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, issue_id TEXT, provider_id TEXT, provider_name TEXT,
+    price_eur REAL, lead_days INTEGER, status TEXT
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
@@ -192,3 +205,71 @@ class Store:
     def review(self, review_id):
         found = [r for r in self.reviews() if r["id"] == review_id]
         return found[0] if found else None
+
+    # ---------- appointments (training sessions, inspections, services) ----------
+    def add_appointment(self, appt):
+        n = self.db.execute("SELECT COUNT(*) c FROM appointments").fetchone()["c"] + 1
+        appt = {**appt, "id": f"APT-{n:04d}", "created_at": now_iso(), "updated_at": now_iso()}
+        self.db.execute(f"INSERT INTO appointments ({','.join(appt)}) VALUES ({','.join('?' for _ in appt)})",
+                        list(appt.values()))
+        self.db.commit()
+        return appt["id"]
+
+    def update_appointment(self, appt_id, **fields):
+        fields["updated_at"] = now_iso()
+        self.db.execute(f"UPDATE appointments SET {','.join(f'{k}=?' for k in fields)} WHERE id=?",
+                        [*fields.values(), appt_id])
+        self.db.commit()
+
+    def appointments(self, status=None, issue_id=None):
+        sql, args = "SELECT * FROM appointments WHERE 1=1", []
+        if status:
+            sql, args = sql + " AND status=?", args + [status]
+        if issue_id:
+            sql, args = sql + " AND issue_id=?", args + [issue_id]
+        return [dict(r) for r in self.db.execute(sql + " ORDER BY id", args)]
+
+    def appointment(self, appt_id):
+        row = self.db.execute("SELECT * FROM appointments WHERE id=?", (appt_id,)).fetchone()
+        return dict(row) if row else None
+
+    # ---------- communication history ----------
+    def log_comm(self, direction, channel, to_name, address, subject, issue_id, step_id, status, outbox=""):
+        self.db.execute("INSERT INTO comms (ts, direction, channel, to_name, address, subject, issue_id, step_id, status, outbox)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        (now_iso(), direction, channel, to_name, address, subject, issue_id, step_id, status, outbox))
+        self.db.commit()
+
+    def comms(self, issue_id=None):
+        sql, args = "SELECT * FROM comms", []
+        if issue_id:
+            sql, args = sql + " WHERE issue_id=?", [issue_id]
+        return [dict(r) for r in self.db.execute(sql + " ORDER BY seq", args)]
+
+    # ---------- quotes ----------
+    def add_quote(self, issue_id, provider_id, provider_name, price_eur, lead_days, status):
+        self.db.execute("INSERT INTO quotes (ts, issue_id, provider_id, provider_name, price_eur, lead_days, status)"
+                        " VALUES (?,?,?,?,?,?,?)", (now_iso(), issue_id, provider_id, provider_name, price_eur, lead_days, status))
+        self.db.commit()
+
+    def quotes(self, issue_id=None):
+        sql, args = "SELECT * FROM quotes", []
+        if issue_id:
+            sql, args = sql + " WHERE issue_id=?", [issue_id]
+        return [dict(r) for r in self.db.execute(sql + " ORDER BY seq", args)]
+
+    def provider_stats(self):
+        """Per provider: bookings, completed, no-shows, cancellations (spec 7 and 11)."""
+        stats = {}
+        for a in self.appointments():
+            s = stats.setdefault(a["provider_id"], {"name": a["provider_name"], "booked": 0, "completed": 0,
+                                                    "no_show": 0, "cancelled": 0})
+            s["booked"] += 1
+            if a["status"] in ("attended", "completed"):
+                s["completed"] += 1
+            elif a["status"] in ("no_show", "cancelled"):
+                s[a["status"]] += 1
+        for s in stats.values():
+            closed = s["completed"] + s["no_show"] + s["cancelled"]
+            s["reliability"] = round(s["completed"] / closed, 2) if closed else None
+        return stats

@@ -14,8 +14,12 @@ Core loop (see `opsengine/engine.py`):
 detect -> plan -> act -> verify -> record
 ```
 
+(PRODUCT.md calls these IDENTIFY -> DETERMINE -> EXECUTE -> VERIFY -> MAINTAIN.)
+
 When the engine finds a problem, it asks "what can I do to resolve this?" and does it,
 stopping only at approval gates or while it waits for proof.
+
+**Full product scope and build status: `PRODUCT.md`.** Build towards it.
 
 ## Non-negotiable boundaries
 
@@ -35,7 +39,11 @@ These are product rules, not style preferences. Never weaken them in code.
    append-only and hash-chained; never update or delete audit rows.
 7. **Customer data is personal data (GDPR).** Keep real customer data out of the repo;
    `state/` and `data/customers/*` (except `_template/` and its README) are git-ignored.
-8. **Never guess a document.** A photo read is only accepted on its own at >= 90% confidence
+8. **SAMPLE data stays SAMPLE.** Every fictional customer and main contractor has `"sample": true`
+   and SAMPLE in its name. Samples live in `data/sample/` (committed); real customers only in
+   `data/customers/` (git-ignored). `check` and `daily` refuse to mix them, and a real
+   customer on SAMPLE contractor rules is flagged.
+9. **Never guess a document.** A photo read is only accepted on its own at >= 90% confidence
    with the right type, the right name and every required field. Everything else goes to the
    human review queue. Reminders and escalations never approve anything.
 
@@ -48,19 +56,27 @@ These are product rules, not style preferences. Never weaken them in code.
 | `playbooks/playbooks.json` | Steps that resolve each requirement, per issue category (`validity`, `completeness`) |
 | `templates/messages.json` | Plain-English message templates (translated at send time) |
 | `data/providers.json` | Provider network (sample data, fictional) |
-| `data/sample/liffey_interiors/` | Fictional customer: company, workers, documents, incoming proof |
+| `data/sample/liffey_interiors/` | SAMPLE customer: drylining, 6 workers (the scripted demo) |
+| `data/sample/bremore_groundworks/` | SAMPLE pilot customer: groundworks, Dublin, 16 workers, 2 sites, 19 designed gaps |
+| `rules/main_contractors/forms/` | SAMPLE prequalification form(s) the contractor rules were built from |
 | `data/customers/` | Real customers (git-ignored). `_template/` is the starting point |
 | `opsengine/detect.py` | Pure detection: rules + documents + date -> findings |
 | `opsengine/engine.py` | The loop: scan, advance, approve/reject, ingest, verify |
 | `opsengine/actions.py` | Action executors; all outgoing work goes to the outbox |
 | `opsengine/llm.py` | Optional Claude API calls (stdlib only); falls back safely |
+| `opsengine/config.py` | Loads `.env` (never overrides real env vars); `USE_MOCK_AI` switch |
+| `.env.example` | Settings template: `ANTHROPIC_API_KEY=` placeholder, `USE_MOCK_AI=true` |
+| `data/sample/mock_ai/` | Recorded Claude replies for the sample photos, keyed by SHA-256 (mock mode + tests) |
 | `opsengine/store.py` | SQLite state + hash-chained audit log |
 | `opsengine/report.py` | Weekly customer summary + engine metrics |
 | `opsengine/vision.py` | Claude vision: photo/scan -> document JSON + confidence score |
 | `opsengine/scheduler.py` | Daily run per customer: scan, advance, chase after 2 days, escalate after 5 |
 | `opsengine/onboarding.py` | Create a customer folder from the template; list what is missing |
+| `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
+| `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
+| `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/cli.py` | Command line |
-| `tests/fixtures/photos/` | Fictional sample card/certificate images + recorded Claude replies |
+| `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
 ## Commands
 
@@ -71,6 +87,10 @@ python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>
 python -m opsengine read-photo <file> --holder w01 --customer <folder>
 python -m opsengine daily                     # every customer in data/customers/ (run from cron)
+python -m opsengine register|risks|subcontractors|assets|actions|appointments|providers|comms|documents --customer <folder>
+python -m opsengine raise-action "title" --owner w01 --due YYYY-MM-DD --severity high --by "Name" --customer <folder>
+python -m opsengine appointment APT-0001 --status attended|completed|no_show|cancelled --by "Name" --customer <folder>
+python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
 No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a strong reason.
@@ -81,7 +101,12 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   so it is easy to test. Any new rule logic goes there, with a test.
 - **Add knowledge as data before code.** A new requirement is a JSON entry in
   `rules/requirements.json` plus a playbook entry. Only write code when the data model
-  can't express it.
+  can't express it. `applies_if: {"required_by_main_contractor": true}` makes a company,
+  site or worker rule apply only where a contractor lists it in `extra_requirements`;
+  `field_allowed_values` restricts a field (e.g. scheme: Safe-T-Cert or CIRI).
+- **New main contractor:** a `rules/main_contractors/<id>.json` (extra requirements, minimums,
+  submission) built from their form, with the form or a summary in `forms/` and a mapping
+  of each question to a rule id. `test_sample_pilot.py` checks the library stays consistent.
 - **New action type:** add an executor in `actions.py`, register it in `EXECUTORS`, use it
   in a playbook, and add a test. Executors return a result dict; return
   `{"status": "blocked", ...}` to escalate to the ops team.
@@ -90,6 +115,17 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Dates:** the engine takes `today` explicitly. Tests and the demo pin 2026-11-11.
 - Tests set `OPSENGINE_OFFLINE=1`. Never make network calls in tests. Vision tests pass a fake
   transport (`tests/helpers.py`) that returns recorded replies.
+- **Mock mode:** `USE_MOCK_AI=true` means no Claude calls at all, even with a key. It may only
+  replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
+  or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
+  and turn it on explicitly where needed, so a local `.env` can't change results.
+- **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
+  ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
+- **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
+  inspection defects, never closed by a rescan, closed only with evidence naming the action
+  (`action: ISS-...`) or defect (`defect: <doc id>#<n>`); critical/high need safety reviewer sign-off.
+- **Providers** are only recommended when vetted, in date (insurance and qualifications) and covering
+  the work's area (`sites[].area`). Booking creates an appointment; outcomes feed provider reliability.
 - **Waiting clocks:** steps record `waiting_since` / `awaiting_since` (the engine's `today`) in
   their result; the scheduler uses them and stores `chased_on` / `escalated_on` so each
   reminder or escalation happens once per waiting period.
@@ -106,8 +142,9 @@ per customer falling**. When adding features, ask whether they remove human work
    (WhatsApp photos, email attachments) feeding `engine.ingest()`.
 2. **Document reading (v0 done: `vision.py`):** use Claude vision to extract fields from card photos and certificates
    into document JSON, with a confidence score; low confidence goes to a human.
-3. **Rules library depth:** build from real main contractor prequalification forms; add CIRI
-   registration, Sectoral Employment Order (SEO) pay/pension evidence, RCT, plant inspections
+3. **Rules library depth (started: SAMPLE Glenmara form adds PI, Safe-T-Cert/CIRI, accident history,
+   references, plant CSCS cards):** build from real main contractor prequalification forms; add
+   Sectoral Employment Order (SEO) pay/pension evidence, RCT, plant inspections
    (GA2/GA3 style registers), working-at-height and silica controls.
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall
    (e.g. chase after 2 days, escalate after 5).

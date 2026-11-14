@@ -57,16 +57,54 @@ class Customer:
         company = _load(folder / "company.json")
         workers = {w["id"]: w for w in _load(folder / "workers.json")}
         docs = _load(folder / "documents.json") if (folder / "documents.json").exists() else []
-        return cls(company=company, workers=workers, seed_documents=docs, path=folder)
+        assets = {a["id"]: a for a in _load(folder / "assets.json")} if (folder / "assets.json").exists() else {}
+        return cls(company=company, workers=workers, seed_documents=docs, path=folder, assets=assets)
+
+    assets: dict = field(default_factory=dict)  # plant, equipment and site facilities that need inspection
 
     @property
     def sites(self):
         return {s["id"]: s for s in self.company.get("sites", [])}
 
+    @property
+    def subcontractors(self):
+        """The customer's own subcontractors (spec section 5)."""
+        return {s["id"]: s for s in self.company.get("subcontractors", [])}
+
+    def holder_kind(self, holder):
+        if holder == "company":
+            return "company"
+        if holder in self.workers:
+            return "worker"
+        if holder in self.subcontractors:
+            return "subcontractor"
+        if holder in self.assets:
+            return "asset"
+        return "unknown"
+
     def holder_name(self, holder):
         if holder == "company":
             return self.company["name"]
-        return self.workers.get(holder, {}).get("name", holder)
+        for group in (self.workers, self.subcontractors, self.assets):
+            if holder in group:
+                return group[holder].get("name", holder)
+        return holder
+
+    def holder_sites(self, holder):
+        """Sites a worker, subcontractor or asset is on."""
+        if holder in self.workers:
+            return self.worker_sites(holder)
+        group = self.subcontractors.get(holder) or self.assets.get(holder) or {}
+        return [self.sites[s] for s in group.get("sites", []) if s in self.sites]
+
+    def area_for(self, holder, context=None):
+        """Where the work happens, for matching providers by service area."""
+        if context in self.sites:
+            return self.sites[context].get("area")
+        for s in self.holder_sites(holder):
+            if s.get("area"):
+                return s["area"]
+        return self.company.get("area")
 
     def worker_sites(self, worker_id):
         return [s for s in self.company.get("sites", []) if worker_id in s.get("workers", [])]
@@ -80,4 +118,4 @@ class Customer:
             return [context]
         if holder == "company":
             return sorted({s["main_contractor"] for s in sites.values()})
-        return sorted({s["main_contractor"] for s in self.worker_sites(holder)})
+        return sorted({s["main_contractor"] for s in self.holder_sites(holder)})

@@ -1,19 +1,23 @@
 """Optional Claude integration for drafting and translation.
 
 With ANTHROPIC_API_KEY set, the engine calls the Claude Messages API (stdlib only, no SDK).
-Without it, the engine falls back to templates and flags work for a human - it never
+With USE_MOCK_AI=true it never calls the API, even if a key is set. Without a key, or in mock mode, the engine falls back to templates and flags work for a human - it never
 pretends a translation or draft was done."""
 import json
 import os
 import urllib.error
 import urllib.request
 
+from . import config
+
 API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = os.environ.get("OPSENGINE_MODEL", "claude-sonnet-5-5")
 
 
 def available():
-    return bool(os.environ.get("ANTHROPIC_API_KEY")) and os.environ.get("OPSENGINE_OFFLINE") != "1"
+    """True only with a real key, outside mock mode and outside tests."""
+    return (bool(os.environ.get("ANTHROPIC_API_KEY")) and os.environ.get("OPSENGINE_OFFLINE") != "1"
+            and not config.mock_ai())
 
 
 def call(body, betas=None):

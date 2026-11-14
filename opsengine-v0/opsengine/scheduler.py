@@ -123,18 +123,75 @@ def chase_stalled(engine):
     return events
 
 
+def chase_overdue_actions(engine):
+    """Corrective actions past their deadline: remind the owner and escalate, once (spec 8)."""
+    events = []
+    for issue in engine.store.issues("open"):
+        if issue["requirement"] != "corrective_action":
+            continue
+        data = json.loads(issue["data"] or "{}")
+        if not data.get("due") or data.get("overdue_notified") or date.fromisoformat(data["due"]) >= engine.today:
+            continue
+        step = next((s for s in engine.store.steps(issue["id"]) if s["state"] not in DONE), None) or \
+            engine.store.steps(issue["id"])[-1]
+        ctx = _context(engine, issue, step)
+        to = ctx.recipient("owner")
+        subject, body = ctx.render("corrective_overdue")
+        body, note = ctx.localise(body, to.get("language", "en"))
+        ctx.write_outbox(f"overdue-{engine.today.isoformat()}", to, subject, body, {"Translation": note} if note else None)
+        out = _escalate(engine, issue, step, (engine.today - date.fromisoformat(data["due"])).days)
+        data["overdue_notified"] = engine.today.isoformat()
+        engine.store.update_issue(issue["id"], data=json.dumps(data))
+        engine.store.audit("scheduler", "corrective_action_overdue", issue["id"], {"due": data["due"], **out})
+        events.append((issue["id"], "overdue: owner reminded and escalated"))
+    return events
+
+
+def follow_up_appointments(engine):
+    """Bookings whose date has passed with no outcome: ask the provider what happened (spec 6, 7)."""
+    events = []
+    for a in engine.store.appointments():
+        if a["status"] not in ("requested", "confirmed") or not a["date"] or date.fromisoformat(a["date"]) >= engine.today:
+            continue
+        notes = json.loads(a["notes"]) if (a["notes"] or "").startswith("{") else {}
+        if notes.get("followed_up_on"):
+            continue
+        issue = engine.store.issue(a["issue_id"])
+        if not issue or issue["status"] == "resolved":
+            continue
+        step = engine.store.step(a["step_id"])
+        ctx = _context(engine, issue, step)
+        ctx.data["appointment_date"] = a["date"]
+        subject, body = ctx.render("appointment_followup")
+        prov = next((p for p in engine.kb.providers if p["id"] == a["provider_id"]), {})
+        ctx.step = {**step, "id": f"{a['id']}"}
+        ctx.write_outbox(f"followup-{engine.today.isoformat()}", {"name": a["provider_name"], "channel": "email",
+                                                                  "address": prov.get("email", "")}, subject, body)
+        notes["followed_up_on"] = engine.today.isoformat()
+        engine.store.update_appointment(a["id"], notes=json.dumps(notes))
+        engine.store.audit("scheduler", "appointment_followed_up", a["id"], {"date": a["date"], "provider": a["provider_id"]})
+        events.append((a["id"], "provider asked whether it went ahead"))
+    return events
+
+
 def run_customer(folder, state_dir=None, today=None):
     engine = Engine(folder, state_dir=state_dir, today=today)
+    if engine.customer.company.get("sample") and CUSTOMERS_ROOT.resolve() in Path(folder).resolve().parents:
+        raise ValueError("SAMPLE data found in data/customers/ - move it to data/sample/ (real customers only there)")
     engine.store.audit("scheduler", "daily_run_started", engine.customer.company["id"],
                        {"date": engine.today.isoformat()})
     scan = engine.scan()
     advanced = engine.advance()
     chased = chase_stalled(engine)
+    overdue = chase_overdue_actions(engine)
+    followed = follow_up_appointments(engine)
     summary = {"customer": engine.customer.company["id"], "date": engine.today.isoformat(),
                "opened": scan["opened"], "updated": scan["updated"], "closed": scan["closed"],
                "actions": len(advanced),
                "chased": [ref for ref, what in chased if what.startswith("chased")],
                "escalated": [ref for ref, what in chased if what.startswith("escalated")],
+               "overdue_actions": [ref for ref, _ in overdue],
+               "appointments_followed_up": [ref for ref, _ in followed],
                "approvals_waiting": len(engine.approval_queue()),
                "reviews_waiting": len(engine.review_queue())}
     engine.store.audit("scheduler", "daily_run_finished", summary["customer"], summary)
