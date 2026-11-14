@@ -309,6 +309,50 @@ def draw_led(cv, x0, y0, cols, rows, pitch, layers, off_col=(34, 20, 10), glow_a
 
 
 # ---------------------------------------------------------------- characters
+HOODIE = (206, 32, 44)
+HOODIE_D = (150, 20, 32)
+JOG = (16, 16, 22)
+JOG_RIM = (70, 74, 120)
+
+
+def you_seated(cv, x, head_y, eyes=None, look=0.0):
+    """main character: white stick figure in a red hoodie and black joggers, seated, facing camera"""
+    r = 60
+    neck = head_y + r
+    hip = neck + 290
+    sh = neck + 60
+    # hood (behind the head)
+    cv.ell(x, head_y + 34, 82, 66, HOODIE_D)
+    # joggers
+    for sg in (-1, 1):
+        leg = [(x + sg * 14, hip), (x + sg * 88, hip + 62), (x + sg * 80, hip + 255)]
+        cv.line(leg, JOG_RIM, 42)
+        cv.line(leg, JOG, 36)
+        cv.rect(x + sg * 80 - 21, hip + 236, x + sg * 80 + 21, hip + 256, (40, 42, 60))   # cuffs
+        cv.line([(x + sg * 80, hip + 262), (x + sg * 116, hip + 266)], WHITE, 18)        # white trainers
+    # hoodie body
+    body = [(x - 58, neck + 8), (x + 58, neck + 8), (x + 66, hip + 18), (x - 66, hip + 18)]
+    cv.poly(body, HOODIE)
+    cv.rrect(x - 66, hip - 6, x + 66, hip + 22, 8, HOODIE_D)               # waistband
+    cv.rrect(x - 44, hip - 100, x + 44, hip - 30, 14, HOODIE_D)            # front pocket
+    cv.ell(x, neck + 10, 36, 18, HOODIE_D)                                # neckline
+    for dx in (-12, 12):                                                  # drawstrings
+        cv.line([(x + dx, neck + 16), (x + dx * 1.2, neck + 80)], WHITE, 4)
+    # sleeves + hands
+    for sg in (-1, 1):
+        arm = [(x + sg * 50, sh - 30), (x + sg * 66, sh + 135), (x + sg * 82, hip + 40)]
+        cv.line(arm, HOODIE_D, 40)
+        cv.line(arm, HOODIE, 34)
+        cv.circ(x + sg * 84, hip + 60, 13, WHITE)
+    # head
+    rx = r * (1 - 0.06 * abs(look))
+    cv.ell(x, head_y, rx, r, WHITE)
+    if eyes:
+        ex = look * 28
+        for dx in (-19, 19):
+            cv.circ(x + dx + ex, head_y - 6, 7.5, NAVY0)
+
+
 def stick_figure(cv, x, head_y, scale=1.0, eyes=None, look=0.0, sit=True, wave=None, color=WHITE, lw=15, bun=False):
     s = scale
     r = 60 * s
@@ -490,9 +534,9 @@ def shot_ext_bus(cv, t, lt, speed=1.0, bx=0, stop_at=None, z0=1.0, z1=1.1, cyc=1
     cv.rrect(X1 - 100, 830 + by, X1 - 22, 1000 + by, 14, (110, 76, 38))
     # you, top deck window 3 (white stick head + shoulders)
     wx = X0 + 40 + 2 * 150
+    cv.ell(wx + 66, 922 + by, 34, 26, HOODIE_D)
+    cv.poly([(wx + 40, 935 + by), (wx + 92, 935 + by), (wx + 100, 1000 + by), (wx + 32, 1000 + by)], HOODIE)
     cv.circ(wx + 66, 905 + by, 26, WHITE)
-    cv.line([(wx + 66, 930 + by), (wx + 66, 1000 + by)], WHITE, 8)
-    cv.line([(wx + 66, 950 + by), (wx + 40, 1000 + by)], WHITE, 7)
     # lower windows
     for i in range(4):
         wx = X0 + 40 + i * 170
@@ -608,7 +652,7 @@ def row_scene(cv, t, figure_eyes=None, look=0.0, creature_on=False, c_turn=0.0, 
         cv.glow_ell(720, 1080, 260, 330, AMBER, int(190 * sweep))
         cv.poly([(560, 880), (900, 880), (930, 1300), (545, 1300)], AMBER + (int(70 * sweep),))
     if fig:
-        stick_figure(cv, 350, 820, eyes=figure_eyes, look=look)
+        you_seated(cv, 350, 820, eyes=figure_eyes, look=look)
     if creature_on:
         creature(cv, 730, 560, turn=c_turn, eye_a=c_eyes)
     if dim < 1:
