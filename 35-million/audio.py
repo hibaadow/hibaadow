@@ -4,7 +4,7 @@ import numpy as np
 
 SCR = os.environ["SCR"]
 SR = 44100
-DUR = 92.0
+DUR = 132.0
 N = int(SR * DUR)
 rng = np.random.default_rng(35)
 tt = np.arange(N) / SR
@@ -121,12 +121,18 @@ drone = (np.sin(2 * np.pi * 41.2 * tt) + 0.8 * np.sin(2 * np.pi * 41.6 * tt)
          + 0.15 * np.sin(2 * np.pi * 98 * tt) * (0.5 + 0.5 * np.sin(tt * 0.23))).astype(np.float32) / 2.2
 drone += norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=60, hi=260)) * 0.25
 drone *= env([(0, 0), (1.5, 0.5), (16, 0.6), (24, 0.75), (45, 0.8), (62, 0.7), (66, 0.85), (76, 1.0), (82, 0.9),
-              (88, 0.9), (88.1, 0.4), (91, 0.3), (92, 0)])
+              (84.6, 0.6), (100, 0.45), (114, 0.6), (118, 0.8), (126.5, 1.0), (126.6, 0.3), (127.6, 0.9), (131, 0.4), (132, 0)])
 rain = norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=900, hi=7000))
 rain *= env([(0, 0.18), (29.5, 0.18), (29.6, 0.5), (31, 0.5), (31.1, 0.18), (51.2, 0.18), (51.3, 0.5), (53.4, 0.5),
-             (53.5, 0.1), (56.4, 0.1), (56.5, 0.7), (62, 0.7), (62.1, 0.05), (92, 0.05)]) * 0.22
+             (53.5, 0.1), (56.4, 0.1), (56.5, 0.7), (62, 0.7), (62.1, 0.05), (92, 0.05), (132, 0.05)]) * 0.22
 hum = norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=40, hi=180))     # station / train idle
-hum *= env([(0, 0), (61.9, 0), (62.2, 0.6), (82, 0.6), (88, 0.5), (88.5, 0), (92, 0)]) * 0.35
+hum *= env([(0, 0), (61.9, 0), (62.2, 0.6), (84.6, 0.6), (87.9, 0.2), (88, 0), (132, 0)]) * 0.35
+waves = norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=150, hi=1800))
+waves *= (0.5 + 0.5 * np.sin(2 * np.pi * tt / 5.5)) ** 2
+waves *= env([(0, 0), (113.9, 0), (114.2, 0.6), (118, 0.6), (118.1, 0.25), (126.5, 0.25), (126.6, 0), (132, 0)]) * 0.4
+engine = norm(fft_filter(np.cumsum(rng.normal(0, 1, N)).astype(np.float32), lo=30, hi=160))
+engine *= env([(0, 0), (89.7, 0), (89.9, 0.8), (99.9, 0.8), (100, 0), (132, 0)]) * 0.45
+hum = hum + waves + engine
 music = (drone * 0.5 + rain + hum) * 0.45
 
 # ---------------------------------------------------------------- sfx
@@ -147,7 +153,7 @@ for p in (20.1, 21.2, 22.4, 23.4):
     place(sfx, tone(1046, 0.15, 25), p, 0.18)
 heartbeat_track(16.5, 24.0, 70, 90, 0.5)
 # rule cards
-for p in (24.0, 31.0, 38.0):
+for p in (24.0, 31.0, 38.0):  # rule cards
     place(sfx, boom(), p, 0.8)
 # location ping
 for k in range(4):
@@ -193,14 +199,40 @@ place(sfx, glitch(0.6, 3), 76.0, 0.18)
 place(sfx, boom(), 76.0, 0.9)
 place(sfx, boom(1.5), 78.4, 0.7)
 place(sfx, buzz(0.95), 79.7, 0.7)           # someone is texting...
-# choice + outro
-t9 = np.arange(int(5.8 * SR)) / SR
-riser = np.sin(2 * np.pi * np.cumsum(80 + 220 * (t9 / 5.8) ** 2) / SR) * (t9 / 5.8) ** 1.5
-place(sfx, riser.astype(np.float32), 82.1, 0.3)
-place(sfx, tone(880, 0.15, 25), 82.8, 0.2)
-place(sfx, tone(660, 0.15, 25), 83.05, 0.2)
-place(sfx, boom(), 88.0, 0.8)
-place(sfx, tone(220, 1.8, 2, ((1, 1), (1.5, 0.4))), 89.4, 0.2)
+# escape onto the train
+p = 82.2
+while p < 83.9:
+    place(sfx, thump(0.18, 80), p, 0.45)
+    p += 0.2
+place(sfx, tone(659, 0.5, 4), 83.9, 0.18)
+place(sfx, tone(523, 0.7, 4), 84.15, 0.18)
+place(sfx, noise_burst(0.8, 1500, 8000, 0.02, 3), 84.0, 0.3)       # doors hiss shut
+place(sfx, thump(0.3, 70), 84.5, 0.5)
+rumble = norm(fft_filter(np.cumsum(rng.normal(0, 1, int(4 * SR))).astype(np.float32), lo=25, hi=200))
+rumble *= np.interp(np.arange(len(rumble)) / SR, [0, 1, 3, 4], [0, 1, 0.8, 0]).astype(np.float32)
+place(sfx, rumble, 84.6, 0.7)
+# keys
+for k in range(5):
+    place(sfx, tone(3200 + 400 * k, 0.15, 30), 89.2 + k * 0.04, 0.1)
+place(sfx, noise_burst(0.5, 200, 2000, 0.01, 5), 89.85, 0.5)        # ignition
+# sold / cash register
+place(sfx, tone(2093, 0.6, 5, ((1, 1), (2, 0.3))), 100.9, 0.25)
+place(sfx, noise_burst(0.15, 2000, 8000, 0.001, 25), 100.85, 0.4)
+spin = np.sin(2 * np.pi * 60 * tt[:int(3.8 * SR)]) * (0.6 + 0.4 * np.sin(2 * np.pi * 1.2 * tt[:int(3.8 * SR)]))
+place(sfx, fft_filter(spin.astype(np.float32), hi=300), 103.4, 0.3)
+# fire
+place(sfx, noise_burst(1.6, 200, 3000, 0.05, 0.8), 107.2, 0.45)
+place(sfx, boom(1.2), 109.6, 0.5)                                    # transformation hit
+place(sfx, tone(1318, 0.4, 8), 111.4, 0.15)
+# the house: car passing, knock, phone
+place(sfx, noise_burst(1.6, 100, 1500, 0.6, 1.2), 119.8, 0.4)
+for p in (121.6, 122.0):
+    place(sfx, thump(0.35, 85), p, 0.8)
+heartbeat_track(118.5, 126.5, 70, 110, 0.45)
+place(sfx, buzz(0.95), 126.6, 0.8)
+place(sfx, boom(), 126.6, 0.9)
+place(sfx, boom(), 127.6, 0.6)
+place(sfx, tone(220, 1.8, 2, ((1, 1), (1.5, 0.4))), 129.0, 0.2)
 
 # ---------------------------------------------------------------- voiceover
 vo = np.zeros(N, np.float32)

@@ -20,7 +20,7 @@ post, chroma, flash, vhs, tilt_img, spaced, emoji, wrap = lb.post, lb.chroma, lb
 parse_chunk = lb.parse_chunk
 HOODIE, HOODIE_D, JOG, JOG_RIM = lb.HOODIE, lb.HOODIE_D, lb.JOG, lb.JOG_RIM
 W, H, FPS, SS = lb.W, lb.H, lb.FPS, lb.SS
-DUR = 92.0
+DUR = 132.0
 SCR = lb.SCR
 
 NAVY0, WHITE, RED, LIME, BLUE, ORANGE, BLACK = lb.NAVY0, lb.WHITE, lb.RED, lb.LIME, lb.BLUE, lb.ORANGE, lb.BLACK
@@ -33,16 +33,23 @@ GREY_B = (62, 64, 78)           # message bubble
 
 
 # ================================================================ characters
-def hoodie_body(cv, head, neck, hip, arms, legs, eyes=False, look=0.0, side=False, s=1.0):
+HOODIE_PAL = dict(top=lb.HOODIE, top_d=lb.HOODIE_D, pants=lb.JOG, rim=lb.JOG_RIM, hood=True, hair=False, glasses=False)
+NEW_PAL = dict(top=(228, 222, 206), top_d=(196, 188, 170), pants=(84, 88, 104), rim=(110, 114, 140), hood=False, hair=True, glasses=True)
+
+
+def hoodie_body(cv, head, neck, hip, arms, legs, eyes=False, look=0.0, side=False, s=1.0, pal=None):
+    pal = pal or HOODIE_PAL
+    HOODIE, HOODIE_D, JOG, JOG_RIM = pal["top"], pal["top_d"], pal["pants"], pal["rim"]
     """main character (same as The Last Bus): white stick figure, red hoodie, black joggers.
     arms/legs: lists of joint lists [(x,y),...]; drawn back-to-front by list order."""
     hx, hy = head
     r = 60 * s
     # hood behind head
-    if side:
-        cv.ell(hx - 30 * s, hy + 30 * s, 62 * s, 58 * s, HOODIE_D)
-    else:
-        cv.ell(hx, hy + 34 * s, 82 * s, 66 * s, HOODIE_D)
+    if pal["hood"]:
+        if side:
+            cv.ell(hx - 30 * s, hy + 30 * s, 62 * s, 58 * s, HOODIE_D)
+        else:
+            cv.ell(hx, hy + 34 * s, 82 * s, 66 * s, HOODIE_D)
     for leg in legs:
         cv.line(leg, JOG_RIM, 42 * s)
         cv.line(leg, JOG, 36 * s)
@@ -58,12 +65,17 @@ def hoodie_body(cv, head, neck, hip, arms, legs, eyes=False, look=0.0, side=Fals
     ox, oy = -dy / ln, dx / ln
     body = [(nx + ox * wn, ny + oy * wn), (nx - ox * wn, ny - oy * wn), (px - ox * wh, py - oy * wh), (px + ox * wh, py + oy * wh)]
     cv.poly(body, HOODIE)
-    if not side:
+    if not side and pal["hood"]:
         cv.rrect(px - 66 * s, py - 6 * s, px + 66 * s, py + 22 * s, 8 * s, HOODIE_D)
         cv.rrect(px - 44 * s, py - 100 * s, px + 44 * s, py - 30 * s, 14 * s, HOODIE_D)
         cv.ell(nx, ny + 10 * s, 36 * s, 18 * s, HOODIE_D)
         for ddx in (-12, 12):
             cv.line([(nx + ddx * s, ny + 16 * s), (nx + ddx * 1.2 * s, ny + 80 * s)], WHITE, 4 * s)
+    elif not side:   # open-collar shirt
+        cv.poly([(nx - 26 * s, ny + 4 * s), (nx + 26 * s, ny + 4 * s), (nx, ny + 60 * s)], WHITE)
+        cv.line([(nx, ny + 60 * s), (nx, py)], HOODIE_D, 4 * s)
+        for k in range(4):
+            cv.circ(nx + 8 * s, ny + 90 * s + k * 50 * s, 4 * s, HOODIE_D)
     for arm in arms:
         cv.line(arm, HOODIE_D, 40 * s)
         cv.line(arm, HOODIE, 34 * s)
@@ -71,13 +83,21 @@ def hoodie_body(cv, head, neck, hip, arms, legs, eyes=False, look=0.0, side=Fals
         cv.circ(ax, ay, 13 * s, WHITE)
     rx = r * (1 - 0.06 * abs(look))
     cv.ell(hx, hy, rx, r, WHITE)
+    if pal["hair"]:
+        cv.d.chord([(hx - rx - 4 * s) * SS, (hy - r - 10 * s) * SS, (hx + rx + 4 * s) * SS, (hy + r * 0.5) * SS], 180, 360, fill=(48, 34, 30))
+        cv.ell(hx + 20 * s, hy - r * 0.5, 40 * s, 22 * s, (48, 34, 30))
     if eyes:
         ex = look * 28 * s
         for ddx in ((8, 30) if side else (-19, 19)):
             cv.circ(hx + ddx * s + ex, hy - 6 * s, 7.5 * s, NAVY0)
+    if pal["glasses"] and not side:
+        ex = look * 28 * s
+        for ddx in (-19, 19):
+            cv.rrect(hx + ddx * s + ex - 17 * s, hy - 20 * s, hx + ddx * s + ex + 17 * s, hy + 8 * s, 8 * s, None, outline=(20, 20, 26), w=4 * s)
+        cv.line([(hx - 2 * s + ex, hy - 8 * s), (hx + 2 * s + ex, hy - 8 * s)], (20, 20, 26), 4 * s, caps=False)
 
 
-def you_stand(cv, x, fy, s=1.0, eyes=True, look=0.0, arms_up=0.0, hold=None):
+def you_stand(cv, x, fy, s=1.0, eyes=True, look=0.0, arms_up=0.0, hold=None, pal=None):
     """front-facing standing. arms_up 0..1 (startled). hold: callback(hand_x, hand_y) for an item in right hand"""
     hip = (x, fy - 300 * s)
     neck = (x, hip[1] - 290 * s)
@@ -93,7 +113,7 @@ def you_stand(cv, x, fy, s=1.0, eyes=True, look=0.0, arms_up=0.0, hold=None):
         arms.append([(lerp(a[0], b[0], u), lerp(a[1], b[1], u)) for a, b in zip(down, up)])
     if hold:
         arms[1] = [(x + 50 * s, sh), (x + 110 * s, sh + 100 * s), (x + 170 * s, sh + 60 * s)]
-    hoodie_body(cv, head, neck, hip, arms, legs, eyes=eyes, look=look, s=s)
+    hoodie_body(cv, head, neck, hip, arms, legs, eyes=eyes, look=look, s=s, pal=pal)
     if hold:
         hold(*arms[1][-1])
 
@@ -121,8 +141,16 @@ def you_run(cv, x, fy, ph, s=1.0, eyes=True):
     hoodie_body(cv, head, neck, hip, arms, legs, eyes=eyes, side=True, s=s)
 
 
-def you_sit(cv, x, head_y, eyes=False, look=0.0):
-    lb.you_seated(cv, x, head_y, eyes=eyes, look=look)
+def you_sit(cv, x, head_y, eyes=False, look=0.0, pal=None):
+    if pal is None:
+        lb.you_seated(cv, x, head_y, eyes=eyes, look=look)
+        return
+    neck = (x, head_y + 60)
+    hip = (x, neck[1] + 290)
+    sh = neck[1] + 60
+    arms = [[(x + sg * 50, sh - 30), (x + sg * 66, sh + 135), (x + sg * 82, hip[1] + 40)] for sg in (-1, 1)]
+    legs = [[(x + sg * 14, hip[1]), (x + sg * 88, hip[1] + 62), (x + sg * 80, hip[1] + 255)] for sg in (-1, 1)]
+    hoodie_body(cv, (x, head_y), neck, hip, arms, legs, eyes=eyes, look=look, pal=pal)
 
 
 SUIT = (18, 20, 32)
@@ -667,7 +695,7 @@ def alley(cv, t, speed=1300, door=None, wash=0.4):
         cv.glow_rect(0 if ph < 0.5 else W * 0.5, 0, W * 0.5 if ph < 0.5 else W, H, col, int(90 * wash * a))
 
 
-def platform(cv, t, you_x=300, agent=None, badge=0.0, screen=None, doors=1.0, eyes=True, look=0.0):
+def platform(cv, t, you_x=300, agent=None, badge=0.0, screen=None, doors=1.0, eyes=True, look=0.0, run_ph=None):
     """train platform, train behind with open doors. agent: x position or None"""
     # station wall above train
     cv.rect(0, 0, W, 640, (28, 32, 70))
@@ -715,7 +743,12 @@ def platform(cv, t, you_x=300, agent=None, badge=0.0, screen=None, doors=1.0, ey
     cv.glow_rect(0, 1400, W, 1500, (180, 200, 240), 40)
     if agent is not None:
         suit_man(cv, agent, 1780, s=0.95, badge_up=badge)
-    you_stand(cv, you_x, 1780, s=0.9, eyes=eyes, look=look)
+    if you_x is None:
+        return
+    if run_ph is not None:
+        you_run(cv, you_x, 1780, run_ph, s=0.9)
+    else:
+        you_stand(cv, you_x, 1780, s=0.9, eyes=eyes, look=look)
 
 
 def shadow_wall(cv, t, badge=1.0):
@@ -730,6 +763,265 @@ def shadow_wall(cv, t, badge=1.0):
     # the faint glow of a screen in the shadow's hand
     cv.glow(720 + 170 * 1.25, 1600 - 610 * 1.25 - 130 * 1.25 - 50, 60, GREEN, int(80 + 60 * math.sin(t * 6)))
     suit_man(cv, 330, 1700, s=1.0, badge_up=badge)
+
+
+# ================================================================ new ending scenes
+def train_side(cv, t, depart=0.0, agent_on=True):
+    """exterior of the train pulling away; agent left standing on the platform"""
+    cv.rect(0, 0, W, 640, (28, 32, 70))
+    for yy in range(0, 640, 56):
+        for xx in range(0, W, 90):
+            cv.rect(xx + 2, yy + 2, xx + 88, yy + 54, (34, 38, 82))
+    dx = -1600 * depart ** 2
+    for k in range(4):
+        x0 = dx + k * 1100 - 300
+        cv.rect(x0, 660, x0 + 1080, 1400, (54, 60, 104))
+        cv.rect(x0, 1000, x0 + 1080, 1040, GREEN)
+        cv.rect(x0 + 1080, 660, x0 + 1100, 1400, (20, 22, 44))
+        for wx in (60, 300, 540, 780):
+            cv.rrect(x0 + wx, 760, x0 + wx + 180, 960, 20, (170, 190, 220))
+        if k == 1:   # you, in the window, looking back
+            wx = x0 + 540
+            cv.ell(wx + 90, 905, 50, 40, HOODIE_D)
+            cv.circ(wx + 90, 870, 40, WHITE)
+            cv.circ(wx + 76, 864, 5, NAVY0)
+            cv.circ(wx + 100, 864, 5, NAVY0)
+    cv.rect(0, 1400, W, H, (26, 28, 56))
+    for k in range(0, W, 60):
+        cv.rect(k, 1420, k + 34, 1436, (220, 220, 230))
+    if agent_on:
+        suit_man(cv, 760, 1780, s=0.9, badge_up=0.0)
+    cv.glow_rect(0, 1400, W, 1500, (180, 200, 240), 40)
+
+
+def rental(cv, t):
+    """car rental desk at the end of the line: keys handed over"""
+    cv.rect(0, 0, W, H, (20, 22, 50))
+    cv.rrect(140, 430, 940, 590, 20, (14, 16, 30))
+    cv.text((540, 510), "CAR RENTAL · 24H", "anton", 84, WHITE)
+    cv.glow_rect(140, 430, 940, 590, (200, 210, 255), 60)
+    cv.rect(0, 1500, W, H, (34, 30, 48))
+    suit = dict(top=(60, 70, 120), top_d=(40, 46, 90), pants=(30, 32, 50), rim=(70, 74, 120), hood=False, hair=True, glasses=False)
+    you_stand(cv, 760, 1600, s=0.9, eyes=False, pal=suit)      # clerk behind the counter
+    cv.rect(0, 1150, W, 1220, (60, 52, 70))
+    cv.rect(0, 1220, W, 1720, (44, 38, 58))
+    u = ease(prog(t, 88.5, 89.3))
+    kx = lerp(700, 380, u)
+    cv.circ(kx, 1100, 26, None, outline=(200, 204, 220), w=6)
+    cv.rrect(kx - 18, 1120, kx + 18, 1200, 8, (30, 30, 40))
+    cv.text((kx, 1160), "R", "interx", 24, GREEN)
+    cv.circ(kx - 50, 1150, 22, WHITE)            # your hand
+    you_stand(cv, 250, 1900, s=1.0, eyes=True, look=0.6)
+
+
+def drive(cv, t, dawn=0.0, sign=0.0):
+    """side view: rental car on an empty highway. dawn 0..1 shifts the sky"""
+    top = mix((5, 7, 24), (40, 30, 70), dawn)
+    bot = mix((26, 26, 72), (230, 140, 110), dawn)
+    a = np.linspace(0, 1, 30)
+    for i in range(30):
+        cv.rect(0, i * 40, W, i * 40 + 41, mix(top, bot, a[i]))
+    if dawn < 0.5:
+        stars(cv, (0, 0, W, 600), seed=44)
+        lb.moon(cv, 820, 300, 50)
+    else:
+        cv.circ(300, 1180, 120, (255, 200, 150))
+        cv.glow(300, 1180, 400, (255, 170, 120), int(120 * dawn))
+    dist = t * 1600
+    paste_strip(cv, skyline_strip("hills", 2400, 60, 200, 200, 400, mix((12, 14, 36), (60, 44, 80), dawn), (90, 80, 100), 260, 21, 0.0), dist * 0.08, 940, 2400)
+    cv.rect(0, 1200, W, H, mix((12, 13, 32), (40, 34, 60), dawn))
+    cv.rect(0, 1300, W, 1600, mix((22, 22, 46), (60, 54, 80), dawn))
+    for k in range(-1, 6):
+        x = k * 300 - dist % 300
+        cv.rect(x, 1446, x + 160, 1456, (220, 220, 230))
+    # passing road lamps / mile posts
+    for k in range(-1, 3):
+        lx = k * 900 - (dist * 1.2) % 900 + 200
+        cv.rect(lx - 5, 900, lx + 5, 1300, (20, 22, 46))
+        if dawn < 0.6:
+            cv.ell(lx + 40, 905, 22, 8, SODIUM)
+            cv.glow(lx + 40, 920, 140, SODIUM, int(120 * (1 - dawn)))
+        cv.rect(lx - 5, 900, lx + 50, 908, (20, 22, 46))
+    if sign > 0:   # green highway sign scrolls past
+        sx = lerp(1200, -700, sign)
+        cv.rect(sx + 180, 900, sx + 196, 1300, (60, 64, 80))
+        cv.rect(sx + 500, 900, sx + 516, 1300, (60, 64, 80))
+        cv.rrect(sx, 600, sx + 700, 920, 16, (24, 110, 70), outline=WHITE, w=6)
+        cv.text((sx + 350, 690), "WELCOME TO", "interx", 44, WHITE)
+        cv.text((sx + 350, 800), "PORT HALVEN", "anton", 110, WHITE)
+        cv.text((sx + 350, 890), "POP. 412,000", "inters", 28, (220, 240, 230))
+    # the car
+    bob = 3 * math.sin(t * 20)
+    cx, cy = 300, 1380 + bob
+    cv.rrect(cx, cy - 120, cx + 560, cy, 40, (36, 40, 52))
+    cv.poly([(cx + 120, cy - 120), (cx + 410, cy - 120), (cx + 350, cy - 220), (cx + 190, cy - 220)], (36, 40, 52))
+    cv.poly([(cx + 150, cy - 125), (cx + 270, cy - 125), (cx + 270, cy - 205), (cx + 200, cy - 205)], (90, 100, 140))
+    cv.poly([(cx + 280, cy - 125), (cx + 395, cy - 125), (cx + 345, cy - 205), (cx + 280, cy - 205)], (90, 100, 140))
+    cv.ell(cx + 330, cy - 140, 36, 22, HOODIE)      # you driving
+    cv.circ(cx + 330, cy - 172, 28, WHITE)
+    cv.circ(cx + 346, cy - 176, 4, NAVY0)
+    for wx in (cx + 110, cx + 450):
+        cv.circ(wx, cy, 52, (6, 6, 10))
+        cv.circ(wx, cy, 22, (90, 94, 110))
+    cv.ell(cx + 552, cy - 70, 10, 14, (255, 250, 230))
+    if dawn < 0.7:
+        cv.poly([(cx + 556, cy - 80), (cx + 1200, cy - 160), (cx + 1200, cy + 40)], (230, 230, 255, 40))
+        cv.glow(cx + 600, cy - 70, 120, (230, 230, 255), 140)
+    cv.ell(cx + 4, cy - 60, 8, 12, RED)
+    cv.glow(cx, cy - 60, 60, RED, 120)
+
+
+def laundromat_ext(cv, t, sold=1.0):
+    cv.im.paste(gradient(W, 1000, (60, 70, 120), (150, 150, 190), "dayk"), (0, 0))
+    cv.rect(0, 1000, W, H, (40, 44, 70))
+    cv.rect(60, 420, 1020, 1500, (226, 222, 210))           # storefront
+    cv.rect(60, 420, 1020, 560, (24, 110, 70))
+    cv.text((540, 492), "SPIN CITY LAUNDROMAT", "anton", 82, WHITE)
+    cv.rect(120, 640, 960, 1300, (80, 96, 140))
+    cv.rect(120, 640, 960, 1300, (200, 220, 255, 40))
+    for k in range(4):                                   # washers in the window
+        x = 180 + k * 200
+        cv.rrect(x, 1000, x + 160, 1240, 10, (240, 240, 245))
+        cv.circ(x + 80, 1110, 56, (40, 50, 80))
+        cv.circ(x + 80, 1110, 56, None, outline=(160, 170, 190), w=8)
+    cv.rect(500, 1300, 580, 1500, (40, 44, 70))
+    cv.rect(0, 1500, W, H, (70, 74, 100))
+    if sold > 0:
+        p = eout(sold)
+        cv.d.polygon([(130 * SS, 720 * SS), (130 * SS + 820 * SS * p, 720 * SS), (130 * SS + 820 * SS * p, 880 * SS), (130 * SS, 880 * SS)], fill=RED)
+        if p > 0.8:
+            cv.text((540, 800), "SOLD — CASH", "anton", 120, WHITE)
+    you_stand(cv, 820, 1880, s=1.0, eyes=True, look=-0.3, hold=lambda hx, hy: cv.circ(hx + 10, hy - 10, 20, None, outline=(220, 220, 230), w=6))
+
+
+def laundromat_int(cv, t):
+    cv.rect(0, 0, W, H, (200, 200, 214))
+    cv.rect(0, 0, W, 300, (180, 182, 200))
+    for k in range(3):
+        cv.rect(100 + k * 330, 120, 300 + k * 330, 140, (250, 250, 255))
+        cv.glow(200 + k * 330, 140, 160, (255, 255, 255), 60)
+    cv.rect(0, 1500, W, H, (150, 154, 176))
+    for k in range(3):
+        x = 70 + k * 330
+        cv.rrect(x, 760, x + 280, 1480, 18, (244, 244, 248))
+        cv.rect(x + 20, 790, x + 260, 840, (210, 212, 224))
+        cv.circ(x + 230, 815, 10, GREEN)
+        cx, cy = x + 140, 1080
+        cv.circ(cx, cy, 120, (60, 66, 90))
+        cv.circ(cx, cy, 104, (20, 24, 40))
+        for j in range(7):                             # bills spinning in the drum
+            ang = t * 7 + j * 0.9 + k
+            rr = 40 + (j % 3) * 22
+            bx, by = cx + rr * math.cos(ang), cy + rr * math.sin(ang)
+            ca, sa = math.cos(ang * 1.3), math.sin(ang * 1.3)
+            pts = [(bx + dx * ca - dy * sa, by + dx * sa + dy * ca) for dx, dy in ((-26, -12), (26, -12), (26, 12), (-26, 12))]
+            cv.poly(pts, GREEN)
+        cv.circ(cx, cy, 120, None, outline=(170, 176, 200), w=12)
+        cv.glow(cx, cy, 130, GREEN, 70)
+
+
+def mirror_scene(cv, t, change):
+    """bathroom mirror. change 0..1: hoodie -> new look"""
+    cv.rect(0, 0, W, H, (40, 46, 70))
+    for yy in range(0, 1300, 80):
+        for xx in range(0, W, 80):
+            cv.rect(xx + 2, yy + 2, xx + 78, yy + 78, (46, 52, 80))
+    cv.rrect(170, 260, 910, 1320, 30, (120, 130, 160))
+    cv.rrect(190, 280, 890, 1300, 22, (60, 70, 104))
+    cv.glow(540, 300, 300, (230, 230, 255), 90)
+    pal = NEW_PAL if change >= 0.5 else None
+    you_stand(cv, 540, 1520, s=1.1, eyes=True, look=0.0, pal=pal)
+    cv.rect(0, 1320, W, 1400, (220, 222, 230))     # sink counter
+    cv.rect(0, 1400, W, H, (60, 66, 90))
+    if 0.3 < change < 0.7:
+        cv.rect(0, 0, W, H, (255, 255, 255, int(200 * (1 - abs(change - 0.5) / 0.2))))
+
+
+def id_card(im, t, t0):
+    p = eout(prog(t, t0, t0 + 0.4))
+    if p <= 0:
+        return
+    d = ImageDraw.Draw(im, "RGBA")
+    y = 1660 - 40 * (1 - p)
+    a = int(255 * p)
+    d.rounded_rectangle([170, y - 170, 910, y + 170], radius=28, fill=(236, 240, 246, a))
+    d.rounded_rectangle([170, y - 170, 910, y - 100], radius=28, fill=(40, 60, 120, a))
+    d.rectangle([170, y - 130, 910, y - 100], fill=(40, 60, 120, a))
+    d.text((540, y - 136), "IDENTIFICATION CARD", font=F("interx", 28), fill=(255, 255, 255, a), anchor="mm")
+    d.rounded_rectangle([200, y - 80, 400, y + 150], radius=14, fill=(200, 206, 220, a))
+    d.ellipse([255, y - 40, 345, y + 50], fill=(255, 255, 255, a))
+    d.chord([250, y - 48, 350, y + 20], 180, 360, fill=(48, 34, 30, a))
+    d.rectangle([200, y + 70, 400, y + 150], fill=(228, 222, 206, a))
+    d.text((430, y - 60), "NAME", font=F("inters", 22), fill=(110, 116, 140, a), anchor="lm")
+    d.text((430, y - 20), "DANIEL WEST", font=F("interx", 50), fill=(20, 24, 40, a), anchor="lm")
+    d.text((430, y + 40), "DOB  03 / 11 / 1994", font=F("inters", 26), fill=(40, 44, 60, a), anchor="lm")
+    d.text((430, y + 90), "PORT HALVEN", font=F("inters", 26), fill=(40, 44, 60, a), anchor="lm")
+
+
+def ocean_house_ext(cv, t):
+    cv.im.paste(gradient(W, 1100, (4, 6, 22), (22, 24, 66), "oceansky"), (0, 0))
+    stars(cv, (0, 0, W, 800), n=60, seed=55)
+    lb.moon(cv, 260, 360, 70)
+    cv.rect(0, 1100, W, H, (10, 18, 46))           # ocean
+    for k in range(14):                            # moon path + waves
+        y = 1120 + k * 60
+        w = 40 + k * 18
+        ph = math.sin(t * 1.5 + k)
+        cv.rect(260 - w / 2 + ph * 20, y, 260 + w / 2 + ph * 20, y + 6, (180, 186, 220, 110))
+    for k in range(10):
+        y = 1150 + k * 75
+        off = (t * 30 + k * 97) % 300
+        for j in range(-1, 5):
+            x = j * 300 - off
+            cv.line([(x, y), (x + 60, y - 8), (x + 120, y)], (40, 56, 110), 4)
+    # cliff
+    cv.poly([(560, 1000), (W, 960), (W, H), (720, H), (680, 1500), (600, 1250)], (14, 14, 30))
+    # modern glass house on the cliff
+    cv.rect(600, 760, 1040, 1000, (30, 32, 50))
+    cv.rect(640, 640, 1060, 770, (36, 38, 58))
+    cv.rect(620, 790, 1020, 980, (230, 222, 196))
+    cv.glow_rect(620, 790, 1020, 980, (255, 236, 200), 140)
+    cv.rect(660, 660, 1040, 750, (210, 200, 176))
+    for x in (720, 820, 920):
+        cv.rect(x, 790, x + 6, 980, (30, 32, 50))
+    cv.ell(860, 900, 22, 24, WHITE)                # tiny you, in the window
+    cv.rect(560, 990, 1060, 1006, (40, 42, 66))
+
+
+def ocean_house_int(cv, t, look=0.0, phone=0.0):
+    cv.rect(0, 0, W, H, (16, 18, 40))
+    # huge window: night ocean
+    cv.im.paste(gradient(1000, 900, (4, 6, 22), (22, 24, 66), "oceanwin"), (40 * SS, 180 * SS))
+    lb.moon(cv, 780, 420, 50)
+    cv.rect(40, 760, 1040, 1080, (10, 18, 46))
+    for k in range(6):
+        y = 790 + k * 50
+        cv.rect(780 - 20 - k * 12 + math.sin(t + k) * 10, y, 780 + 20 + k * 12 + math.sin(t + k) * 10, y + 5, (180, 186, 220, 110))
+    for x in (40, 370, 700, 1030):
+        cv.rect(x, 180, x + 12, 1080, (40, 42, 66))
+    cv.rect(40, 170, 1040, 186, (40, 42, 66))
+    cv.rect(40, 1074, 1040, 1090, (40, 42, 66))
+    cv.rect(0, 1090, W, H, (30, 30, 52))           # floor
+    # sofa
+    cv.rrect(140, 1080, 940, 1330, 40, (70, 74, 110))
+    cv.rrect(140, 1250, 940, 1420, 30, (84, 88, 126))
+    you_sit(cv, 540, 940, eyes=True, look=look, pal=NEW_PAL)
+    cv.rrect(140, 1250, 940, 1420, 30, (84, 88, 126))
+    cv.rrect(110, 1150, 200, 1420, 30, (60, 64, 100))
+    cv.rrect(880, 1150, 970, 1420, 30, (60, 64, 100))
+    # coffee table + phone
+    cv.rect(300, 1560, 780, 1590, (90, 80, 70))
+    cv.rect(320, 1590, 336, 1720, (70, 60, 52))
+    cv.rect(744, 1590, 760, 1720, (70, 60, 52))
+    cv.poly([(560, 1562), (690, 1562), (700, 1550), (570, 1550)], (14, 14, 20))
+    if phone > 0:
+        on = (int(t * 30) % 2) if phone < 1 else 1
+        cv.poly([(575, 1560), (685, 1560), (694, 1552), (580, 1552)], (220, 230, 240))
+        cv.glow(630, 1550, 160, (220, 230, 255), 200)
+    # lamp
+    cv.rect(1000, 900, 1010, 1420, (60, 60, 80))
+    cv.ell(1005, 880, 60, 40, (230, 222, 196))
+    cv.glow(1005, 900, 220, (255, 236, 200), 110)
 
 
 # ================================================================ captions / HUD / rules
@@ -769,16 +1061,43 @@ def clock_str(t):
     if t < 62:
         m = 47 + int((t - 45) / 17 * 12)
         return f"11:{min(m, 58):02d} PM"
-    if t < 88:
+    if t < 82:
         return "11:59 PM"
-    return "12:00 AM"
+    if t < 87.9:
+        return "12:00 AM"
+    if t < 89.8:
+        return "1:13 AM"
+    if t < 94:
+        return f"{2 + int((t - 89.8) / 4.2 * 3)}:{int((t * 37) % 60):02d} AM"
+    if t < 100:
+        return "6:12 AM"
+    if t < 107.2:
+        return "10:24 AM"
+    if t < 114:
+        return "11:52 PM"
+    return "3:12 AM"
+
+
+def day_str(t):
+    for t0, lab in ((114, "DAY 1,095"), (107.2, "DAY 180"), (100, "DAY 30"), (94, "DAY 2")):
+        if t >= t0:
+            return lab
+    return "DAY 1"
+
+
+def hud_balance(t):
+    if t >= 114:
+        return "$27,410,003.12", True
+    if t >= 101.2:
+        return "$34,380,003.12", True
+    return balance_text(t)
 
 
 def draw_hud(img, t):
     d = ImageDraw.Draw(img, "RGBA")
     pulse = 0.6 + 0.4 * (0.5 + 0.5 * math.sin(t * 4))
     d.ellipse([60, 101, 82, 123], fill=(232, 36, 46, int(255 * pulse)))
-    d.text((96, 112), "DAY 1", font=F("interx", 34), fill=WHITE, anchor="lm")
+    d.text((96, 112), day_str(t), font=F("interx", 34), fill=WHITE, anchor="lm")
     cs = clock_str(t)
     f = F("mono", 92)
     fast = 45 <= t < 62
@@ -786,7 +1105,7 @@ def draw_hud(img, t):
         d.text((60 + 4, 140), cs, font=f, fill=(232, 36, 46, 150), anchor="lt")
     d.text((60 + 3, 143), cs, font=f, fill=(0, 0, 0, 140), anchor="lt")
     d.text((60, 140), cs, font=f, fill=WHITE, anchor="lt")
-    bal, done = balance_text(t)
+    bal, done = hud_balance(t)
     rolling = BAL_T0 <= t < BAL_T1
     col = GREEN if (done or rolling) else (170, 174, 210)
     x = 63
@@ -821,8 +1140,33 @@ def police_wash(img, t, amt):
 
 # ================================================================ timeline
 CUTS = [4.0, 8.0, 9.6, 12.6, 16.0, 24.0, 27.2, 29.5, 31.0, 34.5, 38.0, 41.6, 45.0, 48.5, 51.2, 53.4, 56.4,
-        62.0, 65.8, 69.0, 76.0, 78.4, 82.0]
-TENSE = [(45.0, 62.0), (65.8, 82.0)]
+        62.0, 65.8, 69.0, 76.0, 78.4, 82.0, 84.6, 87.9, 89.8, 100.0, 103.4, 107.2, 108.7, 114.0, 118.0]
+TENSE = [(45.0, 62.0), (65.8, 84.6), (118.0, 127.6)]
+
+
+def burn_bin(cv, t):
+    cv.rect(0, 0, W, H, (14, 14, 32))
+    for row in range(30):
+        y = row * 48
+        off = 30 if row % 2 else 0
+        for c in range(13):
+            cv.rect(off + c * 90, y, off + c * 90 + 84, y + 42, (22, 20, 44))
+    cv.rect(0, 1500, W, H, (12, 12, 28))
+    cv.poly([(330, 1080), (750, 1080), (710, 1520), (370, 1520)], (70, 74, 92))
+    for k in range(5):
+        cv.rect(350 + k * 80, 1100, 358 + k * 80, 1500, (54, 58, 76))
+    cv.poly([(420, 1080), (640, 1080), (600, 990), (450, 1000)], HOODIE)     # the hoodie, burning
+    cv.ell(520, 1000, 60, 30, HOODIE_D)
+    for k in range(9):
+        ph = t * 9 + k * 1.7
+        fx = 360 + k * 45
+        hgt = 200 + 120 * math.sin(ph) + 60 * hrand(k, int(t * 12))
+        col = (255, 150, 40) if k % 2 else (255, 90, 30)
+        cv.poly([(fx - 40, 1090), (fx + 40, 1090), (fx + 8 * math.sin(ph), 1090 - hgt)], col + (220,))
+    cv.glow(540, 960, 420, (255, 120, 40), 200)
+    for k in range(10):     # embers
+        ph = (t * 0.7 + k / 10) % 1
+        cv.circ(420 + hrand(k, 3) * 240 + 30 * math.sin(ph * 6), 1000 - ph * 700, 4, (255, 170, 60, int(255 * (1 - ph))))
 
 
 def frame(t):
@@ -1024,8 +1368,80 @@ def frame(t):
         fl_a = cut_flash(78.4, d=0.12, a=0.8)
         if 79.6 <= t < 80.4:
             shake = 2 if int(t * 30) % 2 else 0
-    elif t < 88.0:
-        return choice_frame(t)
+    elif t < 84.6:
+        # you slip past him into the train; the doors close
+        if t < 83.9:
+            run_x = lerp(300, 520, ease(prog(t, 82.2, 83.9)))
+            platform(cv, t, you_x=run_x, agent=640 if t < 82.8 else 700, badge=1.0 - ease(prog(t, 82.8, 83.4)),
+                     run_ph=t * 13)
+        else:
+            platform(cv, t, you_x=None, agent=700, badge=0.0, doors=1.0 - prog(t, 84.0, 84.5))
+        cam = (520, 1060, lerp(1.0, 1.08, prog(t, 82.0, 84.6)))
+        fl_a = cut_flash(82.0, a=0.4)
+    elif t < 87.9:
+        train_side(cv, t, depart=prog(t, 84.8, 87.9))
+        cam = (540, 1100, lerp(1.0, 1.05, prog(t, 84.6, 87.9)))
+    elif t < 89.8:
+        rental(cv, t)
+        cam = (540, 1000, lerp(1.0, 1.08, prog(t, 87.9, 89.8)))
+    elif t < 94.0:
+        drive(cv, t, dawn=0.25 * prog(t, 92.0, 94.0))
+        cam = (540, 1150, lerp(1.08, 1.0, prog(t, 89.8, 94.0)))
+    elif t < 100.0:
+        drive(cv, t, dawn=lerp(0.4, 1.0, ease(prog(t, 94.0, 97.0))), sign=prog(t, 95.4, 99.6))
+        cam = (540, 1050, 1.0)
+    elif t < 103.4:
+        laundromat_ext(cv, t, sold=prog(t, 100.5, 101.2))
+        cam = (540, lerp(1000, 1060, prog(t, 100, 103.4)), lerp(1.0, 1.06, prog(t, 100, 103.4)))
+    elif t < 107.2:
+        laundromat_int(cv, t)
+        cam = (540, 1080, lerp(1.0, 1.2, ease(prog(t, 103.4, 107.2))))
+    elif t < 108.7:
+        burn_bin(cv, t)
+        cam = (540, 1040, lerp(1.0, 1.1, prog(t, 107.2, 108.7)))
+    elif t < 114.0:
+        mirror_scene(cv, t, prog(t, 109.3, 110.1))
+        cam = (540, 900, lerp(1.0, 1.06, prog(t, 108.7, 114.0)))
+        extra.append(lambda im: id_card(im, t, 111.4))
+        if 111.4 <= t:
+            cap_y = 1330
+    elif t < 118.0:
+        ocean_house_ext(cv, t)
+        u = ease(prog(t, 114.0, 118.0))
+        cam = (lerp(540, 760, u), lerp(1000, 900, u), lerp(1.0, 1.45, u))
+        fl_a = cut_flash(114.0, a=0.3)
+    elif t < 127.6:
+        # darting glances; a car's headlights sweep the room; a knock; then the phone
+        look = 0.0
+        if 119.5 < t < 121.0:
+            look = 0.8 if (t - 119.5) % 0.7 < 0.35 else -0.6
+        elif t >= 121.0:
+            look = -0.7 * ease(prog(t, 121.2, 121.4))
+        if t >= 126.6:
+            look = 0.2
+        phone = 1.0 if t >= 126.6 else 0.0
+        ocean_house_int(cv, t, look=look, phone=phone)
+        if 120.0 <= t < 121.2:
+            sx = lerp(-300, 1400, prog(t, 120.0, 121.2))
+            cv.glow_poly([(sx - 200, 180), (sx + 200, 180), (sx + 400, 1080), (sx, 1080)], (230, 230, 255), 160)
+        if 121.6 <= t < 121.75 or 122.0 <= t < 122.15:
+            shake = 6
+        if t < 126.6:
+            u = ease(prog(t, 118.0, 126.6))
+            cam = (540, lerp(1050, 1000, u), lerp(1.0, 1.25, u))
+        else:
+            u = eout(prog(t, 126.6, 127.0))
+            cam = (lerp(540, 630, u), lerp(1000, 1500, u), lerp(1.25, 2.0, u))
+
+            def unknown(im, t=t):
+                a = eout(prog(t, 126.7, 126.9))
+                d = ImageDraw.Draw(im, "RGBA")
+                d.rounded_rectangle([240, 1060, 840, 1200], radius=30, fill=(40, 44, 62, int(235 * a)))
+                d.text((540, 1105), "Unknown number", font=F("interx", 42), fill=(255, 255, 255, int(255 * a)), anchor="mm")
+                d.text((540, 1160), "I found you.", font=F("inters", 36), fill=(232, 36, 46, int(255 * a)), anchor="mm")
+            extra.append(unknown)
+            if t < 126.75:
+                shake = 4
     else:
         return outro_frame(t)
 
@@ -1108,34 +1524,35 @@ def choice_frame(t):
 
 def outro_frame(t):
     from PIL import ImageFilter
-    lt = t - 88.0
+    T0 = 127.6
+    lt = t - T0
     img = Image.new("RGB", (W, H), (5, 5, 14))
     gl = Image.new("RGB", (W, H), (0, 0, 0))
     gd = ImageDraw.Draw(gl)
-    q = eout(prog(t, 88.3, 88.9))
+    q = eout(prog(t, T0 + 0.3, T0 + 0.9))
     flick = 1.0 if hrand(int(t * 15), 19) > 0.08 else 0.5
     a = q * flick
-    gd.text((540, 930), "DAY 2", font=F("anton", 300), fill=(int(232 * a), int(30 * a), int(40 * a)), anchor="mm")
+    gd.text((540, 930), "PART 2", font=F("anton", 280), fill=(int(232 * a), int(30 * a), int(40 * a)), anchor="mm")
     gl = gl.filter(ImageFilter.GaussianBlur(28))
     img = ImageChops.add(img, gl)
     img = ImageChops.add(img, gl)
     d = ImageDraw.Draw(img, "RGBA")
-    d.text((540, 930), "DAY 2", font=F("anton", 300), fill=(255, 60, 66, int(255 * a)), anchor="mm")
-    spaced(d, (540, 690), "35 MILLION", "inters", 34, (200, 204, 230, int(255 * eout(prog(t, 88.1, 88.6)))), 22)
-    d.text((540, 1160), "12:00 AM", font=F("mono", 70), fill=(220, 222, 240, int(255 * eout(prog(t, 88.8, 89.3)))), anchor="mm")
-    q4 = eout(prog(t, 89.4, 89.8))
+    d.text((540, 930), "PART 2", font=F("anton", 280), fill=(255, 60, 66, int(255 * a)), anchor="mm")
+    spaced(d, (540, 690), "35 MILLION", "inters", 34, (200, 204, 230, int(255 * eout(prog(t, T0 + 0.1, T0 + 0.6)))), 22)
+    d.text((540, 1160), "3:12 AM", font=F("mono", 70), fill=(220, 222, 240, int(255 * eout(prog(t, T0 + 0.8, T0 + 1.3)))), anchor="mm")
+    q4 = eout(prog(t, T0 + 1.4, T0 + 1.8))
     if q4 > 0:
-        pulse = 1 + 0.025 * math.sin((t - 89.4) * 4)
-        bw, bh = 600 * pulse, 120 * pulse
+        pulse = 1 + 0.025 * math.sin((t - T0) * 4)
+        bw, bh = 640 * pulse, 120 * pulse
         d.rounded_rectangle([540 - bw / 2, 1400 - bh / 2, 540 + bw / 2, 1400 + bh / 2], radius=bh / 2,
                             outline=(246, 246, 250, int(255 * q4)), width=5)
-        spaced(d, (540, 1402), "FOLLOW FOR DAY 2", "interx", 44, (246, 246, 250, int(255 * q4)), 3)
+        spaced(d, (540, 1402), "FOLLOW FOR PART 2", "interx", 44, (246, 246, 250, int(255 * q4)), 3)
     img = post(img, t)
     draw_hud(img, t)
     if lt < 0.6:
         img = Image.blend(Image.new("RGB", (W, H)), img, eout(lt / 0.6))
-    if t > 91.4:
-        img = Image.blend(img, Image.new("RGB", (W, H)), clamp((t - 91.4) / 0.6))
+    if t > DUR - 0.6:
+        img = Image.blend(img, Image.new("RGB", (W, H)), clamp((t - (DUR - 0.6)) / 0.6))
     return img
 
 
