@@ -6,7 +6,7 @@ from script import LINES
 
 SCR = os.environ["SCR"]
 VOICES = {
-    "narr": f"{SCR}/voices/vits-piper-en_US-norman-medium/en_US-norman-medium.onnx",
+    "narr": f"{SCR}/voices/vits-piper-en_US-ryan-medium/en_US-ryan-medium.onnx",
     "mum": f"{SCR}/voices/vits-piper-en_US-amy-medium/en_US-amy-medium.onnx",
 }
 OUT = f"{SCR}/vo"
@@ -33,17 +33,17 @@ for i, (start, voice, text, cap) in enumerate(LINES):
     raw = f"{OUT}/raw_{i:02d}.wav"
     fin = f"{OUT}/vo_{i:02d}.wav"
     model = VOICES["mum" if voice == "mum" else "narr"]
-    ls = {"narr": "1.2", "mum": "0.85", "whisper": "1.25"}[voice]
+    ls = {"narr": "1.4", "mum": "0.85", "whisper": "1.2"}[voice]
     subprocess.run([PIPER, "-m", model, "-f", raw, "--length-scale", ls,
                     "--noise-scale", "0.55", "--noise-w-scale", "0.7"],
                    input=text.encode(), check=True, capture_output=True)
-    # low + slightly ominous: drop pitch ~9% keeping tempo, light room reverb
+    # natural pitch, just a touch of room
     if voice == "narr":
-        af = "asetrate=22050*0.94,aresample=44100,atempo=1/0.94,lowpass=f=7000,aecho=0.8:0.6:70|130:0.18|0.10"
+        af = "aresample=44100,aecho=0.8:0.5:40|80:0.08|0.04"
     elif voice == "mum":
-        af = "asetrate=22050*0.97,aresample=44100,atempo=1/0.97,highpass=f=180,aecho=0.8:0.7:90|160:0.25|0.15"
+        af = "aresample=44100,highpass=f=180,aecho=0.8:0.7:90|160:0.25|0.15"
     else:  # whisper: breathy, thin, close
-        af = "asetrate=22050*0.9,aresample=44100,atempo=1/0.9,highpass=f=900,lowpass=f=6000,aecho=0.8:0.8:40|90:0.35|0.25"
+        af = "aresample=44100,highpass=f=900,lowpass=f=6000,aecho=0.8:0.8:40|90:0.35|0.25"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-af", af, "-ac", "1", "-ar", "44100", fin], check=True)
     a, sr = read_wav(fin)
     a = trim(a)
