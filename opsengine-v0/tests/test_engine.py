@@ -115,6 +115,10 @@ class EngineLoopTests(unittest.TestCase):
     def test_audit_chain(self):
         ok, _ = self.e.store.verify_audit()
         self.assertTrue(ok)
+        with self.assertRaises(Exception):  # the database refuses edits to the audit log
+            self.e.store.db.execute("UPDATE audit SET actor='tampered' WHERE seq=3")
+        # someone with direct file access can drop the guard; the hash chain still exposes the edit
+        self.e.store.db.execute("DROP TRIGGER audit_append_only_u")
         self.e.store.db.execute("UPDATE audit SET actor='tampered' WHERE seq=3")
         ok, bad = self.e.store.verify_audit()
         self.assertFalse(ok)

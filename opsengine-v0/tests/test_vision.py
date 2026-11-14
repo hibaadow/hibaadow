@@ -102,6 +102,10 @@ class VisionTests(unittest.TestCase):
         self.assertEqual(r["status"], "ingested")
 
     def test_insurance_certificate_clears_both_insurance_issues(self):
+        # the sample certificate is dated 1 Dec 2026, so run this on 2 Dec (a future-dated certificate is held)
+        self.e = Engine(SAMPLE, state_dir=self.tmp / "dec", today=date(2026, 12, 2))
+        self.e.scan()
+        self.e.advance()
         r = self.e.ingest_photo(PHOTOS / "insurance_certificate.png", "company", received_via="email",
                                 call=fake_claude_for("insurance_certificate.png"))
         self.assertEqual(r["status"], "ingested")

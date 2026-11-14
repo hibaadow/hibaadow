@@ -38,10 +38,16 @@ CREATE TABLE IF NOT EXISTS quotes (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, issue_id TEXT, provider_id TEXT, provider_name TEXT,
     price_eur REAL, lead_days INTEGER, status TEXT
 );
+CREATE TRIGGER IF NOT EXISTS comms_append_only_u BEFORE UPDATE ON comms BEGIN SELECT RAISE(ABORT, 'communication log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS comms_append_only_d BEFORE DELETE ON comms BEGIN SELECT RAISE(ABORT, 'communication log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS quotes_append_only_u BEFORE UPDATE ON quotes BEGIN SELECT RAISE(ABORT, 'quotes are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS quotes_append_only_d BEFORE DELETE ON quotes BEGIN SELECT RAISE(ABORT, 'quotes are append-only'); END;
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
 );
+CREATE TRIGGER IF NOT EXISTS audit_append_only_u BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS audit_append_only_d BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
 """
 
 OPEN_STATUSES = ("open", "in_progress", "escalated")
@@ -55,7 +61,7 @@ class Store:
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        self.db = sqlite3.connect(self.path, timeout=30)  # wait for a concurrent writer instead of failing
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
 
@@ -239,6 +245,8 @@ class Store:
                         " VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (now_iso(), direction, channel, to_name, address, subject, issue_id, step_id, status, outbox))
         self.db.commit()
+        self.audit("engine" if direction == "out" else f"inbound:{channel}", "message_logged", step_id or issue_id or "",
+                   {"direction": direction, "channel": channel, "to": to_name, "subject": subject, "status": status})
 
     def comms(self, issue_id=None):
         sql, args = "SELECT * FROM comms", []
@@ -251,6 +259,7 @@ class Store:
         self.db.execute("INSERT INTO quotes (ts, issue_id, provider_id, provider_name, price_eur, lead_days, status)"
                         " VALUES (?,?,?,?,?,?,?)", (now_iso(), issue_id, provider_id, provider_name, price_eur, lead_days, status))
         self.db.commit()
+        self.audit("engine", "quote_requested", issue_id, {"provider": provider_id, "listed_price_eur": price_eur, "status": status})
 
     def quotes(self, issue_id=None):
         sql, args = "SELECT * FROM quotes", []

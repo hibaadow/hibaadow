@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from . import vision
+from .validation import validate_document
 from .actions import EXECUTORS, ActionContext
 from .detect import _best_doc, detect
 from .knowledge import ROOT, Customer, Knowledge
@@ -28,9 +29,13 @@ class Engine:
         self.outbox = base / "outbox"
         self.evidence_dir = base / "evidence"
         self.today = today or date.today()
-        if not self.store.has_documents():
+        if not self.store.has_documents() and not self.store.reviews():
             for d in self.customer.seed_documents:
-                self.store.add_document(d, source="onboarding")
+                clean, problems = validate_document(d, self.kb, self.customer, self.today)
+                if problems:
+                    self._hold_for_review(d, problems, "onboarding")
+                else:
+                    self.store.add_document(clean, source="onboarding")
 
     # ---------------- detect + plan ----------------
     def scan(self):
@@ -108,11 +113,16 @@ class Engine:
                 return events
             if issue["status"] == "open":
                 self.store.update_issue(issue_id, status="in_progress")
+                self.store.audit("engine", "issue_in_progress", issue_id, {})
             if nxt["action"] == "verify":
                 events += self._verify(issue, nxt, steps)
                 continue
             ctx = ActionContext(self.kb, self.customer, self.store, issue, nxt, prior, self.outbox, self.today)
-            result = EXECUTORS[nxt["action"]](ctx)
+            try:
+                result = EXECUTORS[nxt["action"]](ctx)
+            except Exception as exc:  # one broken step must not stop the rest of the customer's work (D5)
+                result = {"status": "blocked", "note": f"action failed: {type(exc).__name__}: {exc}"}
+                self.store.audit("engine", "step_failed", nxt["id"], {"action": nxt["action"], "error": repr(exc)})
             if result.get("status") in ("blocked", "no_provider"):
                 self.store.update_step(nxt["id"], state="blocked", result=json.dumps(result))
                 self.store.update_issue(issue_id, status="escalated")
@@ -228,7 +238,21 @@ class Engine:
             dest.write_bytes(data)
         return {**doc, "evidence": {"sha256": digest, "stored_as": dest.name, "original_name": src.name}}
 
+    def _hold_for_review(self, doc, problems, source):
+        """A document we can't trust as-is waits for a person; it is never stored as proof (D1-D4)."""
+        review_id = self.store.add_review({"file": str(doc.get("file") or ""), "holder": str(doc.get("holder") or ""),
+                                           "context": doc.get("context"), "confidence": 0.0, "reasons": problems,
+                                           "extraction": {"source": "manual", "document": doc, "received_via": source}})
+        self.store.audit("engine", "document_held_for_review", review_id,
+                         {"document": doc.get("id"), "type": doc.get("type"), "holder": doc.get("holder"),
+                          "problems": problems, "source": source})
+        return review_id
+
     def ingest(self, doc, source="inbound", file_path=None):
+        doc, problems = validate_document(doc, self.kb, self.customer, self.today)
+        if problems:
+            review_id = self._hold_for_review(doc, problems, source)
+            return [(review_id, "held for review: " + "; ".join(problems))]
         doc = self.store_evidence(doc, file_path)
         self.store.add_document(doc, source=source, actor=f"inbound:{doc.get('received_via', source)}")
         self.store.log_comm("in", doc.get("received_via", source), self.customer.holder_name(doc["holder"]), "",
@@ -290,6 +314,17 @@ class Engine:
         if not r or r["status"] != "pending":
             raise ValueError(f"{review_id} is not pending review")
         ex = r["extraction"]
+        if ex.get("source") == "manual":
+            doc = {**ex["document"], **{k: v for k, v in (corrections or {}).items() if v not in (None, "")}}
+            if doc_type:
+                doc["type"] = doc_type
+            clean, problems = validate_document(doc, self.kb, self.customer, self.today)
+            if problems:
+                raise ValueError("still not valid: " + "; ".join(problems))
+            self.store.update_review(review_id, status="accepted", decided_by=by, decided_at=now_iso(),
+                                     decision={"corrections": corrections or {}}, document_id=clean["id"])
+            self.store.audit(f"human:{by}", "review_accepted", review_id, {"document": clean["id"], "corrections": corrections or {}})
+            return self.ingest(clean, source="human_review")
         ex = {**ex, "document_type": doc_type or ex.get("document_type")}
         if ex["document_type"] not in self.kb.requirements:
             raise ValueError("say which document type this is (doc_type)")

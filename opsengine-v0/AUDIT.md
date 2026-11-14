@@ -3,6 +3,29 @@
 **Date:** 14 November 2026 · **Code audited:** `opsengine-v0` at branch `claude/new-session-n3aize` (PR #7 head)
 **Scope:** every capability in `PRODUCT.md`, plus security, data protection, failure handling and audit integrity.
 
+## Update: Phase 0 complete (14 November 2026, same day)
+
+The engine now holds bad data for review instead of crashing on it or accepting it. All other
+classifications below are unchanged.
+
+| Defect | Status | What changed |
+| --- | --- | --- |
+| D1 | **Fixed** | Dates are normalised at ingest (ISO and Irish day-first formats). Unreadable dates are held for a person. A bad date already in the database becomes a finding, not a crash. |
+| D2 | **Fixed** | Money and counts are parsed from text ("EUR 6,500,000", "6.5m"). Unreadable values are held. A non-number on file fails the minimum check. |
+| D3 | **Fixed** | Records missing an id, type or holder, or with an unknown type or holder, are held for review and never stored. |
+| D4 | **Partly fixed** | Plausibility limits per document type (`max_validity_years`, marked [CHECK]) and future issue dates are held. There is still no check with issuing bodies (authenticity), and no number-format rules, because real formats need confirming. |
+| D5 | **Fixed** | A failing step is blocked and escalated (`step_failed` in the audit). Other issues carry on. |
+| D6 | Open | Portal authentication is Phase 2. |
+| D7 | **Fixed** | The open-to-in-progress change, every message and every quote request are now audited. The database refuses updates and deletes on the audit log, message log and quotes. The hash chain still exposes edits made by someone who removes that guard. |
+| D8 | Open | Needs the API key to verify. |
+| D9 | Open | Email retries are Phase 3. |
+
+Also added: SQLite now waits up to 30 seconds for a concurrent writer instead of failing.
+Held documents appear in the ops review queue and can be corrected and accepted; they are
+re-validated before they count.
+
+**Tests:** `tests/test_bad_data.py` reproduces every probe from this audit: 16 tests, 124 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

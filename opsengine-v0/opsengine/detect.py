@@ -130,7 +130,12 @@ def detect(kb, customer, docs, today):
                 add("validity", "missing", f"No {req['name']} on file")
                 continue
 
-            exp = effective_expiry(doc, req)
+            try:
+                exp = effective_expiry(doc, req)
+            except ValueError:
+                exp = None
+                bad = doc.get("expires") or doc.get("issued")
+                add("completeness", "incomplete", f"date {bad!r} on file can't be read")
             if exp is not None and exp < today:
                 add("validity", "expired", f"{req['name']} expired on {exp.isoformat()}", extra={"expires": exp.isoformat()})
             elif exp is not None and (exp - today).days <= req.get("warn_days", 0):
@@ -155,6 +160,10 @@ def detect(kb, customer, docs, today):
             for mc, minimums in checks:
                 for fname, minimum in minimums.items():
                     current = doc.get(fname)
+                    if current not in (None, "") and (isinstance(current, bool) or not isinstance(current, (int, float))):
+                        add("completeness", "incomplete", f"{fname} {current!r} on file is not a number", ctx=mc or context,
+                            extra={"field": fname, "required_value": minimum, **({"required_by": [mc]} if mc else {})})
+                        continue
                     if isinstance(current, (int, float)) and current < minimum:
                         who = kb.main_contractors[mc]["name"] if mc else "the baseline rule"
                         add("completeness", "incomplete",

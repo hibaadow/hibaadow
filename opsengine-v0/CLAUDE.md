@@ -76,6 +76,8 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
+| `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
+| `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
@@ -121,6 +123,11 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
   or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
   and turn it on explicitly where needed, so a local `.env` can't change results.
+- **Validation at ingest** (`opsengine/validation.py`): every document, including onboarding seeds,
+  is validated before it is stored. Dates are normalised to ISO, money and counts to numbers.
+  Unknown types or holders, unreadable values and implausible dates (`max_validity_years`) are
+  held in the review queue, never stored as proof. Detection treats any bad value already on
+  file as a finding, never a crash. See AUDIT.md, Phase 0.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
