@@ -1025,8 +1025,32 @@ def ocean_house_int(cv, t, look=0.0, phone=0.0):
 
 
 # ================================================================ captions / HUD / rules
-VO = json.load(open(f"{SCR}/vo35/vo.json"))
+VO2 = f"{SCR}/vo35n/vo.json"
 CAPS = []
+CAP_T = None      # caption clock (new timeline) when rendering through the time map
+TIMEMAP = None
+if os.path.exists(VO2) and os.environ.get("VOICE_V") != "1":
+    _vo = json.load(open(VO2))
+    for i, ln in enumerate(_vo):
+        nxt = _vo[i + 1]["start"] if i + 1 < len(_vo) else 999
+        for c0, c1, cap in ln["chunks"]:
+            if cap:
+                CAPS.append([ln["start"] + c0, ln["start"] + c1, parse_chunk(cap)])
+        if CAPS and any(c[2] for c in ln["chunks"]):
+            CAPS[-1][1] = min(ln["start"] + ln["dur"] + 0.35, nxt - 0.02)
+    _tm = np.array(json.load(open(f"{SCR}/vo35n/timemap.json")))
+    TIMEMAP = (_tm[:, 0], _tm[:, 1])
+    VO = []
+else:
+    VO = json.load(open(f"{SCR}/vo35/vo.json"))
+
+
+def old_time(tn):
+    if TIMEMAP is None:
+        return tn
+    return float(np.interp(tn, TIMEMAP[1], TIMEMAP[0]))
+
+
 for i, ln in enumerate(VO):
     if not ln["cap"]:
         continue
@@ -1043,6 +1067,8 @@ for i, ln in enumerate(VO):
 
 
 def draw_captions(img, t, y=1340, size=112):
+    if CAP_T is not None:
+        t = CAP_T
     lb.CAPS[:] = CAPS
     lb.draw_captions(img, t, y=y, size=size)
 
@@ -1558,13 +1584,16 @@ def outro_frame(t):
 
 if __name__ == "__main__":
     if sys.argv[1] == "--still":
-        frame(float(sys.argv[2])).save(sys.argv[3])
+        tn = float(sys.argv[2])
+        CAP_T = tn if TIMEMAP is not None else None
+        frame(old_time(tn)).save(sys.argv[3])
         sys.exit()
     a, b, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
     p = subprocess.Popen(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                           "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
                           "-pix_fmt", "yuv420p", out], stdin=subprocess.PIPE)
     for fi in range(a, b):
-        p.stdin.write(frame(fi / FPS).tobytes())
+        CAP_T = fi / FPS if TIMEMAP is not None else None
+        p.stdin.write(frame(old_time(fi / FPS)).tobytes())
     p.stdin.close()
     p.wait()

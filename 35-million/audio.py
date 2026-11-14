@@ -4,7 +4,16 @@ import numpy as np
 
 SCR = os.environ["SCR"]
 SR = 44100
-DUR = 132.0
+_TM = json.load(open(f"{SCR}/vo35n/timemap.json"))
+_TO, _TN = np.array([p[0] for p in _TM]), np.array([p[1] for p in _TM])
+
+
+def M(t):
+    """old (story) time -> new tightened time"""
+    return float(np.interp(t, _TO, _TN))
+
+
+DUR = float(_TN[-1])
 N = int(SR * DUR)
 rng = np.random.default_rng(35)
 tt = np.arange(N) / SR
@@ -12,6 +21,7 @@ tt = np.arange(N) / SR
 
 def env(points):
     ts, vs = zip(*points)
+    ts = [M(x) for x in ts]
     return np.interp(tt, ts, vs).astype(np.float32)
 
 
@@ -26,8 +36,8 @@ def fft_filter(x, lo=None, hi=None):
     return np.fft.irfft(X * m, len(x)).astype(np.float32)
 
 
-def place(buf, sig, t0, gain=1.0):
-    i = int(t0 * SR)
+def place(buf, sig, t0, gain=1.0, mapped=True):
+    i = int((M(t0) if mapped else t0) * SR)
     j = min(len(buf), i + len(sig))
     if 0 <= i < len(buf):
         buf[i:j] += sig[: j - i] * gain
@@ -236,10 +246,10 @@ place(sfx, tone(220, 1.8, 2, ((1, 1), (1.5, 0.4))), 129.0, 0.2)
 
 # ---------------------------------------------------------------- voiceover
 vo = np.zeros(N, np.float32)
-for m in json.load(open(f"{SCR}/vo35/vo.json")):
-    a = np.load(f"{SCR}/vo35/vo_{m['i']:02d}.npy").astype(np.float32)
+for m in json.load(open(f"{SCR}/vo35n/vo.json")):
+    a = np.load(f"{SCR}/vo35n/vo_{m['i']:02d}.npy").astype(np.float32)
     a = a / (np.max(np.abs(a)) + 1e-9)
-    place(vo, a, m["start"], {"narr": 0.85, "agent": 0.8}[m["voice"]])
+    place(vo, a, m["start"], {"narr": 0.85, "agent": 0.8}[m["voice"]], mapped=False)
 
 vo_env = np.convolve(np.abs(vo), np.ones(4410) / 4410, mode="same")
 duck = 1 - 0.55 * np.clip(vo_env / 0.08, 0, 1)
@@ -248,7 +258,7 @@ mixd = np.tanh(mixd * 1.1) / np.tanh(1.1)
 mixd = mixd / np.max(np.abs(mixd)) * 0.93
 wide = np.roll(music * duck, 300) * 0.06
 st = (np.stack([np.clip(mixd + wide, -1, 1), np.clip(mixd - wide, -1, 1)], 1) * 32767).astype(np.int16)
-with wave.open(f"{SCR}/soundtrack35.wav", "w") as w:
+with wave.open(f"{SCR}/soundtrack35n.wav", "w") as w:
     w.setnchannels(2)
     w.setsampwidth(2)
     w.setframerate(SR)

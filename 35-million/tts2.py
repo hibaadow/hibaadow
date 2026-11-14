@@ -1,0 +1,157 @@
+"""Voiceover v2: Kokoro neural TTS at a natural ~155 wpm, pauses only at "...", captions synced
+to the audio, and a time map that tightens the edit to the faster read.
+
+Outputs in $SCR/vo35n/: vo_XX.npy (44.1 kHz), vo.json (new starts + caption chunk times), timemap.json
+"""
+import json, os, subprocess, sys
+import numpy as np
+import soundfile as sf
+from kokoro_onnx import Kokoro
+
+sys.path.insert(0, os.path.dirname(__file__))
+from script2 import LINES
+
+SCR = os.environ["SCR"]
+OLD = json.load(open(f"{SCR}/vo35/vo.json"))
+OUT = f"{SCR}/vo35n"
+os.makedirs(OUT, exist_ok=True)
+TARGET_WPM = float(os.environ.get("WPM", 155))
+VOICE = {"narr": "am_michael", "agent": "am_onyx"}
+ELLIPSIS_PAUSE = 0.38
+REVEAL_PAUSE = 0.55            # lines whose "..." leads into a reveal
+REVEALS = {20, 28}
+OLD_END = 132.0
+
+kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
+SR = 24000
+
+
+def trim(a, thr=0.008, pad_in=0.02, pad_out=0.06):
+    idx = np.where(np.abs(a) > thr)[0]
+    if len(idx) == 0:
+        return a
+    return a[max(0, idx[0] - int(pad_in * SR)): idx[-1] + int(pad_out * SR)]
+
+
+def phon_len(text, voice):
+    _, ph, _ = kk._prepare(text, VOICE[voice], 1.0, "en-us", False, 0.25, 0.1)
+    return max(1, len(ph.replace(" ", "")))
+
+
+def gaps(a, min_len=0.05):
+    """silent stretches (start, end) in seconds"""
+    env = np.convolve(np.abs(a), np.ones(240) / 240, mode="same")
+    quiet = env < 0.012
+    out, i, n = [], 0, len(a)
+    while i < n:
+        if quiet[i]:
+            j = i
+            while j < n and quiet[j]:
+                j += 1
+            if (j - i) / SR >= min_len:
+                out.append((i / SR, j / SR))
+            i = j
+        else:
+            i += 1
+    return out
+
+
+def synth_line(voice, chunks, speed, reveal):
+    # phrases split at "..."
+    phrases, cur = [], []
+    for sp, cap in chunks:
+        cur.append((sp, cap))
+        if sp.rstrip().endswith("..."):
+            phrases.append(cur)
+            cur = []
+    if cur:
+        phrases.append(cur)
+    audio, times, t = [], [], 0.0
+    for pi, ph in enumerate(phrases):
+        text = " ".join(sp for sp, _ in ph).replace("...", ",")
+        a, sr = kk.create(text, voice=VOICE[voice], speed=speed, lang="en-us",
+                          sentence_pause=0.14, clause_pause=0.04)
+        a = trim(np.asarray(a, np.float32))
+        d = len(a) / SR
+        # chunk boundaries: by phoneme share, snapped to real pauses in the audio
+        w = [phon_len(sp, voice) for sp, _ in ph]
+        cum = np.cumsum(w) / sum(w)
+        g = gaps(a)
+        bounds = [0.0]
+        for c in cum[:-1]:
+            est = c * d
+            near = [(abs((g0 + g1) / 2 - est), (g0 + g1) / 2) for g0, g1 in g if abs((g0 + g1) / 2 - est) < 0.3]
+            bounds.append(min(near)[1] if near else est)
+        bounds.append(d)
+        for k, (sp, cap) in enumerate(ph):
+            times.append([round(t + bounds[k], 3), round(t + bounds[k + 1], 3), cap])
+        audio.append(a)
+        t += d
+        if pi < len(phrases) - 1:
+            p = REVEAL_PAUSE if reveal else ELLIPSIS_PAUSE
+            audio.append(np.zeros(int(p * SR), np.float32))
+            t += p
+    return np.concatenate(audio), times
+
+
+def words(chunks):
+    return sum(len(sp.split()) for sp, _ in chunks)
+
+
+# ---- calibrate narrator speed to TARGET_WPM (pauses included)
+speed = 0.95
+for _ in range(3):
+    w = d = 0
+    for i, (v, ch) in enumerate(LINES):
+        if v == "narr":
+            a, _ = synth_line(v, ch, speed, i in REVEALS)
+            w += words(ch)
+            d += len(a) / SR
+    wpm = w / d * 60
+    speed *= TARGET_WPM / wpm
+    print(f"wpm {wpm:.0f} -> speed {speed:.3f}")
+agent_speed = speed * 0.92
+
+# ---- synthesize
+meta = []
+for i, (v, ch) in enumerate(LINES):
+    a, times = synth_line(v, ch, agent_speed if v == "agent" else speed, i in REVEALS)
+    raw = f"{OUT}/raw_{i:02d}.wav"
+    sf.write(raw, a, SR)
+    fin = f"{OUT}/vo_{i:02d}.wav"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-af", "aresample=44100,aecho=0.8:0.5:40|80:0.06|0.03",
+                    "-ac", "1", fin], check=True)
+    b, _ = sf.read(fin, dtype="float32")
+    np.save(f"{OUT}/vo_{i:02d}.npy", b)
+    meta.append({"i": i, "voice": v, "dur": round(len(a) / SR, 3), "chunks": times,
+                 "text": " ".join(sp for sp, _ in ch)})
+
+# ---- new timeline: lines keep their order and the scene they sit in; gaps between lines tighten
+def new_gap(g):
+    return g if g <= 0.6 else 0.6 + (g - 0.6) * 0.55
+
+
+anchors = [(0.0, 0.0)]
+S = OLD[0]["start"]
+anchors.append((OLD[0]["start"], S))
+for i, m in enumerate(meta):
+    o = OLD[i]
+    m["start"] = round(S, 3)
+    o_end = o["start"] + o["dur"]
+    n_end = S + m["dur"]
+    anchors.append((o_end, n_end))
+    if i + 1 < len(meta):
+        g = OLD[i + 1]["start"] - o_end
+        S = n_end + new_gap(max(g, 0.08))
+        anchors.append((OLD[i + 1]["start"], S))
+tail = OLD_END - (OLD[-1]["start"] + OLD[-1]["dur"])
+anchors.append((OLD_END, n_end + tail))
+anchors = sorted(set(anchors))
+json.dump(meta, open(f"{OUT}/vo.json", "w"), indent=1)
+json.dump(anchors, open(f"{OUT}/timemap.json", "w"))
+nw = sum(words(ch) for v, ch in LINES if v == "narr")
+nd = sum(m["dur"] for m in meta if m["voice"] == "narr")
+print(f"narrator {nw / nd * 60:.0f} wpm (pauses included); agent speed {agent_speed:.3f}")
+print(f"new length {anchors[-1][1]:.1f}s (was {OLD_END:.0f}s)")
+for m in meta:
+    print(f"{m['i']:02d} {m['start']:6.2f} +{m['dur']:.2f}  {m['text']}")

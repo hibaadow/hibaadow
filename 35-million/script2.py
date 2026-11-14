@@ -1,0 +1,36 @@
+# Voiceover v2 for "35 MILLION": same lines and captions as script.py, but each line is split into
+# (spoken words, caption chunk) pairs so captions can be synced to the audio. Index order matches script.py.
+# None captions = title card / outro on screen.
+
+LINES = [
+    ("narr", [("Imagine you're", "*IMAGINE* YOU'RE"), ("completely broke.", "COMPLETELY _BROKE_.")]),
+    ("narr", [("Three dollars and twelve cents", "*$3.12*"), ("to your name.", "TO YOUR _NAME_.")]),
+    ("narr", [("Then your", "THEN YOUR"), ("phone buzzes.", "_PHONE_ *BUZZES*.")]),
+    ("narr", [("Thirty-five million dollars...", "*$35 MILLION*..."), ("just landed", "JUST _LANDED_"), ("in your account.", "IN YOUR ACCOUNT.")]),
+    ("narr", [("Then a text.", "THEN A *TEXT*."), ("From a number", "FROM A NUMBER"), ("you don't know.", "YOU DON'T _KNOW_.")]),
+    ("narr", [("Don't touch it.", "DON'T *TOUCH* IT."), ("Don't call", "DON'T CALL"), ("the bank.", "THE _BANK_."), ("They're already coming.", "THEY'RE *COMING*.")]),
+    ("narr", [("Rule one. Leave your phone.", None)]),
+    ("narr", [("They're tracking it.", "THEY'RE *TRACKING*"), ("Every step.", "IT. EVERY _STEP_.")]),
+    ("narr", [("Rule two. Don't trust anyone in a suit.", None)]),
+    ("narr", [("Not the police.", "NOT THE _POLICE_."), ("Not the bank.", "NOT THE *BANK*."), ("No one.", "_NO ONE_.")]),
+    ("narr", [("Rule three. Be on the twelve o'clock train.", None)]),
+    ("narr", [("Midnight.", "*MIDNIGHT*."), ("Don't miss it.", "DON'T _MISS_ IT.")]),
+    ("narr", [("Your face", "YOUR *FACE*"), ("is on the news.", "IS ON THE _NEWS_.")]),
+    ("narr", [("The FBI", "THE _FBI_"), ("thinks you", "THINKS YOU"), ("stole it.", "*STOLE* IT.")]),
+    ("narr", [("So you run.", "SO YOU *RUN*.")]),
+    ("narr", [("Down the stairs.", "DOWN THE _STAIRS_."), ("Out the back.", "OUT THE *BACK*."), ("Into the rain.", "INTO THE _RAIN_.")]),
+    ("narr", [("Eleven fifty-nine.", "*11:59*."), ("The doors", "THE DOORS"), ("are open.", "ARE _OPEN_.")]),
+    ("narr", [("Then a man", "A MAN"), ("in a suit", "IN A *SUIT*"), ("steps in front of you.", "STEPS IN _FRONT_.")]),
+    ("agent", [("I know you", "I KNOW YOU"), ("didn't do it.", "DIDN'T *DO IT*."), ("Come with me.", "COME WITH ME."), ("You'll be safe.", "YOU'LL BE _SAFE_.")]),
+    ("narr", [("He says", "HE SAYS"), ("he can clear", "HE CAN *CLEAR*"), ("your name.", "YOUR _NAME_.")]),
+    ("narr", [("But you left", "BUT YOU *LEFT*"), ("your phone", "YOUR _PHONE_"), ("at home...", "AT HOME..."), ("so who's texting you?", "SO WHO'S *TEXTING* YOU?")]),
+    ("narr", [("So you trust", "YOU TRUST"), ("the train.", "THE _TRAIN_."), ("You slip past him...", "YOU *SLIP* PAST..."), ("and the doors close.", "THE DOORS _CLOSE_.")]),
+    ("narr", [("At the", "AT THE"), ("last stop,", "LAST _STOP_,"), ("you rent", "YOU RENT"), ("a car.", "A *CAR*."), ("And you drive", "AND YOU _DRIVE_"), ("all night.", "ALL NIGHT.")]),
+    ("narr", [("Six hundred miles", "*600 MILES*"), ("away.", "AWAY."), ("A new city.", "A NEW _CITY_."), ("Nobody", "NOBODY"), ("knows you here.", "*KNOWS* YOU.")]),
+    ("narr", [("You buy a", "YOU BUY A"), ("laundromat...", "*LAUNDROMAT*..."), ("and start washing the", "WASHING THE"), ("money clean.", "_MONEY_ CLEAN.")]),
+    ("narr", [("You burn", "YOU *BURN*"), ("the hoodie.", "THE HOODIE."), ("New name.", "NEW _NAME_."), ("New face.", "NEW *FACE*."), ("New life.", "NEW _LIFE_.")]),
+    ("narr", [("Three years", "*3 YEARS*"), ("later...", "LATER..."), ("you have", "YOU HAVE"), ("everything.", "_EVERYTHING_.")]),
+    ("narr", [("But you", "BUT YOU"), ("never really sleep.", "NEVER *SLEEP*."), ("Every car.", "EVERY _CAR_."), ("Every knock.", "EVERY *KNOCK*.")]),
+    ("narr", [("Because", "BECAUSE"), ("thirty-five million dollars...", "*$35 MILLION*..."), ("doesn't just", "DOESN'T JUST"), ("disappear.", "_DISAPPEAR_.")]),
+    ("narr", [("Follow, for part two.", None)]),
+]
