@@ -71,7 +71,9 @@ class GlenmaraFormRules(unittest.TestCase):
                          ("manual_handling", "w11", "missing"),
                          ("written_terms", "w16", "incomplete")]:
             self.assertIn(expected, k)
-        self.assertEqual(len(self.findings), 19)
+        rams = self.findings["rams|company|s1|content"]
+        self.assertIn("dumper work", rams["detail"])
+        self.assertEqual(len([f for f in self.findings.values() if f['holder'] in ('company',) or f['holder'].startswith('w')]), 20)
 
     def test_public_liability_checked_against_each_contractor(self):
         pl = sorted((f["context"], f["required_value"]) for f in self.findings.values()

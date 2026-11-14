@@ -63,6 +63,21 @@ def _targets(req, customer, kb):
             elif cond.get("required_by_main_contractor"):
                 if demanding(mcs):
                     yield wid, None, demanding(mcs)
+    elif scope == "subcontractor":
+        for sid, sub in customer.subcontractors.items():
+            trades = cond.get("trades_any")
+            if trades and not set(trades) & set(sub.get("trades", [])):
+                continue
+            yield sid, None, sorted({s["main_contractor"] for s in customer.holder_sites(sid)})
+    elif scope == "asset":
+        for aid, asset in customer.assets.items():
+            types = cond.get("asset_types_any")
+            if types and asset.get("type") not in types:
+                continue
+            if cond.get("uses_any") and not set(cond["uses_any"]) & set(asset.get("uses", [])):
+                continue
+            yield aid, None, sorted({s["main_contractor"] for s in customer.holder_sites(aid)})
+    # scope "manual" (corrective actions) is never detected: people and inspections raise them
 
 
 REQUIRED_FIELDS = {}  # requirement id -> required fields; refreshed by detect() from the rules library
@@ -147,6 +162,7 @@ def detect(kb, customer, docs, today):
                             ctx=mc or context,
                             extra={"field": fname, "current_value": current, "required_value": minimum,
                                    **({"required_by": [mc]} if mc else {})})
+    findings += content_findings(kb, customer, docs)
     # merge findings that share a key (e.g. two completeness gaps on one document)
     merged = {}
     for f in findings:
@@ -155,3 +171,69 @@ def detect(kb, customer, docs, today):
         else:
             merged[f["key"]] = f
     return list(merged.values())
+
+
+# ---------------- content review (spec section 2) ----------------
+
+def _norm(text):
+    return " ".join(str(text or "").lower().replace("(sample)", "").split())
+
+
+def _same_company(a, b):
+    drop = {"ltd", "limited", "dac", "plc", "teoranta", "sample", "(sample)"}
+    ta = {t.strip(".,()") for t in _norm(a).split()} - drop
+    tb = {t.strip(".,()") for t in _norm(b).split()} - drop
+    return bool(ta and tb) and (ta <= tb or tb <= ta)
+
+
+def review_document(req, doc, customer, context=None):
+    """Pure content checks on one document. Returns a list of plain-English gaps.
+
+    These are flags for a person, not a verdict: the engine never certifies a document."""
+    checks = req.get("content_checks", {})
+    gaps = []
+    site = customer.sites.get(context or doc.get("context") or "", {})
+    if checks.get("activities_cover_tasks") and site:
+        text = " ".join(_norm(a) for a in doc.get("activities", []))
+        tasks = sorted({t for w in site.get("workers", []) for t in customer.workers.get(w, {}).get("tasks", [])})
+        for task in tasks:
+            words = checks["activities_cover_tasks"].get(task)
+            if words and not any(word in text for word in words):
+                who = [customer.holder_name(w) for w in site.get("workers", [])
+                       if task in customer.workers.get(w, {}).get("tasks", [])]
+                gaps.append(f"does not cover {task} work done on site by {', '.join(who)}")
+    if checks.get("briefed_workers_cover_site") and site and doc.get("briefed_workers") is not None:
+        missing = [w for w in site.get("workers", []) if w not in doc.get("briefed_workers", [])]
+        if missing:
+            gaps.append("workers on site not briefed: " + ", ".join(customer.holder_name(w) for w in missing))
+    if checks.get("signed_by_owner") and doc.get("signed_by"):
+        owner = customer.company.get("owner", {}).get("name")
+        directors = customer.company.get("directors", [])
+        if owner and _norm(doc["signed_by"]) not in {_norm(owner), *map(_norm, directors)}:
+            gaps.append(f"signed by {doc['signed_by']}, who is not listed as owner or director")
+    if checks.get("insured_name_matches_holder") and doc.get("insured"):
+        holder = customer.holder_name(doc.get("holder"))
+        if not _same_company(doc["insured"], holder):
+            gaps.append(f"insured name {doc['insured']!r} does not match {holder!r}")
+    if checks.get("insured_name_matches_company") and doc.get("insured"):
+        if not _same_company(doc["insured"], customer.company.get("name")):
+            gaps.append(f"insured name {doc['insured']!r} does not match {customer.company.get('name')!r}")
+    return gaps
+
+
+def content_findings(kb, customer, docs):
+    out = []
+    for req in kb.requirements.values():
+        if not req.get("content_checks"):
+            continue
+        for holder, context, required_by in _targets(req, customer, kb):
+            doc = _best_doc(docs, req["id"], holder, context)
+            if not doc:
+                continue
+            gaps = review_document(req, doc, customer, context)
+            if gaps:
+                out.append({"requirement": req["id"], "holder": holder, "context": context, "required_by": required_by,
+                            "key": f"{req['id']}|{holder}|{context or '-'}|content", "category": "content",
+                            "kind": "content_gap", "severity": "high" if req.get("blocks_site_access") else "medium",
+                            "detail": f"{req['name']} needs review: " + "; ".join(gaps), "doc_id": doc["id"]})
+    return out

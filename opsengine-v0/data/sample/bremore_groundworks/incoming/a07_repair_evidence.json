@@ -1,0 +1,9 @@
+{
+  "id": "sample-ca-a07-repair",
+  "type": "corrective_action",
+  "holder": "a07",
+  "description": "Seat belt buckle replaced and tested by Sample Plant Services (job sheet JS-SAMPLE-881)",
+  "file": "SAMPLE_a07_repair_jobsheet.pdf",
+  "received_via": "email",
+  "defect": "sample-svc-a07-2026#1"
+}

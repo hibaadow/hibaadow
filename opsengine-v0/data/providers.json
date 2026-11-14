@@ -1,5 +1,6 @@
 {
-  "_about": "Sample provider network. All names, prices and contacts are fictional placeholders - replace with vetted real providers.",
+  "_about": "SAMPLE provider network. All names, prices, credentials and contacts are fictional placeholders - replace with vetted real providers before use. The engine only recommends providers that are vetted, cover the work's area and have in-date insurance and qualifications.",
+  "sample": true,
   "providers": [
     {
       "id": "p-sp-1",
@@ -13,7 +14,26 @@
         "pl"
       ],
       "email": "bookings@example-safety.example.ie",
-      "rating": 4.6
+      "rating": 4.6,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS approved Safe Pass tutor",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ]
     },
     {
       "id": "p-sp-2",
@@ -26,7 +46,26 @@
         "ro"
       ],
       "email": "courses@sample-skills.example.ie",
-      "rating": 4.2
+      "rating": 4.2,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS approved Safe Pass tutor",
+          "number": "SAMPLE",
+          "expires": "2027-03-31"
+        }
+      ]
     },
     {
       "id": "p-sp-3",
@@ -42,7 +81,63 @@
         "lt"
       ],
       "email": "hello@demo-training.example.ie",
-      "rating": 4.8
+      "rating": 4.8,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS approved Safe Pass tutor",
+          "number": "SAMPLE",
+          "expires": "2028-06-30"
+        }
+      ]
+    },
+    {
+      "id": "p-sp-4",
+      "name": "Lapsed Training Co (Dublin 8) - SAMPLE",
+      "category": "safe_pass_course",
+      "price_eur": 120,
+      "lead_days": 1,
+      "languages": [
+        "en",
+        "pt",
+        "ro",
+        "pl",
+        "lt",
+        "uk"
+      ],
+      "email": "info@lapsed-training.example.ie",
+      "rating": 4.9,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2026-09-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS approved Safe Pass tutor",
+          "number": "SAMPLE",
+          "expires": "2026-08-31"
+        }
+      ],
+      "_note": "SAMPLE provider with expired credentials: must never be recommended"
     },
     {
       "id": "p-mh-1",
@@ -56,7 +151,26 @@
         "pl"
       ],
       "email": "bookings@example-safety.example.ie",
-      "rating": 4.6
+      "rating": 4.6,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "QQI manual handling instructor",
+          "number": "SAMPLE",
+          "expires": "2028-01-31"
+        }
+      ]
     },
     {
       "id": "p-mh-2",
@@ -72,7 +186,26 @@
         "lt"
       ],
       "email": "hello@demo-training.example.ie",
-      "rating": 4.8
+      "rating": 4.8,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "QQI manual handling instructor",
+          "number": "SAMPLE",
+          "expires": "2027-09-30"
+        }
+      ]
     },
     {
       "id": "p-cs-1",
@@ -84,7 +217,27 @@
         "en"
       ],
       "email": "info@sample-scaffold.example.ie",
-      "rating": 4.4
+      "rating": 4.4,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow",
+        "Louth"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS CSCS assessor",
+          "number": "SAMPLE",
+          "expires": "2028-03-31"
+        }
+      ]
     },
     {
       "id": "p-cx-1",
@@ -97,7 +250,26 @@
         "pl"
       ],
       "email": "bookings@sample-plant.example.ie",
-      "rating": 4.5
+      "rating": 4.5,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS CSCS assessor",
+          "number": "SAMPLE",
+          "expires": "2028-02-28"
+        }
+      ]
     },
     {
       "id": "p-cx-2",
@@ -112,7 +284,24 @@
         "lt"
       ],
       "email": "hello@demo-operator.example.ie",
-      "rating": 4.7
+      "rating": 4.7,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Meath"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS CSCS assessor",
+          "number": "SAMPLE",
+          "expires": "2027-10-31"
+        }
+      ]
     },
     {
       "id": "p-cd-1",
@@ -125,7 +314,26 @@
         "pl"
       ],
       "email": "bookings@sample-plant.example.ie",
-      "rating": 4.5
+      "rating": 4.5,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS CSCS assessor",
+          "number": "SAMPLE",
+          "expires": "2028-02-28"
+        }
+      ]
     },
     {
       "id": "p-ss-1",
@@ -140,7 +348,340 @@
         "lt"
       ],
       "email": "hello@demo-operator.example.ie",
-      "rating": 4.7
+      "rating": 4.7,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Meath"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "SOLAS CSCS assessor",
+          "number": "SAMPLE",
+          "expires": "2027-10-31"
+        }
+      ]
+    },
+    {
+      "id": "p-le-1",
+      "name": "Sample Lifting Inspections Ltd - SAMPLE",
+      "category": "lifting_equipment_inspection",
+      "price_eur": 240,
+      "lead_days": 5,
+      "languages": [
+        "en"
+      ],
+      "email": "jobs@sample-lifting.example.ie",
+      "rating": 4.6,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow",
+        "Louth"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 13000000,
+        "expires": "2027-04-30"
+      },
+      "qualifications": [
+        {
+          "name": "Competent person: thorough examination of lifting equipment (engineering qualification)",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ]
+    },
+    {
+      "id": "p-le-2",
+      "name": "Demo Plant Examiners - SAMPLE",
+      "category": "lifting_equipment_inspection",
+      "price_eur": 195,
+      "lead_days": 12,
+      "languages": [
+        "en"
+      ],
+      "email": "office@demo-examiners.example.ie",
+      "rating": 4.1,
+      "vetted": true,
+      "service_areas": [
+        "Cork",
+        "Kerry"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 13000000,
+        "expires": "2027-01-31"
+      },
+      "qualifications": [
+        {
+          "name": "Competent person: thorough examination of lifting equipment (engineering qualification)",
+          "number": "SAMPLE",
+          "expires": "2027-06-30"
+        }
+      ]
+    },
+    {
+      "id": "p-fi-1",
+      "name": "Sample Fire Safety Services - SAMPLE",
+      "category": "fire_safety_inspection",
+      "price_eur": 160,
+      "lead_days": 4,
+      "languages": [
+        "en"
+      ],
+      "email": "service@sample-fire.example.ie",
+      "rating": 4.5,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-05-31"
+      },
+      "qualifications": [
+        {
+          "name": "Fire extinguisher servicing (I.S. 291 trained technician)",
+          "number": "SAMPLE",
+          "expires": "2027-08-31"
+        }
+      ]
+    },
+    {
+      "id": "p-el-1",
+      "name": "Sample Electrical Testing - SAMPLE",
+      "category": "electrical_inspection",
+      "price_eur": 280,
+      "lead_days": 7,
+      "languages": [
+        "en"
+      ],
+      "email": "tests@sample-electrical.example.ie",
+      "rating": 4.7,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-03-31"
+      },
+      "qualifications": [
+        {
+          "name": "Registered electrical contractor (Safe Electric)",
+          "number": "SAMPLE",
+          "expires": "2027-07-31"
+        }
+      ]
+    },
+    {
+      "id": "p-pt-1",
+      "name": "Sample Electrical Testing - SAMPLE",
+      "category": "portable_appliance_testing",
+      "price_eur": 150,
+      "lead_days": 3,
+      "languages": [
+        "en"
+      ],
+      "email": "tests@sample-electrical.example.ie",
+      "rating": 4.7,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-03-31"
+      },
+      "qualifications": [
+        {
+          "name": "Registered electrical contractor (Safe Electric)",
+          "number": "SAMPLE",
+          "expires": "2027-07-31"
+        }
+      ]
+    },
+    {
+      "id": "p-hs-1",
+      "name": "Sample Safety Consultants - SAMPLE",
+      "category": "health_safety_consultant",
+      "price_eur": 650,
+      "lead_days": 7,
+      "languages": [
+        "en"
+      ],
+      "email": "hello@sample-safety-consult.example.ie",
+      "rating": 4.6,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-06-30"
+      },
+      "qualifications": [
+        {
+          "name": "Chartered safety practitioner (CMIOSH)",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ],
+      "services": [
+        "safety statement review",
+        "RAMS review",
+        "PSCS support"
+      ]
+    },
+    {
+      "id": "p-oh-1",
+      "name": "Sample Occupational Health - SAMPLE",
+      "category": "occupational_health",
+      "price_eur": 85,
+      "lead_days": 5,
+      "languages": [
+        "en"
+      ],
+      "email": "clinic@sample-occhealth.example.ie",
+      "rating": 4.4,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath",
+        "Wicklow"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-02-28"
+      },
+      "qualifications": [
+        {
+          "name": "Occupational health physician (registered)",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ],
+      "services": [
+        "fitness for work medicals",
+        "hearing tests"
+      ]
+    },
+    {
+      "id": "p-ib-1",
+      "name": "Sample Insurance Brokers (SAMPLE)",
+      "category": "insurance_broker",
+      "price_eur": 0,
+      "lead_days": 2,
+      "languages": [
+        "en"
+      ],
+      "email": "renewals@sample-brokers.example.ie",
+      "rating": 4.3,
+      "vetted": true,
+      "service_areas": [
+        "Ireland"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 13000000,
+        "expires": "2027-12-31"
+      },
+      "qualifications": [
+        {
+          "name": "Central Bank of Ireland authorised intermediary",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ]
+    },
+    {
+      "id": "p-cc-1",
+      "name": "Sample Compliance Advisers - SAMPLE",
+      "category": "compliance_consultant",
+      "price_eur": 450,
+      "lead_days": 10,
+      "languages": [
+        "en"
+      ],
+      "email": "team@sample-compliance.example.ie",
+      "rating": 4.2,
+      "vetted": true,
+      "service_areas": [
+        "Ireland"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-09-30"
+      },
+      "qualifications": [
+        {
+          "name": "Professional indemnity in place",
+          "number": "SAMPLE",
+          "expires": "2027-09-30"
+        }
+      ],
+      "services": [
+        "SEO pay and pension audit",
+        "prequalification support"
+      ]
+    },
+    {
+      "id": "p-ps-1",
+      "name": "Sample Plant Services - SAMPLE",
+      "category": "plant_servicing",
+      "price_eur": 380,
+      "lead_days": 6,
+      "languages": [
+        "en",
+        "pl"
+      ],
+      "email": "service@sample-plant-services.example.ie",
+      "rating": 4.4,
+      "vetted": true,
+      "service_areas": [
+        "Dublin",
+        "Kildare",
+        "Meath"
+      ],
+      "insurance": {
+        "insurer": "Sample Insurer DAC",
+        "public_liability_limit_eur": 6500000,
+        "expires": "2027-04-30"
+      },
+      "qualifications": [
+        {
+          "name": "Manufacturer-trained plant technician",
+          "number": "SAMPLE",
+          "expires": "2027-12-31"
+        }
+      ]
     }
   ]
 }

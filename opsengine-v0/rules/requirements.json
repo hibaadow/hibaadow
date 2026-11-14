@@ -12,7 +12,10 @@
         "signed_by"
       ],
       "blocks_site_access": true,
-      "basis": "Safety, Health and Welfare at Work Act 2005, s.20 (written Safety Statement, kept under review)"
+      "basis": "Safety, Health and Welfare at Work Act 2005, s.20 (written Safety Statement, kept under review)",
+      "content_checks": {
+        "signed_by_owner": true
+      }
     },
     {
       "id": "employers_liability",
@@ -29,7 +32,10 @@
         "limit_eur": 13000000
       },
       "blocks_site_access": true,
-      "basis": "Main contractor subcontract requirement"
+      "basis": "Main contractor subcontract requirement",
+      "content_checks": {
+        "insured_name_matches_company": true
+      }
     },
     {
       "id": "public_liability",
@@ -46,7 +52,10 @@
         "limit_eur": 6500000
       },
       "blocks_site_access": true,
-      "basis": "Main contractor subcontract requirement"
+      "basis": "Main contractor subcontract requirement",
+      "content_checks": {
+        "insured_name_matches_company": true
+      }
     },
     {
       "id": "tax_clearance",
@@ -70,7 +79,37 @@
         "briefed_workers"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013 (contractor duties) and main contractor site rules"
+      "basis": "Construction Regulations 2013 (contractor duties) and main contractor site rules",
+      "content_checks": {
+        "activities_cover_tasks": {
+          "drylining": [
+            "partition",
+            "ceiling",
+            "drylining"
+          ],
+          "scaffolding": [
+            "scaffold"
+          ],
+          "excavator": [
+            "excavat"
+          ],
+          "dumper": [
+            "dumper",
+            "site plant",
+            "plant movement"
+          ],
+          "slinging": [
+            "lifting"
+          ],
+          "groundworks": [
+            "excavat",
+            "drainage",
+            "groundwork",
+            "ducting"
+          ]
+        },
+        "briefed_workers_cover_site": true
+      }
     },
     {
       "id": "safe_pass",
@@ -174,7 +213,10 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Main contractor subcontract requirement where the package includes design (SAMPLE form section B)"
+      "basis": "Main contractor subcontract requirement where the package includes design (SAMPLE form section B)",
+      "content_checks": {
+        "insured_name_matches_company": true
+      }
     },
     {
       "id": "safety_certification",
@@ -282,6 +324,243 @@
       ],
       "blocks_site_access": true,
       "basis": "Construction Regulations 2013: CSCS card for specified tasks (check against Schedule 4)"
+    },
+    {
+      "id": "lifting_equipment_examination",
+      "name": "Thorough examination - lifting equipment",
+      "scope": "asset",
+      "applies_if": {
+        "uses_any": [
+          "lifting"
+        ]
+      },
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": true,
+      "basis": "Lifting equipment used on site must be thoroughly examined by a competent person at set intervals (commonly 12 months) [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "lifting_accessories_examination",
+      "name": "Thorough examination - lifting accessories",
+      "scope": "asset",
+      "applies_if": {
+        "asset_types_any": [
+          "lifting_accessories"
+        ]
+      },
+      "review_every_months": 6,
+      "warn_days": 21,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": true,
+      "basis": "Lifting accessories (chains, slings, shackles) examined at shorter intervals (commonly 6 months) [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "plant_service",
+      "name": "Plant service (manufacturer schedule)",
+      "scope": "asset",
+      "applies_if": {
+        "asset_types_any": [
+          "excavator",
+          "dumper",
+          "telehandler"
+        ]
+      },
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": false,
+      "basis": "Maintenance to the manufacturer's schedule; service records kept for the plant register [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "fire_extinguisher_service",
+      "name": "Fire extinguisher service",
+      "scope": "asset",
+      "applies_if": {
+        "asset_types_any": [
+          "fire_extinguisher"
+        ]
+      },
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": false,
+      "basis": "Portable fire extinguishers serviced annually by a competent person [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "electrical_installation_inspection",
+      "name": "Electrical inspection - site cabins and welfare units",
+      "scope": "asset",
+      "applies_if": {
+        "asset_types_any": [
+          "site_cabin"
+        ]
+      },
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": false,
+      "basis": "Temporary site electrical installations inspected and tested by a registered electrical contractor [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "portable_tools_test",
+      "name": "Portable electrical tools test (110V)",
+      "scope": "asset",
+      "applies_if": {
+        "asset_types_any": [
+          "power_tools"
+        ]
+      },
+      "review_every_months": 3,
+      "warn_days": 14,
+      "required_fields": [
+        "issued",
+        "inspector",
+        "result"
+      ],
+      "field_allowed_values": {
+        "result": [
+          "pass",
+          "pass_with_defects"
+        ]
+      },
+      "blocks_site_access": false,
+      "basis": "Portable tools on site inspected and tested at regular intervals (commonly every 3 months) [CHECK interval and scope with a competent person before use]"
+    },
+    {
+      "id": "corrective_action",
+      "name": "Corrective action",
+      "scope": "manual",
+      "required_fields": [],
+      "blocks_site_access": false,
+      "basis": "Raised by a person or from an inspection report; closed only with evidence"
+    },
+    {
+      "id": "subcontractor_public_liability",
+      "name": "Subcontractor public liability insurance",
+      "scope": "subcontractor",
+      "warn_days": 30,
+      "required_fields": [
+        "insurer",
+        "policy_number",
+        "limit_eur",
+        "expires"
+      ],
+      "field_minimums": {
+        "limit_eur": 6500000
+      },
+      "content_checks": {
+        "insured_name_matches_holder": true
+      },
+      "blocks_site_access": true,
+      "basis": "Your subcontract terms: subcontractors carry their own liability cover"
+    },
+    {
+      "id": "subcontractor_employers_liability",
+      "name": "Subcontractor employer's liability insurance",
+      "scope": "subcontractor",
+      "warn_days": 30,
+      "required_fields": [
+        "insurer",
+        "policy_number",
+        "limit_eur",
+        "expires"
+      ],
+      "field_minimums": {
+        "limit_eur": 13000000
+      },
+      "content_checks": {
+        "insured_name_matches_holder": true
+      },
+      "blocks_site_access": true,
+      "basis": "Your subcontract terms: subcontractors with employees carry employer's liability cover"
+    },
+    {
+      "id": "subcontractor_tax_clearance",
+      "name": "Subcontractor tax clearance (TCAN)",
+      "scope": "subcontractor",
+      "warn_days": 30,
+      "required_fields": [
+        "tcan",
+        "expires"
+      ],
+      "blocks_site_access": false,
+      "basis": "Revenue tax clearance for subcontractors you pay (check RCT obligations too)"
+    },
+    {
+      "id": "subcontractor_safety_statement",
+      "name": "Subcontractor Safety Statement",
+      "scope": "subcontractor",
+      "review_every_months": 12,
+      "warn_days": 30,
+      "required_fields": [
+        "issued",
+        "signed_by"
+      ],
+      "blocks_site_access": true,
+      "basis": "Safety, Health and Welfare at Work Act 2005, s.20 - every employer has a Safety Statement"
+    },
+    {
+      "id": "subcontractor_operative_register",
+      "name": "Subcontractor operatives' Safe Pass register",
+      "scope": "subcontractor",
+      "warn_days": 30,
+      "required_fields": [
+        "operatives",
+        "expires"
+      ],
+      "blocks_site_access": true,
+      "basis": "Every operative on site holds a current Safe Pass; 'expires' is the earliest card expiry in the register"
     }
   ]
 }

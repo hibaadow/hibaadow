@@ -14,6 +14,8 @@ Core loop (see `opsengine/engine.py`):
 detect -> plan -> act -> verify -> record
 ```
 
+(PRODUCT.md calls these IDENTIFY -> DETERMINE -> EXECUTE -> VERIFY -> MAINTAIN.)
+
 When the engine finds a problem, it asks "what can I do to resolve this?" and does it,
 stopping only at approval gates or while it waits for proof.
 
@@ -70,6 +72,9 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/vision.py` | Claude vision: photo/scan -> document JSON + confidence score |
 | `opsengine/scheduler.py` | Daily run per customer: scan, advance, chase after 2 days, escalate after 5 |
 | `opsengine/onboarding.py` | Create a customer folder from the template; list what is missing |
+| `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
+| `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
+| `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
@@ -82,6 +87,10 @@ python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>
 python -m opsengine read-photo <file> --holder w01 --customer <folder>
 python -m opsengine daily                     # every customer in data/customers/ (run from cron)
+python -m opsengine register|risks|subcontractors|assets|actions|appointments|providers|comms|documents --customer <folder>
+python -m opsengine raise-action "title" --owner w01 --due YYYY-MM-DD --severity high --by "Name" --customer <folder>
+python -m opsengine appointment APT-0001 --status attended|completed|no_show|cancelled --by "Name" --customer <folder>
+python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
 No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a strong reason.
@@ -110,6 +119,13 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
   or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
   and turn it on explicitly where needed, so a local `.env` can't change results.
+- **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
+  ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
+- **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
+  inspection defects, never closed by a rescan, closed only with evidence naming the action
+  (`action: ISS-...`) or defect (`defect: <doc id>#<n>`); critical/high need safety reviewer sign-off.
+- **Providers** are only recommended when vetted, in date (insurance and qualifications) and covering
+  the work's area (`sites[].area`). Booking creates an appointment; outcomes feed provider reliability.
 - **Waiting clocks:** steps record `waiting_since` / `awaiting_since` (the engine's `today`) in
   their result; the scheduler uses them and stores `chased_on` / `escalated_on` so each
   reminder or escalation happens once per waiting period.

@@ -59,6 +59,22 @@ python -m opsengine --today 2026-11-11 daily --customer data/sample/bremore_grou
 python -m opsengine queue --customer data/sample/bremore_groundworks
 ```
 
+## Everything it can do (commands)
+
+| Command | What it does |
+| --- | --- |
+| `daily` | Scan and work every customer; chase stalled steps (2 days), escalate (5 days), chase overdue corrective actions, ask providers what happened after a booked date |
+| `register` / `risks` | Central compliance record; what could stop work, what lapses soon, by site |
+| `subcontractors` / `assets` | Your subcontractors and your plant/equipment, with what each is missing |
+| `providers` | The provider network with credential status and track record |
+| `queue`, `approve`, `reject` | Approvals: bookings, insurance changes, safety documents, high-risk closures |
+| `raise-action`, `actions` | Corrective actions with an owner, deadline and evidence required |
+| `appointments`, `appointment` | Training and inspection bookings; mark attended, completed, no-show (rebooks) |
+| `read-photo`, `reviews`, `review-accept` | Read card/certificate photos; low-confidence reads go to a person |
+| `ingest` | Add a document or evidence that arrived |
+| `documents`, `history`, `comms` | Document versions, one issue's full story, communication history |
+| `report`, `export`, `insights` | Weekly summary, full record export for audits, patterns and recommendations |
+
 ## Add a real customer
 
 ```bash

@@ -34,7 +34,8 @@
         "w10",
         "w11",
         "w12"
-      ]
+      ],
+      "area": "Dublin"
     },
     {
       "id": "s2",
@@ -47,7 +48,49 @@
         "w14",
         "w15",
         "w16"
-      ]
+      ],
+      "area": "Dublin"
+    }
+  ],
+  "area": "Dublin",
+  "directors": [
+    "Gráinne Murphy",
+    "Declan Murphy"
+  ],
+  "subcontractors": [
+    {
+      "id": "sc01",
+      "name": "Sample Kerbing & Paving Ltd (SAMPLE)",
+      "trades": [
+        "kerbing",
+        "paving"
+      ],
+      "sites": [
+        "s1"
+      ],
+      "contact": {
+        "name": "Ruth Kenny",
+        "email": "office@sample-kerbing.example.ie",
+        "phone": "+353 87 000 0301",
+        "language": "en"
+      }
+    },
+    {
+      "id": "sc02",
+      "name": "Sample Traffic Management Services (SAMPLE)",
+      "trades": [
+        "traffic_management"
+      ],
+      "sites": [
+        "s1",
+        "s2"
+      ],
+      "contact": {
+        "name": "Jonas Vaitkus",
+        "email": "ops@sample-traffic.example.ie",
+        "phone": "+353 87 000 0302",
+        "language": "en"
+      }
     }
   ]
 }

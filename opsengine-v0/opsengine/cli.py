@@ -170,6 +170,154 @@ def cmd_daily(args):
     sys.exit(1 if failed else 0)
 
 
+# ---------------- corrective actions, appointments, providers (spec 4-8) ----------------
+def cmd_raise_action(args):
+    e = _engine(args)
+    issue_id = e.raise_corrective_action(args.title, holder=args.holder, owner=args.owner, due=args.due,
+                                         severity=args.severity, context=args.site, detail=args.detail or "",
+                                         evidence_required=args.evidence, raised_by=args.by)
+    print(f"Raised {issue_id}.")
+    _print_events(e._advance_issue(issue_id))
+
+
+def cmd_actions(args):
+    e = _engine(args)
+    rows = e.corrective_actions(None if args.all else "open")
+    if not rows:
+        print("No corrective actions.")
+    for a in rows:
+        late = " OVERDUE" if a["status"] != "resolved" and a.get("due") and a["due"] < e.today.isoformat() else ""
+        print(f"  {a['id']}  {a['severity']:<8} due {a.get('due')}{late}  owner {e.customer.holder_name(a.get('owner')):<22} "
+              f"{a['status']:<11} {a.get('title')}")
+
+
+def cmd_appointments(args):
+    e = _engine(args)
+    rows = e.store.appointments()
+    if not rows:
+        print("No appointments.")
+    for a in rows:
+        print(f"  {a['id']}  {a['date']}  {a['status']:<10} {a['kind']:<10} {a['provider_name']:<40} "
+              f"{e.customer.holder_name(a['holder'])} ({a['issue_id']})")
+
+
+def cmd_appointment(args):
+    _print_events(_engine(args).update_appointment(args.id, args.status, args.by, date=args.date, notes=args.notes or ""))
+    print(f"{args.id} marked {args.status}.")
+
+
+def cmd_providers(args):
+    from .actions import provider_problems
+    e = _engine(args)
+    stats = e.store.provider_stats()
+    for p in e.kb.providers:
+        if args.category and p["category"] != args.category:
+            continue
+        probs = provider_problems(p, e.today)
+        st = stats.get(p["id"])
+        record = f"{st['completed']}/{st['booked']} completed, {st['no_show']} no-show" if st else "no bookings yet"
+        print(f"  {p['id']:<7} {p['category']:<30} {p['name']:<44} EUR {p['price_eur']:<5} "
+              f"{'OK' if not probs else 'NOT USABLE: ' + ', '.join(probs)} | {', '.join(p.get('service_areas', []))} | {record}")
+
+
+def cmd_subcontractors(args):
+    from .report import compliance_register
+    e = _engine(args)
+    reg = [r for r in compliance_register(e) if r["holder_kind"] == "subcontractor"]
+    for sid, sub in e.customer.subcontractors.items():
+        rows = [r for r in reg if r["holder"] == sid]
+        bad = [r for r in rows if r["status"] != "ok"]
+        verdict = "MEETS REQUIREMENTS" if not bad else ("DOES NOT MEET REQUIREMENTS" if any(
+            r["blocks_site_access"] and r["status"] in ("missing", "expired") for r in bad) else "attention needed")
+        print(f"  {sid}  {sub['name']}  ({', '.join(sub.get('trades', []))}; sites {', '.join(sub.get('sites', []))}): {verdict}")
+        for r in rows:
+            print(f"        {r['status']:<11} {r['name']:<45} {r['document'] or '-':<18} {r['expires']}")
+
+
+def cmd_assets(args):
+    from .report import compliance_register
+    e = _engine(args)
+    reg = [r for r in compliance_register(e) if r["holder_kind"] == "asset"]
+    for aid, a in e.customer.assets.items():
+        print(f"  {aid}  {a['name']} ({a.get('type')}, sites {', '.join(a.get('sites', []))})")
+        for r in [r for r in reg if r["holder"] == aid]:
+            print(f"        {r['status']:<11} {r['name']:<50} last record {r['document'] or '-':<22} due {r['expires']}")
+
+
+def cmd_documents(args):
+    e = _engine(args)
+    for g in e.document_history(holder=args.holder):
+        print(f"  {e.customer.holder_name(g['holder'])} - {g['type']}{' (' + g['context'] + ')' if g['context'] else ''}")
+        for d in g["versions"]:
+            mark = "current " if d["id"] == g["current"] else "previous"
+            ev = f" evidence {d['evidence']['stored_as'][:12]}..." if d.get("evidence") else ""
+            print(f"        {mark} {d['id']:<28} {d.get('expires') or d.get('issued') or ''}{ev}")
+
+
+def cmd_history(args):
+    h = _engine(args).issue_history(args.issue)
+    i = h["issue"]
+    print(f"{i['id']} [{i['status']}] {i['detail']}")
+    for s in h["steps"]:
+        print(f"  step {s['id']:<10} {s['action']:<18} {s['state']:<17} {('approved by ' + s['approved_by']) if s['approved_by'] else ''}")
+    for c in h["comms"]:
+        print(f"  {c['direction']:<3} {c['channel']:<9} {c['to_name']:<34} {c['status']:<30} {c['subject']}")
+    for a in h["appointments"]:
+        print(f"  appointment {a['id']} {a['date']} {a['status']} with {a['provider_name']}")
+    print(f"  proof: {h['proof']['id'] if h['proof'] else '-'}; audit entries: {len(h['audit'])}")
+
+
+def cmd_comms(args):
+    for c in _engine(args).store.comms(args.issue):
+        print(f"  {c['ts'][:16]} {c['direction']:<3} {c['channel']:<9} {c['to_name']:<36} {c['status']:<34} {c['subject']}")
+
+
+def cmd_register(args):
+    from .report import compliance_register
+    rows = compliance_register(_engine(args))
+    if not args.all:
+        rows = [r for r in rows if r["status"] != "ok"]
+    for r in rows:
+        print(f"  {r['status']:<11} {r['holder_name'][:34]:<34} {r['name'][:48]:<48} {r['document'] or '-':<22} {r['expires']}")
+    print(f"{len(rows)} row(s){'' if args.all else ' needing attention (use --all for everything)'}.")
+
+
+def cmd_risks(args):
+    from .report import risk_overview
+    e = _engine(args)
+    r = risk_overview(e)
+    print(f"Could stop work on site: {len(r['blocking'])}")
+    for x in r["blocking"]:
+        print(f"  {x['status']:<8} {x['holder_name'][:34]:<34} {x['name']}")
+    print(f"Lapsing soon: {len(r['lapsing_soon'])}")
+    for x in r["lapsing_soon"]:
+        print(f"  {x['expires']} {x['holder_name'][:34]:<34} {x['name']}")
+    print("By site: " + ", ".join(f"{e.customer.sites.get(k, {}).get('name', k)}: {v['blocking']} blocking, {v['other']} other"
+                                  for k, v in r["by_site"].items()))
+    print(f"Overdue corrective actions: {len(r['overdue_actions'])}")
+
+
+def cmd_export(args):
+    from .report import export_records
+    print(f"Records exported to {export_records(_engine(args), args.out)}")
+
+
+def cmd_insights(args):
+    from .insights import insights
+    today = date.fromisoformat(args.today) if args.today else None
+    folders = [Path(c) for c in args.customer] if args.customer else scheduler.customer_folders(args.root)
+    engines = [Engine(f, state_dir=args.state, today=today) for f in folders]
+    r = insights(engines)
+    print(f"Issues analysed: {r['issues_total']} across {len(engines)} customer(s)")
+    for title, key in (("Most common problems", "most_common_problems"), ("Frequently missing", "frequently_missing"),
+                       ("Recurring", "recurring"), ("Hotspots", "hotspots")):
+        print(f"{title}: " + ("; ".join(f"{n} ({c})" for n, c in r[key]) or "none"))
+    print("Median hours to close: " + ("; ".join(f"{k}: {v}" for k, v in r["hours_to_close"].items()) or "none closed yet"))
+    print("Recommendations:")
+    for rec in r["recommendations"]:
+        print(f"  - {rec}")
+
+
 def cmd_demo(args):
     print(f"AI mode: {ai_mode()}")
     state = Path(args.state or ROOT / "state" / "demo")
@@ -269,6 +417,26 @@ def main(argv=None):
     sp.add_argument("--type"); sp.add_argument("--set", action="append", metavar="FIELD=VALUE")
     sp = add("review-reject", cmd_review_reject); sp.add_argument("review"); sp.add_argument("--by", required=True)
     sp.add_argument("--reason", required=True)
+    sp = add("raise-action", cmd_raise_action); sp.add_argument("title"); sp.add_argument("--owner", default="company")
+    sp.add_argument("--holder", default="company"); sp.add_argument("--due"); sp.add_argument("--site")
+    sp.add_argument("--severity", default="medium", choices=["critical", "high", "medium"]); sp.add_argument("--detail")
+    sp.add_argument("--evidence", default="photo or document showing the work is done"); sp.add_argument("--by", required=True)
+    sp = add("actions", cmd_actions); sp.add_argument("--all", action="store_true")
+    add("appointments", cmd_appointments)
+    sp = add("appointment", cmd_appointment); sp.add_argument("id")
+    sp.add_argument("--status", required=True, choices=["confirmed", "attended", "completed", "no_show", "cancelled"])
+    sp.add_argument("--by", required=True); sp.add_argument("--date"); sp.add_argument("--notes")
+    sp = add("providers", cmd_providers); sp.add_argument("--category")
+    add("subcontractors", cmd_subcontractors)
+    add("assets", cmd_assets)
+    sp = add("documents", cmd_documents); sp.add_argument("--holder")
+    sp = add("history", cmd_history); sp.add_argument("issue")
+    sp = add("comms", cmd_comms); sp.add_argument("--issue")
+    sp = add("register", cmd_register); sp.add_argument("--all", action="store_true")
+    add("risks", cmd_risks)
+    sp = add("export", cmd_export); sp.add_argument("--out", required=True)
+    sp = add("insights", cmd_insights, customer=False)
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

@@ -28,6 +28,24 @@
       {
         "action": "distribute"
       }
+    ],
+    "content": [
+      {
+        "action": "message_customer",
+        "template": "content_review_gap"
+      },
+      {
+        "action": "request_document",
+        "from": "customer",
+        "template": "generic_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
     ]
   },
   "safe_pass": {
@@ -39,6 +57,9 @@
       {
         "action": "find_provider",
         "category": "safe_pass_course"
+      },
+      {
+        "action": "request_quotes"
       },
       {
         "action": "book_service",
@@ -69,6 +90,9 @@
         "category": "cscs_scaffolding_course"
       },
       {
+        "action": "request_quotes"
+      },
+      {
         "action": "book_service",
         "approval": "customer"
       },
@@ -95,6 +119,9 @@
       {
         "action": "find_provider",
         "category": "manual_handling_course"
+      },
+      {
+        "action": "request_quotes"
       },
       {
         "action": "book_service",
@@ -284,6 +311,9 @@
         "category": "cscs_excavator_course"
       },
       {
+        "action": "request_quotes"
+      },
+      {
         "action": "book_service",
         "approval": "customer"
       },
@@ -312,6 +342,9 @@
         "category": "cscs_dumper_course"
       },
       {
+        "action": "request_quotes"
+      },
+      {
         "action": "book_service",
         "approval": "customer"
       },
@@ -338,6 +371,9 @@
       {
         "action": "find_provider",
         "category": "cscs_slinger_signaller_course"
+      },
+      {
+        "action": "request_quotes"
       },
       {
         "action": "book_service",
@@ -469,6 +505,623 @@
       },
       {
         "action": "distribute"
+      }
+    ]
+  },
+  "lifting_equipment_examination": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "lifting_equipment_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "lifting_equipment_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "lifting_accessories_examination": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "lifting_equipment_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "lifting_equipment_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "plant_service": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "plant_servicing"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "plant_servicing"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "fire_extinguisher_service": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "fire_safety_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "fire_safety_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "electrical_installation_inspection": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "electrical_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "electrical_inspection"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "portable_tools_test": {
+    "validity": [
+      {
+        "action": "find_provider",
+        "category": "portable_appliance_testing"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "inspection_failed"
+      },
+      {
+        "action": "find_provider",
+        "category": "portable_appliance_testing"
+      },
+      {
+        "action": "request_quotes"
+      },
+      {
+        "action": "book_service",
+        "approval": "customer"
+      },
+      {
+        "action": "request_document",
+        "from": "provider",
+        "template": "inspection_report_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ]
+  },
+  "corrective_action": {
+    "corrective": [
+      {
+        "action": "message_owner",
+        "template": "corrective_action_assigned"
+      },
+      {
+        "action": "request_document",
+        "from": "owner",
+        "template": "corrective_evidence_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      }
+    ],
+    "corrective_high": [
+      {
+        "action": "message_owner",
+        "template": "corrective_action_assigned"
+      },
+      {
+        "action": "request_document",
+        "from": "owner",
+        "template": "corrective_evidence_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "close_action",
+        "approval": "safety_reviewer"
+      }
+    ]
+  },
+  "subcontractor_public_liability": {
+    "validity": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "content": [
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      }
+    ]
+  },
+  "subcontractor_employers_liability": {
+    "validity": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "content": [
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      }
+    ]
+  },
+  "subcontractor_tax_clearance": {
+    "validity": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "content": [
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      }
+    ]
+  },
+  "subcontractor_safety_statement": {
+    "validity": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "content": [
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      }
+    ]
+  },
+  "subcontractor_operative_register": {
+    "validity": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "completeness": [
+      {
+        "action": "message_customer",
+        "template": "subcontractor_noncompliant"
+      },
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "distribute"
+      }
+    ],
+    "content": [
+      {
+        "action": "request_document",
+        "from": "subcontractor",
+        "template": "subcontractor_document_fix",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
       }
     ]
   }

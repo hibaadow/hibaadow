@@ -17,6 +17,10 @@ SAMPLE = ROOT / "data" / "sample" / "liffey_interiors"
 TODAY = date(2026, 11, 11)
 
 
+def step_of(engine, issue, action):
+    return next(s["id"] for s in engine.store.steps(issue["id"]) if s["action"] == action)
+
+
 class DetectTests(unittest.TestCase):
     def setUp(self):
         self.kb = Knowledge.load()
@@ -31,7 +35,8 @@ class DetectTests(unittest.TestCase):
         self.assertIn(("safety_statement", "company", "expired"), kinds)
         self.assertIn(("site_induction", "w06", "missing"), kinds)
         self.assertIn(("written_terms", "w05", "incomplete"), kinds)
-        self.assertEqual(len(self.findings), 10)
+        self.assertIn(("rams", "company", "content_gap"), kinds)  # RAMS s1 doesn't cover Andrei's scaffolding
+        self.assertEqual(len(self.findings), 11)
 
     def test_main_contractor_minimum_applies_only_to_that_contractor(self):
         pl = [f for f in self.findings.values() if f["requirement"] == "public_liability" and f["kind"] == "incomplete"]
@@ -76,7 +81,7 @@ class EngineLoopTests(unittest.TestCase):
 
     def test_full_resolution_with_proof(self):
         iss = self.issue_for("safe_pass", "w02")
-        self.e.approve(f"{iss['id']}.3", by="Owner")
+        self.e.approve(step_of(self.e, iss, "book_service"), by="Owner")
         doc = json.loads((SAMPLE / "incoming" / "new_safe_pass_w02.json").read_text())
         self.e.ingest(doc)
         done = self.e.store.issue(iss["id"])
@@ -88,23 +93,23 @@ class EngineLoopTests(unittest.TestCase):
 
     def test_bad_proof_is_rejected_and_requested_again(self):
         iss = self.issue_for("safe_pass", "w03")
-        self.e.approve(f"{iss['id']}.3", by="Owner")
+        self.e.approve(step_of(self.e, iss, "book_service"), by="Owner")
         self.e.ingest(json.loads((SAMPLE / "incoming" / "wrong_card_w03.json").read_text()))
         self.assertNotEqual(self.e.store.issue(iss["id"])["status"], "resolved")
-        request = self.e.store.step(f"{iss['id']}.4")
+        request = self.e.store.step(step_of(self.e, iss, "request_document"))
         self.assertEqual(request["state"], "waiting")
-        resend = (self.e.outbox / f"{iss['id']}.4-message.md").read_text()
+        resend = (self.e.outbox / f"{step_of(self.e, iss, 'request_document')}-message.md").read_text()
         self.assertIn("could not accept", resend)
 
     def test_early_proof_skips_remaining_steps(self):
         iss = self.issue_for("safe_pass", "w02")  # booking still awaiting approval
         self.e.ingest(json.loads((SAMPLE / "incoming" / "new_safe_pass_w02.json").read_text()))
         self.assertEqual(self.e.store.issue(iss["id"])["status"], "resolved")
-        self.assertEqual(self.e.store.step(f"{iss['id']}.3")["state"], "skipped")
+        self.assertEqual(self.e.store.step(step_of(self.e, iss, "book_service"))["state"], "skipped")
 
     def test_rejection_escalates(self):
         iss = self.issue_for("safe_pass", "w06")
-        self.e.reject(f"{iss['id']}.3", by="Owner", reason="He is leaving the company")
+        self.e.reject(step_of(self.e, iss, "book_service"), by="Owner", reason="He is leaving the company")
         self.assertEqual(self.e.store.issue(iss["id"])["status"], "escalated")
 
     def test_audit_chain(self):

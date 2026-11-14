@@ -54,6 +54,24 @@ def check_customer(folder, kb=None):
         problems += [f"{fname}: {p} still needs filling in" for p in _placeholders(data)]
     problems += sample_problems(folder, company, kb)
     worker_ids = {w.get("id") for w in workers}
+    try:
+        assets = json.loads((folder / "assets.json").read_text(encoding="utf-8")) if (folder / "assets.json").exists() else []
+    except json.JSONDecodeError as exc:
+        return problems + [f"assets.json: cannot read ({exc})"]
+    site_ids = {s.get("id") for s in company.get("sites", [])}
+    holders = worker_ids | {s.get("id") for s in company.get("subcontractors", [])} | {a.get("id") for a in assets}
+    for sub in company.get("subcontractors", []):
+        if not sub.get("contact", {}).get("email"):
+            problems.append(f"company.json: subcontractor {sub.get('id')} has no contact email")
+        for sid in sub.get("sites", []):
+            if sid not in site_ids:
+                problems.append(f"company.json: subcontractor {sub.get('id')} lists unknown site {sid}")
+    for a in assets:
+        if not a.get("type"):
+            problems.append(f"assets.json: {a.get('id')} has no type")
+        for sid in a.get("sites", []):
+            if sid not in site_ids:
+                problems.append(f"assets.json: {a.get('id')} lists unknown site {sid}")
     for w in workers:
         if w.get("language", "en") not in LANGUAGE_NAMES:
             problems.append(f"workers.json: {w.get('id')} language {w.get('language')!r} is not supported yet")
@@ -78,8 +96,9 @@ def check_customer(folder, kb=None):
         seen.add(d.get("id"))
         if d.get("type") not in kb.requirements:
             problems.append(f"documents.json: {d.get('id')} has unknown type {d.get('type')!r}")
-        if d.get("holder") != "company" and d.get("holder") not in worker_ids:
-            problems.append(f"documents.json: {d.get('id')} holder {d.get('holder')!r} is not a worker")
+        if d.get("holder") != "company" and d.get("holder") not in holders:
+            problems.append(f"documents.json: {d.get('id')} holder {d.get('holder')!r} is not a worker, "
+                            "subcontractor or asset")
         for key in DATE_KEYS:
             if d.get(key) and "REPLACE" not in str(d[key]) and d[key] != "YYYY-MM-DD":
                 try:

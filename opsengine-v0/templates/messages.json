@@ -59,5 +59,45 @@
   "references_request": {
     "subject": "Trade references needed for {main_contractor_name}",
     "body": "Hi {owner_first_name}, {main_contractor_name} asks for 2 references from main contractors you have worked for in the last 3 years: company, contact name, phone or email, project and value. {detail}."
+  },
+  "content_review_gap": {
+    "subject": "{requirement_name}: points to revise",
+    "body": "Hi {owner_first_name}, we checked the {requirement_name} for {holder_name} against what is happening on site. {detail}. Please have the person responsible for it revise it and send the updated version. We flag gaps; we do not sign off safety documents."
+  },
+  "inspection_report_request": {
+    "subject": "Report needed: {requirement_name} - {holder_name}",
+    "body": "Hello, once the {requirement_name} of {holder_name} for {company_name} is done, please send the signed report or certificate showing the date, the inspector, the result and any defects found. We will file it and arrange any follow-up work."
+  },
+  "inspection_failed": {
+    "subject": "Action needed: {requirement_name} - {holder_name}",
+    "body": "Hi {owner_first_name}, the latest {requirement_name} for {holder_name} {status_phrase}: {detail}. Do not use it until it has been repaired and passes a new examination by a competent person. We have opened corrective actions for the defects and will arrange the re-examination with your approval."
+  },
+  "corrective_action_assigned": {
+    "subject": "Corrective action {issue_id}: {action_title} (due {due_date})",
+    "body": "Hi {owner_name}, a corrective action has been assigned to you for {company_name}: {action_title}. {detail} Please complete it by {due_date}. Repairs and safety work must be done by a competent person. When it is done, send us the evidence: {evidence_required}."
+  },
+  "corrective_evidence_request": {
+    "subject": "Evidence needed: {action_title}",
+    "body": "Hi {owner_name}, please send the evidence that this corrective action is complete: {evidence_required}. We can only close it once the evidence is received. Due: {due_date}."
+  },
+  "corrective_overdue": {
+    "subject": "Overdue: {action_title} (was due {due_date})",
+    "body": "Hi {owner_name}, the corrective action '{action_title}' was due on {due_date} and is still open. Please complete it and send the evidence ({evidence_required}) as soon as possible. It has been escalated to the ops team."
+  },
+  "appointment_followup": {
+    "subject": "Did it go ahead? {requirement_name} - {holder_name}",
+    "body": "Hello, the booking for {requirement_name} ({holder_name}, {company_name}) was due on {appointment_date}. Please confirm whether it went ahead, and send the certificate or report if it did. If it did not, please give a new date."
+  },
+  "subcontractor_noncompliant": {
+    "subject": "Subcontractor not compliant: {holder_name}",
+    "body": "Hi {owner_first_name}, your subcontractor {holder_name} does not meet a requirement: {requirement_name} {status_phrase}. {detail}. We have asked them for it. Please check with your site team before they work on site where this is a site-access item."
+  },
+  "subcontractor_document_request": {
+    "subject": "{company_name}: {requirement_name} needed",
+    "body": "Hello, we manage compliance for {company_name}. Your {requirement_name} {status_phrase}. Please send the current document so you can stay on the approved list for {company_name}'s sites."
+  },
+  "subcontractor_document_fix": {
+    "subject": "{company_name}: {requirement_name} needs updating",
+    "body": "Hello, we manage compliance for {company_name}. The {requirement_name} you sent needs updating: {detail}. Please send a corrected version."
   }
 }

@@ -71,5 +71,22 @@
   {"id": "sample-ind-w06-s2", "type": "site_induction", "holder": "w06", "context": "s2", "completed_on": "2026-10-06", "language": "pt"},
   {"id": "sample-ind-w13-s2", "type": "site_induction", "holder": "w13", "context": "s2", "completed_on": "2026-10-06", "language": "en"},
   {"id": "sample-ind-w14-s2", "type": "site_induction", "holder": "w14", "context": "s2", "completed_on": "2026-10-06", "language": "pl"},
-  {"id": "sample-ind-w15-s2", "type": "site_induction", "holder": "w15", "context": "s2", "completed_on": "2026-10-06", "language": "en"}
+  {"id": "sample-ind-w15-s2", "type": "site_induction", "holder": "w15", "context": "s2", "completed_on": "2026-10-06", "language": "en"},
+  {"id": "sample-sc01-pl", "type": "subcontractor_public_liability", "holder": "sc01", "insured": "Sample Kerbing & Paving Ltd", "insurer": "Sample Insurer DAC", "policy_number": "PL-SAMPLE-3101", "limit_eur": 6500000, "expires": "2027-05-31"},
+  {"id": "sample-sc01-el", "type": "subcontractor_employers_liability", "holder": "sc01", "insured": "Sample Kerbing & Paving Ltd", "insurer": "Sample Insurer DAC", "policy_number": "EL-SAMPLE-3102", "limit_eur": 13000000, "expires": "2027-05-31"},
+  {"id": "sample-sc01-tc", "type": "subcontractor_tax_clearance", "holder": "sc01", "tcan": "SAMPLE-3110001K", "expires": "2027-02-28"},
+  {"id": "sample-sc01-ss", "type": "subcontractor_safety_statement", "holder": "sc01", "issued": "2026-04-01", "signed_by": "Ruth Kenny"},
+  {"id": "sample-sc01-reg", "type": "subcontractor_operative_register", "holder": "sc01", "operatives": 4, "expires": "2026-11-28"},
+  {"id": "sample-sc02-pl", "type": "subcontractor_public_liability", "holder": "sc02", "insured": "Sample Traffic Management Services", "insurer": "Sample Insurer DAC", "policy_number": "PL-SAMPLE-3201", "limit_eur": 6500000, "expires": "2026-10-31"},
+  {"id": "sample-sc02-tc", "type": "subcontractor_tax_clearance", "holder": "sc02", "tcan": "SAMPLE-3210002K", "expires": "2027-01-31"},
+  {"id": "sample-sc02-ss", "type": "subcontractor_safety_statement", "holder": "sc02", "issued": "2026-02-10", "signed_by": "Jonas Vaitkus"},
+  {"id": "sample-sc02-reg", "type": "subcontractor_operative_register", "holder": "sc02", "operatives": 3, "expires": "2027-06-30"},
+  {"id": "sample-insp-a01-2025", "type": "lifting_equipment_examination", "holder": "a01", "issued": "2025-12-01", "inspector": "Sample Lifting Inspections Ltd", "result": "pass", "file": "SAMPLE_a01_thorough_exam.pdf"},
+  {"id": "sample-svc-a01-2026", "type": "plant_service", "holder": "a01", "issued": "2026-03-10", "inspector": "Sample Plant Services", "result": "pass"},
+  {"id": "sample-insp-a02-2026", "type": "lifting_equipment_examination", "holder": "a02", "issued": "2026-06-15", "inspector": "Sample Lifting Inspections Ltd", "result": "pass_with_defects", "defects": [{"description": "rear left tyre worn close to limit", "severity": "minor"}], "file": "SAMPLE_a02_thorough_exam.pdf"},
+  {"id": "sample-insp-a03-2026", "type": "lifting_accessories_examination", "holder": "a03", "issued": "2026-03-20", "inspector": "Sample Lifting Inspections Ltd", "result": "pass"},
+  {"id": "sample-insp-a04-2026", "type": "fire_extinguisher_service", "holder": "a04", "issued": "2026-01-15", "inspector": "Sample Fire Safety Services", "result": "pass"},
+  {"id": "sample-insp-a05-2025", "type": "electrical_installation_inspection", "holder": "a05", "issued": "2025-10-01", "inspector": "Sample Electrical Testing", "result": "pass"},
+  {"id": "sample-insp-a06-2026", "type": "portable_tools_test", "holder": "a06", "issued": "2026-08-20", "inspector": "Sample Electrical Testing", "result": "pass"},
+  {"id": "sample-svc-a07-2026", "type": "plant_service", "holder": "a07", "issued": "2026-10-28", "inspector": "Sample Plant Services", "result": "fail", "defects": [{"description": "seat belt does not latch", "severity": "dangerous"}], "file": "SAMPLE_a07_service_sheet.pdf"}
 ]

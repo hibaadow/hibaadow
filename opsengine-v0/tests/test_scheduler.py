@@ -13,6 +13,10 @@ from opsengine.engine import Engine
 DAY0 = date(2026, 11, 11)
 
 
+def step_of(engine, issue, action):
+    return next(s["id"] for s in engine.store.steps(issue["id"]) if s["action"] == action)
+
+
 class SchedulerTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -28,7 +32,7 @@ class SchedulerTests(unittest.TestCase):
 
     def test_first_run_scans_and_advances_without_chasing(self):
         r = self.run_on(0)
-        self.assertEqual(len(r["opened"]), 10)
+        self.assertEqual(len(r["opened"]), 11)
         self.assertGreater(r["actions"], 0)
         self.assertEqual((r["chased"], r["escalated"]), ([], []))
 
@@ -103,12 +107,13 @@ class SchedulerTests(unittest.TestCase):
         self.run_on(0)
         e = self.engine(3)
         iss = next(i for i in e.store.issues() if i["requirement"] == "safe_pass" and i["holder"] == "w03")
-        e.approve(f"{iss['id']}.3", by="Owner")  # request goes out on day 3
+        e.approve(step_of(e, iss, "book_service"), by="Owner")  # request goes out on day 3
         e.ingest(json.loads((SAMPLE / "incoming" / "wrong_card_w03.json").read_text()))  # rejected, asked again
-        step = e.store.step(f"{iss['id']}.4")
+        step = e.store.step(step_of(e, iss, "request_document"))
         self.assertEqual(step["result"]["waiting_since"], "2026-11-14")
-        self.assertNotIn(f"{iss['id']}.4", self.run_on(4)["chased"])
-        self.assertIn(f"{iss['id']}.4", self.run_on(5)["chased"])
+        req_step = step_of(e, iss, "request_document")
+        self.assertNotIn(req_step, self.run_on(4)["chased"])
+        self.assertIn(req_step, self.run_on(5)["chased"])
 
     def test_everything_is_audited(self):
         self.run_on(0)
