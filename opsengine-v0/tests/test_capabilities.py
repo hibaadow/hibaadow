@@ -218,7 +218,7 @@ class InspectionsAndCorrectiveActions(Base):
         self.e._advance_issue(aid)
         msg = (self.e.outbox / f"{aid}.1-message.md").read_text()
         self.assertIn("Declan Murphy", msg)  # owner w01, via WhatsApp
-        self.assertIn("2026-11-14", msg)
+        self.assertIn("14 Nov 2026", msg)
         self.assertIn("photo of fixed rail", msg)
         self.assertIn("corrective_action_raised", [a["event"] for a in self.e.store.audit_rows()])
 

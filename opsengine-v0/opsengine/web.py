@@ -26,22 +26,14 @@ from . import config, llm, scheduler
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
-from .report import compliance_register, metrics, risk_overview, weekly_summary
+from .labels import money, nice_date
+from .report import (ACTION_WORDS, STATE_WORDS, compliance_register, current_step, customer_stats, metrics,
+                     risk_overview, title_of, weekly_summary, where_it_stands)
 
 SAMPLES = [ROOT / "data" / "sample" / "bremore_groundworks", ROOT / "data" / "sample" / "liffey_interiors"]
 DEFAULT_DAY = date(2026, 11, 11)
 ROLES = {"customer": "Customer", "ops": "Ops team", "reviewer": "Safety reviewer"}
 ROLE_APPROVES = {"customer": "customer", "ops": "ops", "reviewer": "safety_reviewer"}
-ACTION_WORDS = {
-    "message_worker": "Messaged the worker", "message_customer": "Messaged you", "message_owner": "Told the owner",
-    "request_document": "Asked for the document", "find_provider": "Compared providers",
-    "request_quotes": "Asked providers for quotes", "book_service": "Booking", "draft_document": "Drafted the document",
-    "request_signature": "Sent for signature", "verify": "Checked the proof", "distribute": "Sent to main contractor",
-    "close_action": "Sign-off",
-}
-STATE_WORDS = {"done": "done", "waiting": "waiting", "awaiting_approval": "needs approval", "pending": "next",
-               "blocked": "with our team", "rejected": "declined", "skipped": "not needed"}
-
 e_ = html.escape
 
 
@@ -93,40 +85,6 @@ class Portal:
 
 # ---------------- plain-language helpers ----------------
 
-def current_step(engine, issue):
-    return next((s for s in engine.store.steps(issue["id"]) if s["state"] not in DONE), None)
-
-
-def where_it_stands(engine, issue):
-    if issue["status"] == "resolved":
-        return "Sorted, proof on file" if issue["proof"] else "Sorted"
-    s = current_step(engine, issue)
-    if not s:
-        return "Closing"
-    if s["state"] == "awaiting_approval":
-        who = {"customer": "your OK", "safety_reviewer": "the safety reviewer", "ops": "our team"}[s["approval_role"]]
-        text = f"Waiting for {who}"
-    elif s["state"] == "waiting":
-        r = s["result"] or {}
-        text = f"Waiting for {r.get('sent_to', 'a reply')}"
-        appt = engine.store.appointments(issue_id=issue["id"])
-        if appt and appt[-1]["status"] in ("requested", "confirmed"):
-            text += f" (booked with {appt[-1]['provider_name']}, {appt[-1]['date']})"
-    elif s["state"] == "blocked":
-        text = "Our team is handling this"
-    else:
-        text = ACTION_WORDS.get(s["action"], s["action"])
-    if issue["status"] == "escalated":
-        text += " · escalated to our team"
-    return text
-
-
-def title_of(engine, issue):
-    if issue["requirement"] == "corrective_action":
-        return json.loads(issue["data"] or "{}").get("title", issue["detail"])
-    return issue["detail"]
-
-
 def pill(severity):
     label = {"critical": "Can stop work", "high": "High", "medium": "Medium"}.get(severity, severity)
     return f'<span class="pill sev-{e_(severity)}">{e_(label)}</span>'
@@ -134,8 +92,8 @@ def pill(severity):
 
 def status_chip(status):
     words = {"ok": "OK", "missing": "Missing", "expired": "Expired", "expiring": "Expiring", "incomplete": "Incomplete",
-             "content_gap": "Needs revising"}
-    cls = "ok" if status == "ok" else ("bad" if status in ("missing", "expired") else "warn")
+             "content_gap": "Needs revising", "out_of_use": "Out of use"}
+    cls = "ok" if status == "ok" else ("bad" if status in ("missing", "expired", "out_of_use") else "warn")
     return f'<span class="chip {cls}">{e_(words.get(status, status))}</span>'
 
 
@@ -204,6 +162,7 @@ main{max-width:1060px;margin:0 auto;padding-block:24px 64px;padding-left:max(16p
 section{display:grid;gap:12px;min-width:0}.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:8px;min-width:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .list{display:grid;gap:8px}.row{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+@media (max-width:640px){.row{grid-template-columns:1fr}.row .actions{justify-content:flex-start}}
 .row .meta{font-size:13px;color:var(--muted)}.row a{text-decoration:none;color:inherit}.row a:hover h3{text-decoration:underline}
 .pill{display:inline-block;font:600 11px/1.7 var(--f-b);padding:0 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
 .sev-critical{background:var(--bad-bg);color:var(--bad)}.sev-high{background:var(--warn-bg);color:var(--warn)}.sev-medium{background:var(--accent-soft);color:var(--accent)}
@@ -270,6 +229,47 @@ def approve_buttons(cid, step, role, label="Approve"):
             f'<input name="reason" placeholder="Reason to decline" aria-label="Reason to decline" required size="16"><button class="ghost">Decline</button></form>')
 
 
+def prior_results(eng, step):
+    return {p["action"]: p["result"] for p in eng.store.steps(step["issue_id"]) if p["state"] in DONE and p["result"]}
+
+
+def approval_row(eng, cid, role, s):
+    return (f'<div class="row"><div><h3>{e_(eng.approval_summary(s, prior_results(eng, s)))}</h3>'
+            f'<div class="meta"><a href="/c/{cid}/issue/{s["issue_id"]}">{s["issue_id"]}</a></div></div>'
+            f'<div class="actions">{approve_buttons(cid, s, role)}</div></div>')
+
+
+def approval_groups(eng, cid, role, steps):
+    """Approvals of the same kind (e.g. four Safe Pass bookings) shown as one group, with
+    'Approve all' and the individual approve/decline still available."""
+    groups = {}
+    for s in steps:
+        issue = eng.store.issue(s["issue_id"])
+        groups.setdefault((s["action"], issue["requirement"], s["spec"].get("template")), []).append((s, issue))
+    out = []
+    for (action, req_id, _), members in groups.items():
+        if len(members) == 1:
+            out.append(approval_row(eng, cid, role, members[0][0]))
+            continue
+        req = eng.kb.requirements[req_id]["name"]
+        names = [eng.customer.holder_name(i["holder"]) for _, i in members]
+        if action == "book_service":
+            total = sum((prior_results(eng, s).get("find_provider") or {}).get("recommended", {}).get("price_eur", 0) for s, _ in members)
+            title = f"Book {req} for {len(members)} workers, {money(total)} total"
+        else:
+            first = eng.approval_summary(members[0][0], prior_results(eng, members[0][0]))
+            title = f"{len(members)} similar approvals: {first.split(' for ')[0]} ({req})"
+        ids = ",".join(s["id"] for s, _ in members)
+        allowed = ROLE_APPROVES[role] == members[0][0]["approval_role"]
+        buttons = (f'<form class="inline" method="post" action="/c/{cid}/approve-group"><input type="hidden" name="steps" value="{e_(ids)}">'
+                   f'<button>Approve all {len(members)}</button></form>') if allowed else ""
+        out.append(f'<div class="card"><div class="actions" style="justify-content:space-between"><h3>{e_(title)}</h3>{buttons}</div>'
+                   f'<span class="small muted">{e_(", ".join(names))}</span>'
+                   f'<details><summary>Review one by one</summary><div class="list" style="margin-top:8px">'
+                   f'{"".join(approval_row(eng, cid, role, s) for s, _ in members)}</div></details></div>')
+    return "".join(out)
+
+
 def issue_row(eng, cid, i, extra=""):
     who = eng.customer.holder_name(i["holder"])
     return (f'<div class="row"><a href="/c/{cid}/issue/{i["id"]}"><h3>{e_(title_of(eng, i))}</h3>'
@@ -291,13 +291,11 @@ def view_home(portal, eng, cid, role):
     queue = [s for s in eng.store.steps(state="awaiting_approval")]
     yours = [s for s in queue if s["approval_role"] == "customer"]
     others = [s for s in queue if s["approval_role"] != "customer"]
-    appr = "".join(f'<div class="row"><div><h3>{e_(eng.approval_summary(s, {p["action"]: p["result"] for p in eng.store.steps(s["issue_id"]) if p["state"] in DONE and p["result"]}))}</h3>'
-                   f'<div class="meta"><a href="/c/{cid}/issue/{s["issue_id"]}">{s["issue_id"]}</a></div></div>'
-                   f'<div class="actions">{approve_buttons(cid, s, role)}</div></div>' for s in yours) or '<p class="muted">Nothing needs your OK right now.</p>'
+    appr = approval_groups(eng, cid, role, yours) or '<p class="muted">Nothing needs your OK right now.</p>'
     open_issues = sorted(eng.store.issues("open"), key=lambda i: ({"critical": 0, "high": 1}.get(i["severity"], 2), i["id"]))
     working = "".join(issue_row(eng, cid, i) for i in open_issues[:8])
     done = eng.store.issues("resolved")[-5:]
-    m = metrics(eng)
+    st = customer_stats(eng)
     return f"""
 <section><div><span class="muted small">{e_(c.company["name"])}</span><h1>Can your team work on site?</h1></div>
 <div class="grid">{''.join(sites)}</div></section>
@@ -307,10 +305,9 @@ def view_home(portal, eng, cid, role):
 <a href="/c/{cid}/issues">See all issues ›</a></section>
 <section><h2>Recently sorted</h2><div class="list">{''.join(issue_row(eng, cid, i) for i in reversed(done)) or '<p class="muted">Nothing sorted yet. Try uploading a card photo under Documents.</p>'}</div></section>
 <section><h2>This week</h2><div class="kpis">
-<div class="kpi"><b>{m['automation_rate']}%</b><span>of actions done without a person</span></div>
-<div class="kpi"><b>{m['issues_open']}</b><span>issues in progress</span></div>
-<div class="kpi"><b>{m['issues_resolved']}</b><span>sorted with proof</span></div>
-<div class="kpi"><b>{sum(1 for r in reg if r['status'] == 'ok')}/{len(reg)}</b><span>requirements in order</span></div></div></section>"""
+<div class="kpi"><b>{st['sorted_this_week']}</b><span>issues sorted this week</span></div>
+<div class="kpi"><b>{st['average_days_to_sort'] if st['average_days_to_sort'] is not None else '–'}</b><span>average days to sort</span></div>
+<div class="kpi"><b>{st['could_stop_work']}</b><span>items that could stop work</span></div></div></section>"""
 
 
 def view_issues(portal, eng, cid, role, q):
@@ -323,7 +320,7 @@ def view_issues(portal, eng, cid, role, q):
     tabs = " · ".join(f'<a href="/c/{cid}/issues?status={s}{"&holder=" + holder if holder else ""}">{"<b>" + l + "</b>" if s == status else l}</a>'
                       for s, l in (("open", "Open"), ("escalated", "Escalated"), ("resolved", "Sorted"), ("all", "All")))
     who = f" for {e_(eng.customer.holder_name(holder))}" if holder else ""
-    return f'<section><h1>Issues{who}</h1><p>{tabs}</p><div class="list">{"".join(issue_row(eng, cid, i) for i in issues) or "<p class=muted>None.</p>"}</div></section>'
+    return f'<section><h1>Issues{who}</h1><p>{tabs}</p><div class="list">{"".join(issue_row(eng, cid, i) for i in issues) or "<p class=muted>No issues here.</p>"}</div></section>'
 
 
 def view_issue(portal, eng, cid, role, issue_id):
@@ -340,14 +337,16 @@ def view_issue(portal, eng, cid, role, issue_id):
         if r.get("sent_to"):
             bits.append(f'<span class="small muted">to {e_(r["sent_to"])}</span>')
         if r.get("recommended"):
-            bits.append(f'<span class="small muted">recommended {e_(r["recommended"]["name"])}, EUR {r["recommended"]["price_eur"]}</span>')
+            bits.append(f'<span class="small muted">recommended {e_(r["recommended"]["name"])}, {money(r["recommended"]["price_eur"])}</span>')
+        if r.get("reason"):
+            bits.append(f'<span class="small muted">{e_(r["reason"])}</span>')
         if r.get("requested_from"):
             bits.append(f'<span class="small muted">quotes asked from {len(r["requested_from"])} providers</span>')
         if r.get("appointment"):
             bits.append(f'<span class="small muted">appointment {e_(r["appointment"])} on or after {e_(r.get("date", ""))}</span>')
         if r.get("retry_reason"):
             bits.append(f'<span class="small" style="color:var(--bad)">sent back: {e_(r["retry_reason"])}</span>')
-        if r.get("outbox"):
+        if r.get("outbox") and not (role == "customer" and s["action"] == "find_provider"):
             bits.append(f'<a class="small" href="/c/{cid}/message?path={urllib.parse.quote(r["outbox"])}">view message</a>')
         if r.get("draft"):
             bits.append(f'<a class="small" href="/c/{cid}/message?path={urllib.parse.quote(r["draft"])}">view draft</a>')
@@ -355,8 +354,8 @@ def view_issue(portal, eng, cid, role, issue_id):
             bits.append(approve_buttons(cid, s, role, "Approve" if s["approval_role"] != "safety_reviewer" else "Release / sign off"))
         steps.append(f'<li class="{cls}"><div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center">{" ".join(bits)}</div></li>')
     comms = "".join(f'<tr><td class="mono">{e_(c["ts"][:16])}</td><td>{"→" if c["direction"] == "out" else "←"} {e_(c["to_name"] or "")}</td>'
-                    f'<td>{e_(c["channel"] or "")}</td><td>{e_(c["subject"])}</td><td class="small">{e_(c["status"])}</td></tr>'
-                    for c in h["comms"])
+                    f'<td>{e_(c["channel"] or "")}</td><td>{e_(c["subject"])}</td><td class="small">{e_(eng.kb.wording.delivery(c["status"]))}</td></tr>'
+                    for c in h["comms"] if not (role == "customer" and c["channel"] == "file"))
     proof = h["proof"]
     proof_html = ""
     if proof:
@@ -364,17 +363,17 @@ def view_issue(portal, eng, cid, role, issue_id):
         ev = proof.get("evidence")
         if ev and ev["stored_as"].endswith((".png", ".jpg", ".jpeg", ".webp")):
             img = f'<img class="photo" alt="Evidence photo" src="/file?path={urllib.parse.quote(str(eng.evidence_dir / ev["stored_as"]))}">'
-        fields = ", ".join(f"{k}: {v}" for k, v in proof.items() if k not in ("id", "type", "holder", "extraction", "evidence", "file"))
-        proof_html = f'<section><h2>Proof on file</h2><div class="card"><b class="mono">{e_(proof["id"])}</b><span class="small">{e_(fields)}</span>{img}</div></section>'
+        fields = " · ".join(f"{k}: {v}" for k, v in eng.kb.wording.visible_fields(proof))
+        proof_html = f'<section><h2>Proof on file</h2><div class="card"><b>{e_(eng.kb.requirements.get(proof["type"], {}).get("name", "Document"))}</b><span class="small">{e_(fields)}</span>{img}</div></section>'
     corrective = ""
     if i["requirement"] == "corrective_action":
-        corrective = (f'<div class="card"><span>Owner: <b>{e_(eng.customer.holder_name(data.get("owner")))}</b> · Due <b>{e_(data.get("due", ""))}</b></span>'
+        corrective = (f'<div class="card"><span>Owner: <b>{e_(eng.customer.holder_name(data.get("owner")))}</b> · Due <b>{e_(nice_date(data["due"]) if data.get("due") else "")}</b></span>'
                       f'<span>Evidence needed: {e_(data.get("evidence_required", ""))}</span>'
                       f'<form class="form" method="post" action="/c/{cid}/evidence"><input type="hidden" name="issue" value="{i["id"]}">'
                       f'<label>Evidence (what was done)<input name="note" required placeholder="e.g. guard rail refitted by site foreman"></label>'
                       f'<label>&nbsp;<button>Send evidence</button></label></form></div>')
     return f"""<section><a href="/c/{cid}/issues">‹ All issues</a><div class="actions">{pill(i['severity'])}<span class="mono">{i['id']}</span>
-<span class="chip {'ok' if i['status'] == 'resolved' else 'warn'}">{e_(i['status'].replace('_', ' '))}</span></div>
+<span class="chip {'ok' if i['status'] == 'resolved' else 'warn'}">{e_(eng.kb.wording.issue_status(i['status']))}</span></div>
 <h1>{e_(title_of(eng, i))}</h1><p class="muted">{e_(eng.customer.holder_name(i['holder']))} · {e_(eng.kb.requirements[i['requirement']]['name'])} · {e_(where_it_stands(eng, i))}</p>{corrective}</section>
 <section><h2>What's been done</h2><ol class="timeline">{''.join(steps)}</ol></section>{proof_html}
 <section><h2>Messages</h2><div class="tbl"><table><thead><tr><th>When</th><th>Who</th><th>Channel</th><th>Subject</th><th>Delivery</th></tr></thead><tbody>{comms}</tbody></table></div></section>
@@ -389,8 +388,10 @@ def view_register(eng, cid, kind, title, intro):
     cards = []
     for holder, rows in groups.items():
         bad = [r for r in rows if r["status"] != "ok"]
-        blocking = any(r["blocks_site_access"] and r["status"] in ("missing", "expired") for r in rows)
+        blocking = any(r["blocks_site_access"] and r["status"] in ("missing", "expired", "out_of_use") for r in rows)
+        out = next((r for r in rows if r["status"] == "out_of_use"), None)
         verdict = '<span class="chip ok">All in order</span>' if not bad else (
+            '<span class="chip bad">Out of use</span>' if out else
             '<span class="chip bad">Not cleared for site</span>' if blocking else '<span class="chip warn">Attention needed</span>')
         extra = ""
         if kind == "worker":
@@ -398,15 +399,15 @@ def view_register(eng, cid, kind, title, intro):
             extra = f'{e_(w.get("role", ""))} · {e_(LANGUAGE_NAMES.get(w.get("language", "en"), ""))}'
         elif kind == "subcontractor":
             s = eng.customer.subcontractors[holder]
-            extra = f'{e_(", ".join(s.get("trades", [])))} · {e_(s.get("contact", {}).get("name", ""))}'
+            extra = f'{e_(", ".join(t.replace("_", " ") for t in s.get("trades", [])))} · {e_(s.get("contact", {}).get("name", ""))}'
         elif kind == "asset":
             a = eng.customer.assets[holder]
             extra = f'{e_(a.get("type", "").replace("_", " "))}{" · serial " + e_(a["serial"]) if a.get("serial") else ""}'
-        lines = "".join(f'<tr><td>{e_(r["name"])}</td><td>{status_chip(r["status"])}</td><td class="mono">{e_(r["expires"])}</td></tr>' for r in rows)
+        lines = "".join(f'<tr><td>{e_(r["name"])}</td><td>{status_chip(r["status"])}</td><td class="mono">{e_(nice_date(r["expires"]) if r["expires"] else "")}</td></tr>' for r in rows)
         cards.append(f'<div class="card"><div class="actions" style="justify-content:space-between"><h3>{e_(eng.customer.holder_name(holder))}</h3>{verdict}</div>'
                      f'<span class="small muted">{extra}</span><div class="tbl"><table><tbody>{lines}</tbody></table></div>'
                      f'<a class="small" href="/c/{cid}/issues?status=all&holder={urllib.parse.quote(holder)}">Issues for {e_(eng.customer.holder_name(holder))} ›</a></div>')
-    return f'<section><h1>{title}</h1><p class="muted">{intro}</p><div class="grid">{"".join(cards) or "<p class=muted>None on file.</p>"}</div></section>'
+    return f'<section><h1>{title}</h1><p class="muted">{intro}</p><div class="grid">{"".join(cards) or "<p class=muted>Nothing on file yet.</p>"}</div></section>'
 
 
 def holder_options(eng, include_company=True):
@@ -431,6 +432,13 @@ def sample_photos(cid):
     return photos
 
 
+def doc_reference(doc):
+    for key in ("number", "policy_number", "tcan", "scheme", "inspector", "provider"):
+        if doc.get(key):
+            return str(doc[key])
+    return "On file"
+
+
 def view_documents(portal, eng, cid, role):
     samples = "".join(
         f'<form class="card" method="post" action="/c/{cid}/upload"><img class="photo" alt="{e_(label)}" src="/file?path={urllib.parse.quote(str(p))}">'
@@ -444,7 +452,7 @@ def view_documents(portal, eng, cid, role):
     for g in groups[:400]:
         cur = next((d for d in g["versions"] if d["id"] == g["current"]), g["versions"][0])
         rows.append(f'<tr><td>{e_(eng.customer.holder_name(g["holder"]))}</td><td>{e_(eng.kb.requirements.get(g["type"], {}).get("name", g["type"]))}</td>'
-                    f'<td class="mono">{e_(cur["id"])}</td><td class="mono">{e_(cur.get("expires") or cur.get("issued") or "")}</td>'
+                    f'<td class="mono">{e_(doc_reference(cur))}</td><td class="mono">{e_(nice_date(cur.get("expires") or cur.get("issued") or ""))}</td>'
                     f'<td>{len(g["versions"])}</td><td>{"📎" if any(d.get("evidence") for d in g["versions"]) else ""}</td></tr>')
     return f"""<section><h1>Documents</h1><p class="muted">Send a photo of a card or certificate. Claude reads it; anything it isn't sure about goes to a person, never guessed.</p>
 <form class="card form" method="post" action="/c/{cid}/upload" enctype="multipart/form-data">
@@ -454,7 +462,7 @@ def view_documents(portal, eng, cid, role):
 {doc_type_options}</select></label>
 <label>&nbsp;<button>Upload</button></label></form>
 <h2>Or try a sample photo</h2><div class="grid">{samples}</div></section>
-<section><h2>On file</h2><div class="tbl"><table><thead><tr><th>Who</th><th>Document</th><th>Current</th><th>Expires / issued</th><th>Versions</th><th>File</th></tr></thead>
+<section><h2>On file</h2><div class="tbl"><table><thead><tr><th>Who</th><th>Document</th><th>Reference</th><th>Expires / issued</th><th>Versions</th><th>File</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div></section>"""
 
 
@@ -463,7 +471,7 @@ def view_actions(portal, eng, cid, role):
     rows.sort(key=lambda a: (a["status"] == "resolved", {"critical": 0, "high": 1}.get(a["severity"], 2), a.get("due", "")))
     def due(a):
         late = a["status"] != "resolved" and a.get("due", "9") < portal.today.isoformat()
-        return f'<span class="small muted">due {e_(a.get("due", ""))}</span>' + (' <span class="chip bad">Overdue</span>' if late else "")
+        return f'<span class="small muted">due {e_(nice_date(a["due"]) if a.get("due") else "")}</span>' + (' <span class="chip bad">Overdue</span>' if late else "")
     items = "".join(issue_row(eng, cid, a, due(a)) for a in rows)
     owners = '<option value="company">' + e_(eng.customer.company["owner"]["name"]) + " (owner)</option>" + \
         "".join(f'<option value="{k}">{e_(v["name"])}</option>' for k, v in eng.customer.workers.items()) + \
@@ -489,9 +497,9 @@ def view_bookings(portal, eng, cid, role):
             btns = "".join(f'<form class="inline" method="post" action="/c/{cid}/appointment"><input type="hidden" name="id" value="{a["id"]}">'
                            f'<input type="hidden" name="status" value="{s}"><button class="{"warn" if s == "no_show" else "ghost"}">{l}</button></form>'
                            for s, l in (("confirmed", "Confirmed"), ("attended", "Attended"), ("no_show", "No-show")))
-        rows.append(f'<div class="row"><a href="/c/{cid}/issue/{a["issue_id"]}"><h3>{e_(a["kind"].title())}: {e_(eng.customer.holder_name(a["holder"]))}</h3>'
-                    f'<div class="meta">{e_(a["provider_name"])} · on or after {e_(a["date"])} · EUR {e_(str(a["price_eur"]))} · <span class="mono">{a["id"]}</span></div></a>'
-                    f'<div class="actions"><span class="chip {"ok" if a["status"] in ("attended", "completed") else "bad" if a["status"] in ("no_show", "cancelled") else "warn"}">{e_(a["status"].replace("_", " "))}</span>{btns}</div></div>')
+        rows.append(f'<div class="row"><a href="/c/{cid}/issue/{a["issue_id"]}"><h3>{e_(eng.kb.wording.booking_kind(a["kind"]))}: {e_(eng.customer.holder_name(a["holder"]))}</h3>'
+                    f'<div class="meta">{e_(a["provider_name"])} · on or after {e_(nice_date(a["date"]))} · {e_(money(a["price_eur"]))} · <span class="mono">{a["id"]}</span></div></a>'
+                    f'<div class="actions"><span class="chip {"ok" if a["status"] in ("attended", "completed") else "bad" if a["status"] in ("no_show", "cancelled") else "warn"}">{e_(eng.kb.wording.booking_status(a["status"]))}</span>{btns}</div></div>')
     hint = "" if rows else '<p class="muted">No bookings yet. Approve a training course or inspection on the Overview page and it appears here.</p>'
     return f'<section><h1>Bookings</h1><p class="muted">Training courses, inspections and services booked after approval. Our team records attendance; a no-show goes back to you to rebook.</p><div class="list">{"".join(rows)}</div>{hint}</section>'
 
@@ -499,12 +507,14 @@ def view_bookings(portal, eng, cid, role):
 def view_messages(portal, eng, cid, role):
     rows = []
     for c in reversed(eng.store.comms()):
+        if role == "customer" and c["channel"] == "file":
+            continue  # internal notes for our team are not shown to customers
         subject = e_(c["subject"])
         if c["outbox"]:
             subject = f'<a href="/c/{cid}/message?path={urllib.parse.quote(c["outbox"])}">{subject}</a>'
         arrow = "→" if c["direction"] == "out" else "←"
         rows.append(f'<tr><td class="mono">{e_(c["ts"][:16])}</td><td>{arrow}</td><td>{e_(c["to_name"] or "")}</td>'
-                    f'<td>{e_(c["channel"] or "")}</td><td>{subject}</td><td class="small">{e_(c["status"])}</td></tr>')
+                    f'<td>{e_(c["channel"] or "")}</td><td>{subject}</td><td class="small">{e_(eng.kb.wording.delivery(c["status"]))}</td></tr>')
     return (f'<section><h1>Messages</h1><p class="muted">Every message OpsEngine wrote or received for {e_(eng.customer.company["name"])}. '
             'Nothing is actually sent in this demo: messages wait in the outbox.</p>'
             f'<div class="tbl"><table><thead><tr><th>When</th><th></th><th>Who</th><th>Channel</th><th>Subject</th><th>Delivery</th></tr></thead>'
@@ -515,7 +525,28 @@ def view_message(portal, eng, cid, role, path):
     p = portal.safe_file(path)
     if not p:
         return '<p class="flash err">Message not found.</p>'
-    return f'<section><a href="javascript:history.back()">‹ Back</a><div class="card msg">{md_to_html(p.read_text(encoding="utf-8"))}</div></section>'
+    subject, meta, body = parse_outbox(p.read_text(encoding="utf-8"))
+    to = meta.get("To", "")
+    who, _, how = to.partition(" via ")
+    channel = how.split(" (")[0]
+    extra = "".join(f'<p class="note">{e_(meta[k])}</p>' for k in ("Translation",) if meta.get(k))
+    return (f'<section><a href="javascript:history.back()">‹ Back</a><div class="card msg"><h2>{e_(subject)}</h2>'
+            f'<p class="muted small">To {e_(who)}{" by " + e_(channel) if channel and channel != "file" else ""}</p>{extra}'
+            f'{md_to_html(body)}</div></section>')
+
+
+def parse_outbox(text):
+    """Outbox file -> (subject, header fields, body). Header lines are internal and never shown as-is."""
+    head, _, body = text.partition("\n\n")
+    subject = head.lstrip("# ").strip()
+    rest = body.split("\n\n", 1)
+    meta = {}
+    if rest and rest[0].startswith("- "):
+        for line in rest[0].splitlines():
+            k, _, v = line[2:].partition(": ")
+            meta[k] = v
+        body = rest[1] if len(rest) > 1 else ""
+    return subject, meta, body
 
 
 def view_report(portal, eng, cid, role):
@@ -554,7 +585,7 @@ def view_ops(portal, eng, cid, role):
                       f'<label>&nbsp;<span class="actions"><button name="decision" value="accept">Accept</button>'
                       f'<button class="ghost" name="decision" value="reject">Reject</button></span></label></form></div>')
         parts.append(f"""<section><h2>{e_(name)}</h2>
-<div class="kpis"><div class="kpi"><b>{len(reviews)}</b><span>photos to check</span></div><div class="kpi"><b>{len(esc)}</b><span>escalated issues</span></div>
+<div class="kpis"><div class="kpi"><b>{metrics(e)['automation_rate']}%</b><span>of actions done without a person</span></div><div class="kpi"><b>{len(reviews)}</b><span>photos to check</span></div><div class="kpi"><b>{len(esc)}</b><span>escalated issues</span></div>
 <div class="kpi"><b>{len(blocked)}</b><span>blocked steps</span></div><div class="kpi"><b>{len(waiting_customer)}</b><span>waiting on the customer</span></div></div>
 {''.join(rv)}<div class="list">{''.join(issue_row(e, c, i) for i in esc[:10])}</div></section>""")
     sim = []
@@ -564,7 +595,7 @@ def view_ops(portal, eng, cid, role):
                    f'<div class="meta">from {e_(eng.customer.holder_name(doc["holder"]))} · {e_(doc.get("received_via", ""))} · <span class="mono">{e_(p.name)}</span></div></div>'
                    f'<input type="hidden" name="file" value="{e_(p.name)}"><button class="ghost">Simulate arrival</button></form>')
     return f"""<section><h1>Ops queue</h1><p class="muted">The internal team's view across every customer: photos the AI wasn't sure about, escalations, and anything blocked.</p></section>
-{''.join(parts)}<section><h2>Simulate incoming documents ({e_(eng.customer.company['name'])})</h2><p class="note">For the demo: pretend these arrived by email or WhatsApp.</p><div class="list">{''.join(sim) or '<p class=muted>None for this customer.</p>'}</div></section>"""
+{''.join(parts)}<section><h2>Simulate incoming documents ({e_(eng.customer.company['name'])})</h2><p class="note">For the demo: pretend these arrived by email or WhatsApp.</p><div class="list">{''.join(sim) or '<p class=muted>Nothing to simulate for this customer.</p>'}</div></section>"""
 
 
 def view_reviewer(portal, eng, cid, role):
@@ -592,7 +623,7 @@ def view_providers(portal, eng, cid, role):
         st = stats.get(p["id"])
         cred = '<span class="chip ok">Usable</span>' if not probs else f'<span class="chip bad">{e_(", ".join(probs))}</span>'
         record = f'{st["completed"]}/{st["booked"]} completed' if st else "new"
-        rows.append(f'<tr><td>{e_(p["name"])}</td><td>{e_(p["category"].replace("_", " "))}</td><td>EUR {p["price_eur"]}</td>'
+        rows.append(f'<tr><td>{e_(p["name"])}</td><td>{e_(p["category"].replace("_", " "))}</td><td>{money(p["price_eur"])}</td>'
                     f'<td>{cred}</td><td class="small">{e_(", ".join(p.get("service_areas", [])))}</td><td class="small">{record}</td></tr>')
     return ('<section><h1>Provider network</h1><p class="muted">Only vetted providers with in-date insurance and qualifications who cover the area are ever recommended. All SAMPLE.</p>'
             f'<div class="tbl"><table><thead><tr><th>Provider</th><th>Service</th><th>Price</th><th>Credentials</th><th>Areas</th><th>Record</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div></section>')
@@ -601,7 +632,7 @@ def view_providers(portal, eng, cid, role):
 def view_insights(portal, eng, cid, role):
     from .insights import insights
     r = insights([portal.engine(c) for c in portal.customers])
-    li = lambda pairs: "".join(f"<li>{e_(str(n))} <b>({c})</b></li>" for n, c in pairs) or "<li class=muted>None yet</li>"
+    li = lambda pairs: "".join(f"<li>{e_(str(n))} <b>({c})</b></li>" for n, c in pairs) or "<li class=muted>Nothing yet</li>"
     return f"""<section><h1>Insights across customers</h1><div class="grid">
 <div class="card"><h3>Most common problems</h3><ul>{li(r['most_common_problems'])}</ul></div>
 <div class="card"><h3>Often missing</h3><ul>{li(r['frequently_missing'])}</ul></div>
@@ -736,6 +767,12 @@ class Handler(BaseHTTPRequestHandler):
             by = by or eng.customer.company["owner"]["name"]
             back = self.headers.get("Referer") or f"/c/{cid}/home"
             back = urllib.parse.urlparse(back).path or f"/c/{cid}/home"
+            if act == "approve-group":
+                steps = [eng.store.step(x) for x in f["steps"].split(",") if x]
+                if not steps or any(not st or ROLE_APPROVES[role] != st["approval_role"] for st in steps):
+                    return self.redirect(back, "!Only the right person can approve these.")
+                eng.approve_group([st["id"] for st in steps], by)
+                return self.redirect(back, f"Approved all {len(steps)} by {by}. Each one is recorded separately.")
             if act in ("approve", "reject"):
                 step = eng.store.step(f["step"])
                 if not step or ROLE_APPROVES[role] != step["approval_role"]:

@@ -85,8 +85,10 @@ def _escalate(engine, issue, step, days):
     ctx = _context(engine, issue, step)
     waiting_on = (_approver(engine, step["approval_role"])["name"] if step["state"] == "awaiting_approval"
                   else ctx.recipient(step["spec"].get("from", "customer"))["name"])
-    body = (f"{issue['id']} ({ctx.req['name']} - {engine.customer.holder_name(issue['holder'])}, {issue['severity']}) "
-            f"has been stuck at step {step['id']} ({step['action']}, {step['state']}) for {days} days, "
+    from .report import ACTION_WORDS, SEVERITY_WORDS
+    body = (f"{issue['id']} ({ctx.req['name']} - {engine.customer.holder_name(issue['holder'])}, "
+            f"{SEVERITY_WORDS.get(issue['severity'], issue['severity']).lower()}) has been stuck at "
+            f"\"{ACTION_WORDS.get(step['action'], step['action'])}\" ({'needs approval' if step['state'] == 'awaiting_approval' else 'waiting'}) for {days} days, "
             f"waiting on {waiting_on}. A reminder has been sent. Please follow up by phone.\n\nDetail: {issue['detail']}")
     path = ctx.write_outbox(f"escalation-{engine.today.isoformat()}", INTERNAL,
                             f"Escalation: {issue['id']} stalled {days} days", body)

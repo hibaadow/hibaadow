@@ -74,7 +74,7 @@ class BadDocuments(unittest.TestCase):
         self.assertEqual(doc["limit_eur"], 6500000)
         details = [f["detail"] for f in detect(self.e.kb, self.e.customer, self.e.store.documents(), TODAY)
                    if f["requirement"] == "public_liability"]
-        self.assertTrue(any("below 13,000,000" in d for d in details))
+        self.assertTrue(any("€6.5m" in d and "€13m" in d for d in details))
 
     def test_d2_unreadable_limit_is_held(self):
         self.held(self.e.ingest({"id": "pl-bad", "type": "public_liability", "holder": "company", "insurer": "X",
@@ -85,7 +85,7 @@ class BadDocuments(unittest.TestCase):
                                    "policy_number": "P", "limit_eur": "6.5m", "expires": "2027-12-31"}, source="legacy")
         details = [f["detail"] for f in detect(self.e.kb, self.e.customer, self.e.store.documents(), TODAY)
                    if f["requirement"] == "public_liability"]
-        self.assertTrue(any("not a number" in d for d in details))
+        self.assertTrue(any("can't be read" in d for d in details))
 
     def test_d3_missing_keys_unknown_type_and_unknown_holder_are_held(self):
         self.held(self.e.ingest({"id": "x1", "type": "safe_pass"}))

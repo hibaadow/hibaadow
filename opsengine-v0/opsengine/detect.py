@@ -5,6 +5,8 @@ Detection is a pure function of (rules, customer, documents, today) so it is eas
 from calendar import monthrange
 from datetime import date
 
+from .labels import join, money, nice_date
+
 
 def parse_date(value):
     if not value:
@@ -112,6 +114,7 @@ def _severity(req, category):
 
 def detect(kb, customer, docs, today):
     REQUIRED_FIELDS.update({r["id"]: r.get("required_fields", []) for r in kb.requirements.values()})
+    W = kb.wording
     findings = []
     for req in kb.requirements.values():
         for holder, context, required_by in _targets(req, customer, kb):
@@ -127,50 +130,71 @@ def detect(kb, customer, docs, today):
                 findings.append(f)
 
             if doc is None:
-                add("validity", "missing", f"No {req['name']} on file")
+                add("validity", "missing", W.phrase("missing_doc", requirement=req["name"]))
                 continue
 
             try:
                 exp = effective_expiry(doc, req)
             except ValueError:
                 exp = None
-                bad = doc.get("expires") or doc.get("issued")
-                add("completeness", "incomplete", f"date {bad!r} on file can't be read")
+                add("completeness", "incomplete", W.phrase("date_unreadable"))
             if exp is not None and exp < today:
-                add("validity", "expired", f"{req['name']} expired on {exp.isoformat()}", extra={"expires": exp.isoformat()})
-            elif exp is not None and (exp - today).days <= req.get("warn_days", 0):
-                add("validity", "expiring", f"{req['name']} expires on {exp.isoformat()} ({(exp - today).days} days)",
+                add("validity", "expired", W.phrase("expired", requirement=req["name"], date=nice_date(exp)),
                     extra={"expires": exp.isoformat()})
+            elif exp is not None and (exp - today).days <= req.get("warn_days", 0):
+                add("validity", "expiring", W.phrase("expiring", requirement=req["name"], date=nice_date(exp),
+                                                     days=(exp - today).days), extra={"expires": exp.isoformat()})
 
             missing = _missing_fields(doc, req)
             if missing:
-                add("completeness", "incomplete", f"Missing: {', '.join(missing)}")
+                add("completeness", "incomplete", W.phrase("missing_fields", fields=W.fields(missing)))
 
             for fname, allowed in req.get("field_allowed_values", {}).items():
                 value = doc.get(fname)
                 if value not in (None, "", []) and value not in allowed:
-                    add("completeness", "incomplete", f"{fname} {value!r} is not accepted (accepted: {', '.join(allowed)})")
+                    if fname == "result":
+                        add("completeness", "incomplete", W.phrase("result_failed", event=W.event(req["id"])))
+                    else:
+                        add("completeness", "incomplete", W.phrase("not_accepted", field=W.field(fname), value=value,
+                                                                   allowed=join(allowed).replace(" and ", " or ")))
 
-            # minimum values: rule baseline plus stricter main contractor overrides
-            mins = dict(req.get("field_minimums", {}))
-            checks = [(None, mins)] + [
-                (mc, kb.main_contractors[mc].get("field_minimums", {}).get(req["id"], {}))
-                for mc in required_by if mc in kb.main_contractors
-            ]
-            for mc, minimums in checks:
-                for fname, minimum in minimums.items():
-                    current = doc.get(fname)
-                    if current not in (None, "") and (isinstance(current, bool) or not isinstance(current, (int, float))):
-                        add("completeness", "incomplete", f"{fname} {current!r} on file is not a number", ctx=mc or context,
-                            extra={"field": fname, "required_value": minimum, **({"required_by": [mc]} if mc else {})})
-                        continue
-                    if isinstance(current, (int, float)) and current < minimum:
-                        who = kb.main_contractors[mc]["name"] if mc else "the baseline rule"
-                        add("completeness", "incomplete",
-                            f"{fname} {current:,} is below {minimum:,} required by {who}",
-                            ctx=mc or context,
-                            extra={"field": fname, "current_value": current, "required_value": minimum,
-                                   **({"required_by": [mc]} if mc else {})})
+            # minimum values: the rule's baseline plus stricter main contractor minimums. One issue per field,
+            # at the highest value needed, listing every contractor it satisfies (one fix covers them all).
+            fields = set(req.get("field_minimums", {}))
+            for mc in required_by:
+                fields |= set(kb.main_contractors.get(mc, {}).get("field_minimums", {}).get(req["id"], {}))
+            for fname in sorted(fields):
+                current = doc.get(fname)
+                if current in (None, ""):
+                    continue
+                needs = [(None, req.get("field_minimums", {}).get(fname))] + [
+                    (mc, kb.main_contractors[mc].get("field_minimums", {}).get(req["id"], {}).get(fname))
+                    for mc in required_by if mc in kb.main_contractors]
+                needs = [(mc, m) for mc, m in needs if m is not None]
+                if isinstance(current, bool) or not isinstance(current, (int, float)):
+                    add("completeness", "incomplete", W.phrase("not_a_number", field=W.field(fname)),
+                        extra={"field": fname, "required_value": max(m for _, m in needs)})
+                    continue
+                short = [(mc, m) for mc, m in needs if current < m]
+                if not short:
+                    continue
+                required = max(m for _, m in short)
+                contractors = [mc for mc, _ in short if mc]
+                possessive = "Your" if holder == "company" else f"{customer.holder_name(holder)}'s"
+                cover = W.cover(req["id"], req["name"])
+                if contractors:
+                    named = sorted(contractors, key=lambda mc: -dict(short)[mc])
+                    detail = W.phrase("below_minimum", possessive=possessive, cover=cover, current=money(current),
+                                      needs=join(f"{kb.main_contractors[mc]['name']} needs {money(dict(short)[mc])}" for mc in named))
+                    if len(named) > 1:
+                        detail += ". " + W.phrase("covers_all", required=money(required),
+                                                  both="both" if len(named) == 2 else f"all {len(named)}")
+                else:
+                    detail = W.phrase("below_baseline", possessive=possessive, cover=cover, current=money(current),
+                                      required=money(required))
+                add("completeness", "incomplete", detail,
+                    extra={"field": fname, "current_value": current, "required_value": required,
+                           "required_by": contractors or required_by})
     findings += content_findings(kb, customer, docs)
     # merge findings that share a key (e.g. two completeness gaps on one document)
     merged = {}
@@ -223,10 +247,10 @@ def review_document(req, doc, customer, context=None):
     if checks.get("insured_name_matches_holder") and doc.get("insured"):
         holder = customer.holder_name(doc.get("holder"))
         if not _same_company(doc["insured"], holder):
-            gaps.append(f"insured name {doc['insured']!r} does not match {holder!r}")
+            gaps.append(f"the name on the insurance ({doc['insured']}) doesn't match {holder}")
     if checks.get("insured_name_matches_company") and doc.get("insured"):
         if not _same_company(doc["insured"], customer.company.get("name")):
-            gaps.append(f"insured name {doc['insured']!r} does not match {customer.company.get('name')!r}")
+            gaps.append(f"the name on the insurance ({doc['insured']}) doesn't match {customer.company.get('name')}")
     return gaps
 
 

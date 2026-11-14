@@ -41,8 +41,9 @@ class DetectTests(unittest.TestCase):
     def test_main_contractor_minimum_applies_only_to_that_contractor(self):
         pl = [f for f in self.findings.values() if f["requirement"] == "public_liability" and f["kind"] == "incomplete"]
         self.assertEqual(len(pl), 1)
-        self.assertEqual(pl[0]["context"], "harbour_construction")
+        self.assertEqual(pl[0]["required_by"], ["harbour_construction"])
         self.assertEqual(pl[0]["required_value"], 10000000)
+        self.assertIn("Your public liability cover is €6.5m, but Harbour Construction", pl[0]["detail"])
 
     def test_main_contractor_extra_requirement(self):
         mh = [f for f in self.findings.values() if f["requirement"] == "manual_handling"]

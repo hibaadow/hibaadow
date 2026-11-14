@@ -1,0 +1,46 @@
+{
+  "_about": "All customer-facing wording that is built from data: field names, issue titles, statuses and delivery states. Messages themselves are in messages.json. Nothing shown to a customer may contain an internal key (tests/test_wording.py checks).",
+  "fields": {
+    "number": "card number", "expires": "expiry date", "issued": "issue date", "insurer": "insurer",
+    "policy_number": "policy number", "limit_eur": "cover amount", "tcan": "tax clearance number (TCAN)",
+    "activities": "list of work activities", "approved_by_main_contractor": "main contractor's approval date",
+    "briefed_workers": "list of workers briefed", "completed_on": "completion date", "language": "language",
+    "signed": "signed copy", "signed_by": "signatory", "provider": "training provider", "cro_number": "CRO number",
+    "vat_number": "VAT number", "registered_address": "registered address", "years_trading": "years trading",
+    "scheme": "certification scheme", "period": "period covered", "reportable_accidents": "number of reportable accidents",
+    "lost_time_injuries": "number of lost-time injuries", "hsa_notices": "HSA notices", "signed_by_director": "director's signature",
+    "referee_1": "first reference", "referee_2": "second reference", "inspector": "inspector's name", "result": "result",
+    "operatives": "number of operatives", "category": "card category", "insured": "insured name"
+  },
+  "cover_nouns": {
+    "public_liability": "public liability cover", "employers_liability": "employer's liability cover",
+    "professional_indemnity": "professional indemnity cover", "subcontractor_public_liability": "public liability cover",
+    "subcontractor_employers_liability": "employer's liability cover"
+  },
+  "event_nouns": {
+    "plant_service": "service", "lifting_equipment_examination": "thorough examination",
+    "lifting_accessories_examination": "thorough examination", "fire_extinguisher_service": "service",
+    "electrical_installation_inspection": "electrical inspection", "portable_tools_test": "test"
+  },
+  "phrases": {
+    "missing_doc": "No {requirement} on file",
+    "expired": "{requirement} expired on {date}",
+    "expiring": "{requirement} expires on {date} ({days} days)",
+    "missing_fields": "{fields} missing",
+    "below_minimum": "{possessive} {cover} is {current}, but {needs}",
+    "covers_all": "{required} covers {both}",
+    "below_baseline": "{possessive} {cover} is {current}, below the {required} minimum",
+    "not_a_number": "The {field} on file can't be read",
+    "date_unreadable": "A date on file can't be read",
+    "result_failed": "Last {event} failed. It needs a new {event} before it can be used",
+    "not_accepted": "{field} {value} isn't accepted. It must be {allowed}",
+    "insured_mismatch": "the name on the insurance ({found}) doesn't match {expected}"
+  },
+  "issue_status": {"open": "open", "in_progress": "in progress", "escalated": "with our team", "resolved": "sorted"},
+  "booking_status": {"requested": "requested", "confirmed": "confirmed", "attended": "attended", "completed": "completed",
+                     "no_show": "no-show", "cancelled": "cancelled"},
+  "booking_kind": {"training": "Training", "inspection": "Inspection", "service": "Service"},
+  "delivery": {"internal": "internal note", "sent": "sent", "received": "received", "queued": "not sent yet (waiting in the outbox)",
+               "failed": "could not be sent"},
+  "hidden_document_fields": ["id", "type", "holder", "context", "file", "received_via", "extraction", "evidence", "defects", "action", "defect"]
+}

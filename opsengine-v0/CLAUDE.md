@@ -128,6 +128,21 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   Unknown types or holders, unreadable values and implausible dates (`max_validity_years`) are
   held in the review queue, never stored as proof. Detection treats any bad value already on
   file as a finding, never a crash. See AUDIT.md, Phase 0.
+- **Customer-facing wording** lives in `templates/labels.json` (field names, issue titles, statuses,
+  delivery states) and `templates/messages.json` (messages). `opsengine/labels.py` formats money
+  (€6.5m) and dates (13 Nov 2026). `tests/test_wording.py` fails if any customer page, message,
+  approval or report shows an internal key (anything_with_underscores, limit_eur, None, `{...}`)
+  or a message repeats a sentence. Internal notes (channel `file`) are never shown to customers.
+- **Critical corrective actions** use the `corrective_critical` playbook: `isolate_item` first
+  ("do not use X until this is repaired"), then the evidence request; the item shows Out of use on
+  the register until the evidence is verified; the safety reviewer still signs off.
+- **One fix, one issue:** a field below several contractors' minimums is one finding at the highest
+  value, listing every contractor (`required_by`). Distribution goes to all of them.
+- **Provider choice:** cheapest valid provider (in the worker's language first) that finishes at
+  least 7 days before the deadline (expiry, due date, or now if it stops work); fastest only when
+  time is tight. The one-line reason is shown in the comparison and the approval.
+- **Approvals** of the same kind are grouped in the portal ("Approve all"), but each is approved and
+  audited on its own (`Engine.approve_group`).
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

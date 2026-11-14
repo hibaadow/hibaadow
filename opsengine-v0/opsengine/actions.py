@@ -9,6 +9,7 @@ from datetime import date, timedelta
 
 from . import connectors, llm
 from .knowledge import LANGUAGE_NAMES
+from .labels import join, money, nice_date
 
 
 class ActionContext:
@@ -31,8 +32,8 @@ class ActionContext:
         mc = self.kb.main_contractors.get(mc_id, {})
         doc = next((d for d in self.store.documents() if d["id"] == self.data.get("doc_id")), {})
         kind = i["kind"]
-        status = {"missing": "is not on file", "expired": f"expired on {self.data.get('expires')}",
-                  "expiring": f"expires on {self.data.get('expires')}", "incomplete": "is incomplete",
+        status = {"missing": "is not on file", "expired": f"expired on {nice_date(self.data.get('expires'))}",
+                  "expiring": f"expires on {nice_date(self.data.get('expires'))}", "incomplete": "is incomplete",
                   "content_gap": "needs revising", "corrective": "needs corrective action",
                   "overdue": "is overdue"}.get(kind, kind)
         v = defaultdict(str, {
@@ -43,15 +44,22 @@ class ActionContext:
             "site_name": site.get("name", ""), "main_contractor_name": mc.get("name", ""),
             "language_name": LANGUAGE_NAMES.get(worker.get("language", "en"), "English"),
             "policy_number": doc.get("policy_number", ""),
-            "required_value": f"{self.data.get('required_value', ''):,}" if self.data.get("required_value") else "",
-            "current_value": f"{self.data.get('current_value', ''):,}" if self.data.get("current_value") else "",
+            "required_value": money(self.data["required_value"]) if self.data.get("required_value") else "",
+            "current_value": money(self.data["current_value"]) if self.data.get("current_value") else "",
+            "required_by_names": join([self.kb.main_contractors[m]["name"] for m in json.loads(i["required_by"] or "[]")
+                                       if m in self.kb.main_contractors]),
+            "cover_name": self.kb.wording.cover(i["requirement"], self.req["name"]),
         })
         owner = self.data.get("owner")
-        v.update({"issue_id": i["id"], "action_title": self.data.get("title", ""), "due_date": self.data.get("due", ""),
+        v.update({"issue_id": i["id"], "action_title": self.data.get("title", ""), "due_date": nice_date(self.data["due"]) if self.data.get("due") else "",
                   "evidence_required": self.data.get("evidence_required", ""),
                   "owner_name": (c.holder_name(owner).split()[0] if owner in c.workers else
                                  c.company["owner"]["name"].split()[0] if owner in (None, "company") else c.holder_name(owner)),
-                  "appointment_date": self.data.get("appointment_date", "")})
+                  "appointment_date": self.data.get("appointment_date", ""),
+                  "action_note": (self.data["note"].strip() + " ") if self.data.get("note") else "",
+                  "action_defect": self.data.get("defect") or self.data.get("title", ""),
+                  "isolate_target": (c.holder_name(i["holder"]) if i["holder"] in c.assets
+                                     else "the affected equipment or work area")})
         v.update(extra)
         return v
 
@@ -173,6 +181,50 @@ def provider_problems(p, today, area=None):
     return out
 
 
+MIN_SPARE_DAYS = 7  # the cheapest option must finish at least this long before the deadline
+
+
+def provider_deadline(ctx):
+    """When the work must be done by: the expiry for something about to lapse, today for anything already
+    stopping work, or no deadline for lower-priority gaps."""
+    if ctx.issue["kind"] == "expiring" and ctx.data.get("expires"):
+        return date.fromisoformat(ctx.data["expires"]), "before it expires"
+    if ctx.data.get("due"):
+        return date.fromisoformat(ctx.data["due"]), "by the deadline"
+    if ctx.issue["severity"] == "critical":
+        return ctx.today, "needed before they can work on site"
+    return None, ""
+
+
+def choose_provider(ctx, options, lang, reliability):
+    """Cheapest option that finishes with 7+ days to spare; faster and dearer only when time is tight.
+    Providers teaching in the worker's language come first. Returns (choice, one-line reason, ranked)."""
+    lang_name = LANGUAGE_NAMES.get(lang, lang)
+    in_lang = [p for p in options if lang in p["languages"]]
+    pool = in_lang or options
+    note = "" if in_lang or lang == "en" else f" No course is offered in {lang_name}."
+    deadline, why = provider_deadline(ctx)
+    cheapest = lambda ps: sorted(ps, key=lambda p: (p["price_eur"], p["lead_days"], reliability(p)))
+    fastest = lambda ps: sorted(ps, key=lambda p: (p["lead_days"], p["price_eur"], reliability(p)))
+    done = lambda p: ctx.today + timedelta(days=p.get("lead_days", 7))
+    if deadline is None:
+        choice = cheapest(pool)[0]
+        reason = "Cheapest option."
+    else:
+        in_time = [p for p in pool if (deadline - done(p)).days >= MIN_SPARE_DAYS]
+        if in_time:
+            choice = cheapest(in_time)[0]
+            reason = "Cheapest option that's done in time."
+        else:
+            choice = fastest(pool)[0]
+            reason = f"Fastest option: time is tight ({why})." if deadline > ctx.today else f"Fastest option: {why}."
+    cheaper_elsewhere = [p for p in options if p["price_eur"] < choice["price_eur"] and lang not in p["languages"]]
+    if in_lang and lang != "en" and cheaper_elsewhere and "Cheapest" in reason:
+        reason = reason.replace("Cheapest option", f"Cheapest option in {lang_name}")
+    ranked = [choice] + [p for p in cheapest(options) if p is not choice]
+    return choice, reason + note, ranked
+
+
 def a_find_provider(ctx):
     category = ctx.step["spec"]["category"]
     lang = ctx.customer.workers.get(ctx.issue["holder"], {}).get("language", "en")
@@ -185,12 +237,7 @@ def a_find_provider(ctx):
         return {"status": "no_provider", "note": f"No usable provider for {category} ({why}): ops team must source one"}
     stats = ctx.store.provider_stats()
     reliability = lambda p: -(stats.get(p["id"], {}).get("reliability") or 0.0)
-    # Language first, then urgency (lead time) for blocking issues or price otherwise, then track record.
-    urgent = ctx.issue["severity"] == "critical"
-    ranked = sorted(options, key=lambda p: (lang not in p["languages"],
-                                            p["lead_days"] if urgent else p["price_eur"],
-                                            p["price_eur"] if urgent else p["lead_days"],
-                                            reliability(p), -p.get("rating", 0)))
+    choice, reason, ranked = choose_provider(ctx, options, lang, reliability)
     rows = ["| Provider | Price (EUR) | Lead time (days) | In worker's language | Credentials | Track record |",
             "| --- | --- | --- | --- | --- | --- |"]
     for p in ranked:
@@ -202,13 +249,10 @@ def a_find_provider(ctx):
         if excluded[p["id"]]:
             rows.append(f"| ~~{p['name']}~~ | {p['price_eur']} | {p['lead_days']} | - | excluded: "
                         f"{', '.join(excluded[p['id']])} | - |")
-    choice = ranked[0]
-    reason = ("fastest available" if urgent else "cheapest") + (" in the worker's language"
-                                                                 if lang in choice["languages"] else "")
-    body = ("\n".join(rows) + f"\n\nRecommended: **{choice['name']}** ({reason}). Prices are listed prices "
+    body = ("\n".join(rows) + f"\n\nRecommended: **{choice['name']}**. {reason} Prices are listed prices "
             "until the provider confirms a quote.")
     path = ctx.write_outbox("quote-comparison", {"name": "Internal", "channel": "file", "address": "-"},
-                            f"Provider comparison: {category}", body)
+                            f"Provider comparison: {category.replace('_', ' ')}", body)
     return {"recommended": choice, "alternatives": [p["id"] for p in ranked[1:]], "reason": reason,
             "excluded": {k: v for k, v in excluded.items() if v}, "area": area, "outbox": path}
 
@@ -279,6 +323,15 @@ def a_message_owner(ctx):
     return message(ctx, "owner", ctx.step["spec"]["template"])
 
 
+def a_isolate_item(ctx):
+    """Critical defect: tell the owner to take the item out of use before anything else."""
+    result = message(ctx, "owner", ctx.step["spec"]["template"])
+    holder = ctx.issue["holder"]
+    ctx.store.audit("engine", "item_isolated", holder, {"issue": ctx.issue["id"], "item": ctx.customer.holder_name(holder),
+                                                         "reason": ctx.data.get("defect") or ctx.data.get("title")})
+    return {**result, "isolated": ctx.customer.holder_name(holder), "isolated_on": ctx.today.isoformat()}
+
+
 def a_close_action(ctx):
     """Final sign-off on a high-risk corrective action, after evidence was verified."""
     return {"closed_by": ctx.step.get("approved_by"), "proof": ctx.issue.get("proof")}
@@ -345,6 +398,7 @@ EXECUTORS = {
     "request_quotes": a_request_quotes,
     "message_owner": a_message_owner,
     "close_action": a_close_action,
+    "isolate_item": a_isolate_item,
     "book_service": a_book_service,
     "draft_document": a_draft_document,
     "request_signature": a_request_signature,

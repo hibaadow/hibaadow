@@ -73,12 +73,14 @@ class GlenmaraFormRules(unittest.TestCase):
             self.assertIn(expected, k)
         rams = self.findings["rams|company|s1|content"]
         self.assertIn("dumper work", rams["detail"])
-        self.assertEqual(len([f for f in self.findings.values() if f['holder'] in ('company',) or f['holder'].startswith('w')]), 20)
+        self.assertEqual(len([f for f in self.findings.values() if f['holder'] in ('company',) or f['holder'].startswith('w')]), 19)
 
-    def test_public_liability_checked_against_each_contractor(self):
-        pl = sorted((f["context"], f["required_value"]) for f in self.findings.values()
-                    if f["requirement"] == "public_liability")
-        self.assertEqual(pl, [(GLENMARA, 13000000), ("harbour_construction", 10000000)])
+    def test_one_issue_covers_every_contractor_at_the_highest_minimum(self):
+        pl = [f for f in self.findings.values() if f["requirement"] == "public_liability"]
+        self.assertEqual(len(pl), 1)
+        self.assertEqual(pl[0]["required_value"], 13000000)
+        self.assertEqual(sorted(pl[0]["required_by"]), [GLENMARA, "harbour_construction"])
+        self.assertIn("€13m covers both", pl[0]["detail"])
 
     def test_contractor_only_rules_apply_only_where_asked(self):
         pi = self.findings["professional_indemnity|company|-|validity"]
@@ -99,7 +101,7 @@ class GlenmaraFormRules(unittest.TestCase):
         found = [f for f in detect(self.kb, Customer.load(BREMORE), docs, TODAY)
                  if f["requirement"] == "safety_certification"]
         self.assertEqual(len(found), 1)
-        self.assertIn("not accepted", found[0]["detail"])
+        self.assertIn("isn't accepted. It must be Safe-T-Cert or CIRI", found[0]["detail"])
 
     def test_rules_library_is_consistent(self):
         """Every requirement has a playbook path, every template and provider category exists."""
@@ -134,7 +136,7 @@ class SamplePilotLoop(unittest.TestCase):
         return next(i for i in self.e.store.issues() if i["requirement"] == req and (context is None or i["context"] == context))
 
     def test_insurance_increase_waits_for_customer(self):
-        iss = self.issue("public_liability", GLENMARA)
+        iss = next(i for i in self.e.store.issues() if i["requirement"] == "public_liability" and i["kind"] == "incomplete")
         step = next(s for s in self.e.store.steps(iss["id"]) if s["action"] == "request_document")
         self.assertEqual((step["state"], step["approval_role"]), ("awaiting_approval", "customer"))
 
