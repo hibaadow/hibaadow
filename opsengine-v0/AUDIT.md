@@ -26,6 +26,22 @@ re-validated before they count.
 
 **Tests:** `tests/test_bad_data.py` reproduces every probe from this audit: 16 tests, 124 in total.
 
+## Update: Phase 2, part 1 (logins) complete (14 November 2026)
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| D6 (portal roles were a cookie anyone could set) | **Fixed** | Every page needs sign-in (`auth.py`). Passwords are PBKDF2-hashed. Sessions are random tokens, stored hashed. Staff need an authenticator code (TOTP). Lockout after 5 failures. CSRF token on every form. Customer users are tied to one customer, enforced on every page, action and file. Security headers are sent. |
+| Approver identity | **Fixed** | Approvals, declines, reviews and evidence are recorded as the signed-in person's "Name <email>". |
+| Account audit | **Added** | Sign-ins, failures, lockouts, codes, user changes, refused forms and refused access go to a separate append-only, hash-chained log. |
+| Demo separation | **Added** | Demo accounts and the demo clock exist only with `web --demo`, which refuses non-SAMPLE customers. |
+
+**Still to do in Phase 2:** hosting in an EU region behind HTTPS; managed database and encrypted
+storage with backups; signed audit checkpoints stored separately; rule versioning; the GDPR pack.
+User management is through the command line only, with no admin page yet. Approve-by-link is
+Phase 3.
+
+**Tests:** `tests/test_auth.py` adds 21 tests, for 162 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

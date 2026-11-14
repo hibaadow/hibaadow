@@ -115,22 +115,20 @@ class Wording(unittest.TestCase):
         shutil.rmtree(tmp)
 
     def test_customer_pages_are_plain(self):
+        from helpers import DEMO, Client, start_portal
         tmp = Path(tempfile.mkdtemp())
-        web.Handler.portal = web.Portal(web.SAMPLES, tmp)
-        httpd = ThreadingHTTPServer(("127.0.0.1", 0), web.Handler)
-        base = f"http://127.0.0.1:{httpd.server_address[1]}"
-        threading.Thread(target=httpd.serve_forever, daemon=True).start()
-
-        def visible(path):
-            req = urllib.request.Request(base + path, headers={"Cookie": "role=customer"})
-            raw = urllib.request.urlopen(req).read().decode()
-            raw = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", raw, flags=re.S)
-            links = re.findall(r'href="(/c/[^"]+)"', raw)
-            text = html.unescape(re.sub(r"<[^>]+>", " ", raw))
-            return text, links
-
+        base, portal, httpd = start_portal(tmp)
         try:
-            for cid in web.Handler.portal.customers:
+            for cid, who in (("bremore_groundworks_sample", "customer"), ("liffey_interiors", "liffey")):
+                client = Client(base)
+                client.login(DEMO[who])
+
+                def visible(path):
+                    raw = client.get(path)
+                    raw = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", raw, flags=re.S)
+                    links = re.findall(r'href="(/c/[^"]+)"', raw)
+                    return html.unescape(re.sub(r"<[^>]+>", " ", raw)), links
+
                 seen = set()
                 pages = [f"/c/{cid}/{t}" for t in ("home", "issues", "issues?status=all", "people", "subcontractors",
                                                      "equipment", "documents", "actions", "bookings", "messages", "report")]

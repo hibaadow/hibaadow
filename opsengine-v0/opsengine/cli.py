@@ -322,7 +322,63 @@ def cmd_insights(args):
 
 def cmd_web(args):
     from .web import serve
-    serve(host=args.host, port=args.port, fresh=args.reset)
+    serve(host=args.host, port=args.port, fresh=args.reset, demo=args.demo, state_dir=args.state)
+
+
+def _accounts(args):
+    from .auth import Accounts
+    folder = Path(args.state) if args.state else ROOT / "state" / "web"
+    folder.mkdir(parents=True, exist_ok=True)
+    return Accounts(folder / "accounts.db")
+
+
+def _ask_password(args):
+    import getpass
+    if args.password_stdin:
+        return sys.stdin.readline().rstrip("\n")
+    first = getpass.getpass("New password (12+ characters): ")
+    if first != getpass.getpass("Repeat it: "):
+        raise SystemExit("Passwords don't match.")
+    return first
+
+
+def cmd_user(args):
+    try:
+        _user(args)
+    except ValueError as exc:
+        raise SystemExit(f"Not done: {exc}")
+
+
+def _user(args):
+    from .auth import STAFF
+    a = _accounts(args)
+    by = "cli"
+    if args.action == "list":
+        for u in a.users():
+            flags = [x for x, on in (("disabled", u["disabled"]), ("demo", u["demo"]),
+                                     ("code set", u["mfa_secret"]), ("locked", u["locked_until"])) if on]
+            print(f"  {u['email']:<40} {u['role']:<9} {u['customer_id'] or '-':<28} {u['name']}  {', '.join(flags)}")
+        return
+    if not args.email:
+        raise SystemExit("--email is required")
+    if args.action == "add":
+        if not args.name or not args.role:
+            raise SystemExit("--name and --role are required")
+        uid = a.add_user(args.email, args.name, args.role, _ask_password(args), customer_id=args.customer, by=by)
+        print(f"Created {args.email} ({args.role}).")
+        if args.role in STAFF:
+            print("They'll set up a sign-in code from an authenticator app the first time they sign in.")
+        return
+    u = a.user(email=args.email)
+    if not u:
+        raise SystemExit("No user with that email.")
+    if args.action in ("disable", "enable"):
+        a.set_disabled(u["id"], args.action == "disable", by=by)
+    elif args.action == "reset-password":
+        a.set_password(u["id"], _ask_password(args), by=by)
+    elif args.action == "reset-code":
+        a.reset_mfa(u["id"], by=by)
+    print(f"Done: {args.action} {args.email}.")
 
 
 def cmd_demo(args):
@@ -446,6 +502,11 @@ def main(argv=None):
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("web", cmd_web, customer=False); sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8000); sp.add_argument("--reset", action="store_true")
+    sp.add_argument("--demo", action="store_true", help="SAMPLE companies with demo accounts")
+    sp = add("user", cmd_user, customer=False)
+    sp.add_argument("action", choices=["add", "list", "disable", "enable", "reset-password", "reset-code"])
+    sp.add_argument("--email"); sp.add_argument("--name"); sp.add_argument("--role", choices=["customer", "ops", "reviewer", "admin"])
+    sp.add_argument("--customer", help="customer id, for customer users"); sp.add_argument("--password-stdin", action="store_true")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

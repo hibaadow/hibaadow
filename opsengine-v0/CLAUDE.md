@@ -75,7 +75,8 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
-| `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
+| `opsengine/web.py` | Portal (stdlib): customer, ops and safety reviewer views on the real engine, behind sign-in |
+| `opsengine/auth.py` | Accounts: hashed passwords, sessions, staff sign-in codes, lockout, account audit log |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
@@ -85,7 +86,10 @@ These are product rules, not style preferences. Never weaken them in code.
 
 ```bash
 python -m opsengine demo                      # full scripted walkthrough
-python -m opsengine web                       # clickable portal on http://127.0.0.1:8000
+python -m opsengine web --demo                # portal with SAMPLE companies + demo accounts (http://127.0.0.1:8000)
+python -m opsengine web                       # portal for real customers; needs users:
+python -m opsengine user add --email a@b.ie --name "Name" --role admin|ops|reviewer|customer [--customer <id>]
+python -m opsengine user list|disable|enable|reset-password|reset-code --email a@b.ie
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>
@@ -143,6 +147,14 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   time is tight. The one-line reason is shown in the comparison and the approval.
 - **Approvals** of the same kind are grouped in the portal ("Approve all"), but each is approved and
   audited on its own (`Engine.approve_group`).
+- **Sign-in and access** (`auth.py`, AUDIT.md Phase 2): every portal page needs a signed-in user.
+  Customer users are tied to one customer and can never see or act on another (checked on every
+  GET, POST and file). Staff (ops, reviewer, admin) need a 6-digit authenticator code after their
+  password. Every form carries a per-session CSRF token. Approvals and evidence are recorded as
+  "Name <email>" of the signed-in person. Account events go to `state/<portal>/accounts.db`'s own
+  hash-chained audit log. Demo accounts and the demo clock exist only with `web --demo`, which
+  refuses non-SAMPLE customers. Never add a way round sign-in, even for testing: tests use
+  `tests/helpers.py` `Client`, which signs in like a browser.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
