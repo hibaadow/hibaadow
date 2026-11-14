@@ -17,6 +17,8 @@ detect -> plan -> act -> verify -> record
 When the engine finds a problem, it asks "what can I do to resolve this?" and does it,
 stopping only at approval gates or while it waits for proof.
 
+**Full product scope and build status: `PRODUCT.md`.** Build towards it.
+
 ## Non-negotiable boundaries
 
 These are product rules, not style preferences. Never weaken them in code.
