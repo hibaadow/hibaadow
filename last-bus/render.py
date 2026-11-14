@@ -1288,12 +1288,12 @@ def frame(t):
         cam = (lerp(640, 660, u), lerp(660, 640, u), lerp(2.3, 2.6, u))
 
         def whisper(im, t=t):
-            a = eout(prog(t, 74.0, 74.4)) * (1 - prog(t, 75.4, 75.8))
+            a = eout(prog(t, 74.3, 74.6)) * (1 - prog(t, 75.5, 75.8))
             if a <= 0:
                 return
             d = ImageDraw.Draw(im, "RGBA")
             txt = "THAT'S NOT THE SIGN."
-            n = int(len(txt) * clamp((t - 74.0) / 1.1))
+            n = int(len(txt) * clamp((t - 74.35) / 0.9))
             d.text((540, 1150), txt[:n], font=F("vt", 64), fill=(255, 184, 74, int(235 * a)), anchor="mm")
         extra.append(whisper)
     elif t < 78.4:
