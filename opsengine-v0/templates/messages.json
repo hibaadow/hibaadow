@@ -17,12 +17,12 @@
     "body": "Hello, we manage compliance for {company_name}. Their {requirement_name} (policy {policy_number}) {status_phrase}. Please send the renewal certificate showing insurer, policy number, limit of indemnity and expiry date."
   },
   "insurance_limit_gap": {
-    "subject": "Action needed: {requirement_name} limit too low for {main_contractor_name}",
-    "body": "Hi {owner_first_name}, {main_contractor_name} requires a {requirement_name} limit of at least EUR {required_value}. Your current policy is EUR {current_value}. With your approval we will ask your broker for a quote to increase the limit."
+    "subject": "Action needed: your {cover_name} is too low for {required_by_names}",
+    "body": "Hi {owner_first_name}, {detail}. With your approval we will ask your broker for a quote to raise your {cover_name} to {required_value}."
   },
   "insurance_limit_increase": {
-    "subject": "{company_name}: quote to increase {requirement_name} limit",
-    "body": "Hello, {company_name} needs its {requirement_name} limit increased to at least EUR {required_value} (currently EUR {current_value}, policy {policy_number}). Please send a quote and, once accepted, the updated certificate."
+    "subject": "{company_name}: quote to raise {cover_name} to {required_value}",
+    "body": "Hello, {company_name} needs its {cover_name} raised to at least {required_value} (currently {current_value}, policy {policy_number}) for {required_by_names}. Please send a quote and, once accepted, the updated certificate."
   },
   "tax_clearance_ros": {
     "subject": "Action needed: tax clearance",
@@ -74,7 +74,7 @@
   },
   "corrective_action_assigned": {
     "subject": "Corrective action {issue_id}: {action_title} (due {due_date})",
-    "body": "Hi {owner_name}, a corrective action has been assigned to you for {company_name}: {action_title}. {detail} Please complete it by {due_date}. Repairs and safety work must be done by a competent person. When it is done, send us the evidence: {evidence_required}."
+    "body": "Hi {owner_name}, a corrective action has been assigned to you for {company_name}: {action_title}. {action_note}Please complete it by {due_date}. Repairs and safety work must be done by a competent person. When it is done, send us the evidence: {evidence_required}."
   },
   "corrective_evidence_request": {
     "subject": "Evidence needed: {action_title}",
@@ -90,7 +90,7 @@
   },
   "subcontractor_noncompliant": {
     "subject": "Subcontractor not compliant: {holder_name}",
-    "body": "Hi {owner_first_name}, your subcontractor {holder_name} does not meet a requirement: {requirement_name} {status_phrase}. {detail}. We have asked them for it. Please check with your site team before they work on site where this is a site-access item."
+    "body": "Hi {owner_first_name}, your subcontractor {holder_name} does not meet a requirement: {detail}. We have asked them for it. Please check with your site team before they work on site where this is a site-access item."
   },
   "subcontractor_document_request": {
     "subject": "{company_name}: {requirement_name} needed",
@@ -99,5 +99,9 @@
   "subcontractor_document_fix": {
     "subject": "{company_name}: {requirement_name} needs updating",
     "body": "Hello, we manage compliance for {company_name}. The {requirement_name} you sent needs updating: {detail}. Please send a corrected version."
+  },
+  "corrective_isolate": {
+    "subject": "Stop using {isolate_target} now ({issue_id})",
+    "body": "Hi {owner_name}, do not use {isolate_target} until this is repaired: {action_defect}. Take it out of use now and tell everyone who uses it. The repair must be done by a competent person by {due_date}. When it is done, send us {evidence_required}. It shows as Out of use on your register until we have checked the evidence."
   }
 }

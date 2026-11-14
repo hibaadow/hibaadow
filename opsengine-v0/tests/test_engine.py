@@ -41,8 +41,9 @@ class DetectTests(unittest.TestCase):
     def test_main_contractor_minimum_applies_only_to_that_contractor(self):
         pl = [f for f in self.findings.values() if f["requirement"] == "public_liability" and f["kind"] == "incomplete"]
         self.assertEqual(len(pl), 1)
-        self.assertEqual(pl[0]["context"], "harbour_construction")
+        self.assertEqual(pl[0]["required_by"], ["harbour_construction"])
         self.assertEqual(pl[0]["required_value"], 10000000)
+        self.assertIn("Your public liability cover is €6.5m, but Harbour Construction", pl[0]["detail"])
 
     def test_main_contractor_extra_requirement(self):
         mh = [f for f in self.findings.values() if f["requirement"] == "manual_handling"]
@@ -115,6 +116,10 @@ class EngineLoopTests(unittest.TestCase):
     def test_audit_chain(self):
         ok, _ = self.e.store.verify_audit()
         self.assertTrue(ok)
+        with self.assertRaises(Exception):  # the database refuses edits to the audit log
+            self.e.store.db.execute("UPDATE audit SET actor='tampered' WHERE seq=3")
+        # someone with direct file access can drop the guard; the hash chain still exposes the edit
+        self.e.store.db.execute("DROP TRIGGER audit_append_only_u")
         self.e.store.db.execute("UPDATE audit SET actor='tampered' WHERE seq=3")
         ok, bad = self.e.store.verify_audit()
         self.assertFalse(ok)

@@ -33,6 +33,29 @@ The demo runs a sample drylining firm (Liffey Interiors, 6 workers, 2 sites) thr
 Look in `state/demo/liffey_interiors/outbox/` to see every message, booking request,
 provider comparison and draft the engine produced.
 
+## Click around (web portal)
+
+```bash
+python -m opsengine web          # open http://127.0.0.1:8000
+```
+
+A working portal on the real engine, with the two SAMPLE customers loaded. Switch between
+three views at the top:
+
+- **Customer**: can my team work on each site, what needs my OK (approve or decline), what is
+  being done, people, subcontractors, equipment, documents (upload a photo), corrective actions,
+  bookings, messages and the weekly report.
+- **Ops team**: across all customers: photos the AI wasn't sure about (accept or reject),
+  escalations, blocked steps, booking outcomes (attended / no-show), providers, insights, and
+  "simulate incoming documents".
+- **Safety reviewer**: drafted Safety Statements and RAMS, and high-risk corrective actions,
+  to release or sign off.
+
+**Run next day** runs the daily job so you can watch reminders and escalations happen;
+**Reset** starts the demo again. Every button calls the engine and is audited. Each view can
+only approve what that role is allowed to. It's a local demo with no login: don't put it on
+the internet with real customer data.
+
 ## Use it step by step
 
 ```bash

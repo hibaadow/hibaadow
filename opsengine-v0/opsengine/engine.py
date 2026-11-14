@@ -9,6 +9,8 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from . import vision
+from .labels import join, money, nice_date
+from .validation import validate_document
 from .actions import EXECUTORS, ActionContext
 from .detect import _best_doc, detect
 from .knowledge import ROOT, Customer, Knowledge
@@ -28,9 +30,13 @@ class Engine:
         self.outbox = base / "outbox"
         self.evidence_dir = base / "evidence"
         self.today = today or date.today()
-        if not self.store.has_documents():
+        if not self.store.has_documents() and not self.store.reviews():
             for d in self.customer.seed_documents:
-                self.store.add_document(d, source="onboarding")
+                clean, problems = validate_document(d, self.kb, self.customer, self.today)
+                if problems:
+                    self._hold_for_review(d, problems, "onboarding")
+                else:
+                    self.store.add_document(clean, source="onboarding")
 
     # ---------------- detect + plan ----------------
     def scan(self):
@@ -38,7 +44,8 @@ class Engine:
         seen, opened, updated = set(), [], []
         for f in findings:
             seen.add(f["key"])
-            data = json.dumps({k: f.get(k) for k in ("doc_id", "expires", "field", "current_value", "required_value")})
+            data = json.dumps({**{k: f.get(k) for k in ("doc_id", "expires", "field", "current_value", "required_value")},
+                               "opened_on": self.today.isoformat()})
             existing = self.store.open_issue_by_key(f["key"])
             if existing:
                 if (existing["kind"], existing["detail"]) != (f["kind"], f["detail"]):
@@ -108,11 +115,16 @@ class Engine:
                 return events
             if issue["status"] == "open":
                 self.store.update_issue(issue_id, status="in_progress")
+                self.store.audit("engine", "issue_in_progress", issue_id, {})
             if nxt["action"] == "verify":
                 events += self._verify(issue, nxt, steps)
                 continue
             ctx = ActionContext(self.kb, self.customer, self.store, issue, nxt, prior, self.outbox, self.today)
-            result = EXECUTORS[nxt["action"]](ctx)
+            try:
+                result = EXECUTORS[nxt["action"]](ctx)
+            except Exception as exc:  # one broken step must not stop the rest of the customer's work (D5)
+                result = {"status": "blocked", "note": f"action failed: {type(exc).__name__}: {exc}"}
+                self.store.audit("engine", "step_failed", nxt["id"], {"action": nxt["action"], "error": repr(exc)})
             if result.get("status") in ("blocked", "no_provider"):
                 self.store.update_step(nxt["id"], state="blocked", result=json.dumps(result))
                 self.store.update_issue(issue_id, status="escalated")
@@ -161,7 +173,9 @@ class Engine:
         return [(verify_step["id"], f"verification_failed: {reason}")]
 
     def _resolve(self, issue, proof, actor):
-        self.store.update_issue(issue["id"], status="resolved", resolved_at=now_iso(), proof=proof)
+        data = json.loads(self.store.issue(issue["id"])["data"] or "{}")
+        data["resolved_on"] = self.today.isoformat()
+        self.store.update_issue(issue["id"], status="resolved", resolved_at=now_iso(), proof=proof, data=json.dumps(data))
         self.store.audit(actor, "issue_resolved", issue["id"], {"proof": proof})
 
     # ---------------- humans in the loop ----------------
@@ -172,10 +186,9 @@ class Engine:
         prior = prior or {}
         if step["action"] == "book_service" and prior.get("find_provider", {}).get("recommended"):
             p = prior["find_provider"]["recommended"]
-            asked = len((prior.get("request_quotes") or {}).get("requested_from", []))
-            quotes = f"; quotes requested from {asked} providers" if asked else ""
-            return (f"Book {who} with {p['name']} for EUR {p['price_eur']} ({p['lead_days']} days lead time) - "
-                    f"{req['name']} (listed price{quotes})")
+            reason = prior["find_provider"].get("reason", "")
+            return (f"Book {who} on {req['name']} with {p['name']}, {money(p['price_eur'])}"
+                    f"{'. ' + reason if reason else ''}")
         if step["action"] == "request_signature":
             if "draft_document" in prior:
                 return f"Review the draft {req['name']} for {who} and release it for signature"
@@ -184,9 +197,15 @@ class Engine:
             data = json.loads(issue["data"] or "{}")
             return (f"Sign off corrective action: {data.get('title', issue['detail'])} "
                     f"(evidence on file: {issue['proof']})")
+        if step["action"] == "request_document" and step["spec"].get("template") == "insurance_limit_increase":
+            data = json.loads(issue["data"] or "{}")
+            names = join([self.kb.main_contractors[m]["name"] for m in json.loads(issue["required_by"] or "[]")
+                          if m in self.kb.main_contractors])
+            return (f"Ask your broker for a quote to raise your {self.kb.wording.cover(issue['requirement'], req['name'])} "
+                    f"to {money(data.get('required_value'))}{' for ' + names if names else ''}")
         if step["action"] == "request_document":
-            return f"Ask {step['spec'].get('from')} to act on {req['name']} for {who}: {issue['detail']}"
-        return f"{step['action']} for {req['name']} ({who})"
+            return f"Ask {step['spec'].get('from')} about the {req['name']} for {who}: {issue['detail']}"
+        return f"Approve the next step for {req['name']} ({who})"
 
     def approval_queue(self):
         out = []
@@ -202,6 +221,13 @@ class Engine:
         self.store.update_step(step_id, state="pending", approved_by=by, approved_at=now_iso())
         self.store.audit(f"human:{by}", "approved", step_id, {"role": s["approval_role"]})
         return self._advance_issue(s["issue_id"])
+
+    def approve_group(self, step_ids, by):
+        """Approve several items in one go. Each is approved, and audited, on its own."""
+        events = []
+        for step_id in step_ids:
+            events += self.approve(step_id, by)
+        return events
 
     def reject(self, step_id, by, reason):
         s = self.store.step(step_id)
@@ -228,7 +254,21 @@ class Engine:
             dest.write_bytes(data)
         return {**doc, "evidence": {"sha256": digest, "stored_as": dest.name, "original_name": src.name}}
 
+    def _hold_for_review(self, doc, problems, source):
+        """A document we can't trust as-is waits for a person; it is never stored as proof (D1-D4)."""
+        review_id = self.store.add_review({"file": str(doc.get("file") or ""), "holder": str(doc.get("holder") or ""),
+                                           "context": doc.get("context"), "confidence": 0.0, "reasons": problems,
+                                           "extraction": {"source": "manual", "document": doc, "received_via": source}})
+        self.store.audit("engine", "document_held_for_review", review_id,
+                         {"document": doc.get("id"), "type": doc.get("type"), "holder": doc.get("holder"),
+                          "problems": problems, "source": source})
+        return review_id
+
     def ingest(self, doc, source="inbound", file_path=None):
+        doc, problems = validate_document(doc, self.kb, self.customer, self.today)
+        if problems:
+            review_id = self._hold_for_review(doc, problems, source)
+            return [(review_id, "held for review: " + "; ".join(problems))]
         doc = self.store_evidence(doc, file_path)
         self.store.add_document(doc, source=source, actor=f"inbound:{doc.get('received_via', source)}")
         self.store.log_comm("in", doc.get("received_via", source), self.customer.holder_name(doc["holder"]), "",
@@ -290,6 +330,17 @@ class Engine:
         if not r or r["status"] != "pending":
             raise ValueError(f"{review_id} is not pending review")
         ex = r["extraction"]
+        if ex.get("source") == "manual":
+            doc = {**ex["document"], **{k: v for k, v in (corrections or {}).items() if v not in (None, "")}}
+            if doc_type:
+                doc["type"] = doc_type
+            clean, problems = validate_document(doc, self.kb, self.customer, self.today)
+            if problems:
+                raise ValueError("still not valid: " + "; ".join(problems))
+            self.store.update_review(review_id, status="accepted", decided_by=by, decided_at=now_iso(),
+                                     decision={"corrections": corrections or {}}, document_id=clean["id"])
+            self.store.audit(f"human:{by}", "review_accepted", review_id, {"document": clean["id"], "corrections": corrections or {}})
+            return self.ingest(clean, source="human_review")
         ex = {**ex, "document_type": doc_type or ex.get("document_type")}
         if ex["document_type"] not in self.kb.requirements:
             raise ValueError("say which document type this is (doc_type)")
@@ -319,7 +370,7 @@ class Engine:
 
     def raise_corrective_action(self, title, holder="company", owner="company", due=None, severity="medium",
                                 context=None, detail="", evidence_required="photo or document showing the work is done",
-                                raised_by="ops", source=None, key=None):
+                                raised_by="ops", source=None, key=None, defect=None):
         """Record a safety or compliance issue with an owner, a deadline and the evidence needed to close it."""
         if severity not in ("critical", "high", "medium"):
             raise ValueError("severity must be critical, high or medium")
@@ -333,13 +384,14 @@ class Engine:
             return None
         ts = now_iso()
         data = {"title": title, "owner": owner, "due": due, "evidence_required": evidence_required,
-                "raised_by": raised_by, "source": source}
+                "raised_by": raised_by, "source": source, "note": detail, "defect": defect or title,
+                "opened_on": self.today.isoformat()}
         self.store.insert_issue({
             "id": issue_id, "key": key, "requirement": "corrective_action", "holder": holder, "context": context,
             "category": "corrective", "kind": "corrective", "severity": severity, "status": "open",
             "detail": f"{title}. {detail}".strip(), "required_by": "[]", "data": json.dumps(data),
             "created_at": ts, "updated_at": ts, "resolved_at": None, "proof": None})
-        book = "corrective_high" if severity in ("critical", "high") else "corrective"
+        book = {"critical": "corrective_critical", "high": "corrective_high"}.get(severity, "corrective")
         for seq, spec in enumerate(self.kb.playbook_for("corrective_action", book), start=1):
             self.store.insert_step({
                 "id": f"{issue_id}.{seq}", "issue_id": issue_id, "seq": seq, "action": spec["action"],
@@ -370,9 +422,10 @@ class Engine:
                 issue_id = self.raise_corrective_action(
                     title=f"Fix defect on {self.customer.holder_name(doc['holder'])}: {desc}",
                     holder=doc["holder"], owner="company", severity=sev,
-                    detail=f"Found in {doc['id']} ({doc.get('inspector', 'inspection')}, {doc.get('issued', '')}).",
-                    evidence_required="repair record or job sheet from the competent person who did the repair",
-                    raised_by="engine", source=doc["id"], key=f"corrective_action|{doc['holder']}|{doc['id']}#{n}|defect")
+                    detail=f"Found by {doc.get('inspector', 'the inspector')} on {nice_date(doc.get('issued', ''))}.",
+                    evidence_required="the repair record or job sheet from the competent person who did the repair",
+                    raised_by="engine", source=doc["id"], key=f"corrective_action|{doc['holder']}|{doc['id']}#{n}|defect",
+                    defect=desc)
                 if issue_id:
                     opened.append(issue_id)
         return opened
@@ -390,6 +443,20 @@ class Engine:
         self.store.update_step(waiter["id"], state="pending", result=json.dumps({"retry_reason": reason}))
         self.store.audit("engine", "verification_failed", verify_step["id"], {"reason": reason, "retry_step": waiter["id"]})
         return [(verify_step["id"], f"verification_failed: {reason}")]
+
+    def out_of_use(self):
+        """Items taken out of use for a critical defect: from the isolate step until the evidence is verified."""
+        out = []
+        for i in self.store.issues("open"):
+            if not self._is_manual(i):
+                continue
+            steps = {s["action"]: s for s in self.store.steps(i["id"])}
+            iso, ver = steps.get("isolate_item"), steps.get("verify")
+            if iso and iso["state"] == "done" and not (ver and ver["state"] == "done"):
+                data = json.loads(i["data"] or "{}")
+                out.append({"holder": i["holder"], "name": self.customer.holder_name(i["holder"]), "issue": i["id"],
+                            "reason": data.get("defect") or data.get("title"), "since": (iso["result"] or {}).get("isolated_on")})
+        return out
 
     def corrective_actions(self, status=None):
         out = []

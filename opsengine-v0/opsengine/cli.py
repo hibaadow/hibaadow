@@ -72,7 +72,7 @@ def cmd_queue(args):
 
 
 def cmd_approve(args):
-    _print_events(_engine(args).approve(args.step, args.by))
+    _print_events(_engine(args).approve_group(args.step, args.by))
 
 
 def cmd_reject(args):
@@ -238,8 +238,10 @@ def cmd_assets(args):
     from .report import compliance_register
     e = _engine(args)
     reg = [r for r in compliance_register(e) if r["holder_kind"] == "asset"]
+    out = {o["holder"]: o for o in e.out_of_use()}
     for aid, a in e.customer.assets.items():
-        print(f"  {aid}  {a['name']} ({a.get('type')}, sites {', '.join(a.get('sites', []))})")
+        flag = f"  ** OUT OF USE: {out[aid]['reason']} ({out[aid]['issue']}) **" if aid in out else ""
+        print(f"  {aid}  {a['name']} ({a.get('type')}, sites {', '.join(a.get('sites', []))}){flag}")
         for r in [r for r in reg if r["holder"] == aid]:
             print(f"        {r['status']:<11} {r['name']:<50} last record {r['document'] or '-':<22} due {r['expires']}")
 
@@ -316,6 +318,11 @@ def cmd_insights(args):
     print("Recommendations:")
     for rec in r["recommendations"]:
         print(f"  - {rec}")
+
+
+def cmd_web(args):
+    from .web import serve
+    serve(host=args.host, port=args.port, fresh=args.reset)
 
 
 def cmd_demo(args):
@@ -401,7 +408,7 @@ def main(argv=None):
     add("scan", cmd_scan)
     add("advance", cmd_advance)
     add("queue", cmd_queue)
-    sp = add("approve", cmd_approve); sp.add_argument("step"); sp.add_argument("--by", required=True)
+    sp = add("approve", cmd_approve); sp.add_argument("step", nargs="+"); sp.add_argument("--by", required=True)
     sp = add("reject", cmd_reject); sp.add_argument("step"); sp.add_argument("--by", required=True); sp.add_argument("--reason", required=True)
     sp = add("ingest", cmd_ingest); sp.add_argument("file")
     add("report", cmd_report)
@@ -437,6 +444,8 @@ def main(argv=None):
     sp = add("export", cmd_export); sp.add_argument("--out", required=True)
     sp = add("insights", cmd_insights, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
+    sp = add("web", cmd_web, customer=False); sp.add_argument("--host", default="127.0.0.1")
+    sp.add_argument("--port", type=int, default=8000); sp.add_argument("--reset", action="store_true")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

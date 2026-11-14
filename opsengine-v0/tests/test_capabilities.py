@@ -187,7 +187,7 @@ class InspectionsAndCorrectiveActions(Base):
         iss = self.issue("lifting_accessories_examination", "a03")
         self.e.approve(self.step(iss, "book_service")["id"], by="Gráinne Murphy")
         events = self.e.ingest({"id": "insp-a03-new", "type": "lifting_accessories_examination", "holder": "a03",
-                                "issued": "2026-11-15", "inspector": "Sample Lifting Inspections Ltd",
+                                "issued": "2026-11-11", "inspector": "Sample Lifting Inspections Ltd",
                                 "result": "pass_with_defects", "defects": [{"description": "one sling tag missing", "severity": "minor"}]})
         self.assertEqual(self.e.store.issue(iss["id"])["status"], "resolved")
         self.assertTrue(any("corrective action opened" in what for _, what in events))
@@ -218,7 +218,7 @@ class InspectionsAndCorrectiveActions(Base):
         self.e._advance_issue(aid)
         msg = (self.e.outbox / f"{aid}.1-message.md").read_text()
         self.assertIn("Declan Murphy", msg)  # owner w01, via WhatsApp
-        self.assertIn("2026-11-14", msg)
+        self.assertIn("14 Nov 2026", msg)
         self.assertIn("photo of fixed rail", msg)
         self.assertIn("corrective_action_raised", [a["event"] for a in self.e.store.audit_rows()])
 

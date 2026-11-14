@@ -75,6 +75,9 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
+| `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
+| `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
+| `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
@@ -82,6 +85,7 @@ These are product rules, not style preferences. Never weaken them in code.
 
 ```bash
 python -m opsengine demo                      # full scripted walkthrough
+python -m opsengine web                       # clickable portal on http://127.0.0.1:8000
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>
@@ -119,6 +123,26 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
   or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
   and turn it on explicitly where needed, so a local `.env` can't change results.
+- **Validation at ingest** (`opsengine/validation.py`): every document, including onboarding seeds,
+  is validated before it is stored. Dates are normalised to ISO, money and counts to numbers.
+  Unknown types or holders, unreadable values and implausible dates (`max_validity_years`) are
+  held in the review queue, never stored as proof. Detection treats any bad value already on
+  file as a finding, never a crash. See AUDIT.md, Phase 0.
+- **Customer-facing wording** lives in `templates/labels.json` (field names, issue titles, statuses,
+  delivery states) and `templates/messages.json` (messages). `opsengine/labels.py` formats money
+  (€6.5m) and dates (13 Nov 2026). `tests/test_wording.py` fails if any customer page, message,
+  approval or report shows an internal key (anything_with_underscores, limit_eur, None, `{...}`)
+  or a message repeats a sentence. Internal notes (channel `file`) are never shown to customers.
+- **Critical corrective actions** use the `corrective_critical` playbook: `isolate_item` first
+  ("do not use X until this is repaired"), then the evidence request; the item shows Out of use on
+  the register until the evidence is verified; the safety reviewer still signs off.
+- **One fix, one issue:** a field below several contractors' minimums is one finding at the highest
+  value, listing every contractor (`required_by`). Distribution goes to all of them.
+- **Provider choice:** cheapest valid provider (in the worker's language first) that finishes at
+  least 7 days before the deadline (expiry, due date, or now if it stops work); fastest only when
+  time is tight. The one-line reason is shown in the comparison and the approval.
+- **Approvals** of the same kind are grouped in the portal ("Approve all"), but each is approved and
+  audited on its own (`Engine.approve_group`).
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

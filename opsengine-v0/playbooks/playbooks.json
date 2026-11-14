@@ -878,6 +878,25 @@
         "action": "close_action",
         "approval": "safety_reviewer"
       }
+    ],
+    "corrective_critical": [
+      {
+        "action": "isolate_item",
+        "template": "corrective_isolate"
+      },
+      {
+        "action": "request_document",
+        "from": "owner",
+        "template": "corrective_evidence_request",
+        "waits_for": "document"
+      },
+      {
+        "action": "verify"
+      },
+      {
+        "action": "close_action",
+        "approval": "safety_reviewer"
+      }
     ]
   },
   "subcontractor_public_liability": {

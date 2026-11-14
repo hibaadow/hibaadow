@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .labels import Wording
+
 ROOT = Path(__file__).resolve().parent.parent
 
 LANGUAGE_NAMES = {"en": "English", "pt": "Portuguese", "ro": "Romanian", "pl": "Polish",
@@ -22,6 +24,7 @@ class Knowledge:
     playbooks: dict
     templates: dict
     providers: list
+    wording: "Wording" = None
 
     @classmethod
     def load(cls, root=ROOT):
@@ -37,6 +40,7 @@ class Knowledge:
             playbooks=_load(root / "playbooks" / "playbooks.json"),
             templates=_load(root / "templates" / "messages.json"),
             providers=_load(root / "data" / "providers.json")["providers"],
+            wording=Wording.load(root),
         )
 
     def playbook_for(self, requirement_id, category):

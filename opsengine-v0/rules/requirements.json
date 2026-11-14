@@ -1,5 +1,5 @@
 {
-  "_about": "Rules library v0. Each requirement is a machine-checkable rule. 'basis' is a plain-English pointer, not legal advice; every rule must be checked by a competent person before customer use.",
+  "_about": "Rules library v0. Each requirement is a machine-checkable rule. 'basis' is a plain-English pointer, not legal advice; every rule must be checked by a competent person before customer use. 'max_validity_years' is a plausibility limit: an expiry further away than this is held for a person to check [CHECK the limits with a competent person].",
   "requirements": [
     {
       "id": "safety_statement",
@@ -35,7 +35,8 @@
       "basis": "Main contractor subcontract requirement",
       "content_checks": {
         "insured_name_matches_company": true
-      }
+      },
+      "max_validity_years": 2
     },
     {
       "id": "public_liability",
@@ -55,7 +56,8 @@
       "basis": "Main contractor subcontract requirement",
       "content_checks": {
         "insured_name_matches_company": true
-      }
+      },
+      "max_validity_years": 2
     },
     {
       "id": "tax_clearance",
@@ -67,7 +69,8 @@
         "expires"
       ],
       "blocks_site_access": false,
-      "basis": "Revenue tax clearance, requested by main contractors and public clients"
+      "basis": "Revenue tax clearance, requested by main contractors and public clients",
+      "max_validity_years": 2
     },
     {
       "id": "rams",
@@ -124,7 +127,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013: Safe Pass required for site workers"
+      "basis": "Construction Regulations 2013: Safe Pass required for site workers",
+      "max_validity_years": 4
     },
     {
       "id": "cscs_scaffolding",
@@ -141,7 +145,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013: CSCS card for specified tasks"
+      "basis": "Construction Regulations 2013: CSCS card for specified tasks",
+      "max_validity_years": 5
     },
     {
       "id": "manual_handling",
@@ -156,7 +161,8 @@
         "expires"
       ],
       "blocks_site_access": false,
-      "basis": "General Application Regulations 2007 (manual handling training); required on site by some main contractors"
+      "basis": "General Application Regulations 2007 (manual handling training); required on site by some main contractors",
+      "max_validity_years": 5
     },
     {
       "id": "written_terms",
@@ -216,7 +222,8 @@
       "basis": "Main contractor subcontract requirement where the package includes design (SAMPLE form section B)",
       "content_checks": {
         "insured_name_matches_company": true
-      }
+      },
+      "max_validity_years": 2
     },
     {
       "id": "safety_certification",
@@ -238,7 +245,8 @@
         ]
       },
       "blocks_site_access": false,
-      "basis": "Main contractor prequalification: independent safety certification or CIRI registration (SAMPLE form section F)"
+      "basis": "Main contractor prequalification: independent safety certification or CIRI registration (SAMPLE form section F)",
+      "max_validity_years": 3
     },
     {
       "id": "accident_incident_history",
@@ -289,7 +297,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)"
+      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)",
+      "max_validity_years": 5
     },
     {
       "id": "cscs_dumper",
@@ -306,7 +315,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)"
+      "basis": "Construction Regulations 2013: CSCS card for specified plant (check against Schedule 4)",
+      "max_validity_years": 5
     },
     {
       "id": "cscs_slinger_signaller",
@@ -323,7 +333,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Construction Regulations 2013: CSCS card for specified tasks (check against Schedule 4)"
+      "basis": "Construction Regulations 2013: CSCS card for specified tasks (check against Schedule 4)",
+      "max_validity_years": 5
     },
     {
       "id": "lifting_equipment_examination",
@@ -503,7 +514,8 @@
         "insured_name_matches_holder": true
       },
       "blocks_site_access": true,
-      "basis": "Your subcontract terms: subcontractors carry their own liability cover"
+      "basis": "Your subcontract terms: subcontractors carry their own liability cover",
+      "max_validity_years": 2
     },
     {
       "id": "subcontractor_employers_liability",
@@ -523,7 +535,8 @@
         "insured_name_matches_holder": true
       },
       "blocks_site_access": true,
-      "basis": "Your subcontract terms: subcontractors with employees carry employer's liability cover"
+      "basis": "Your subcontract terms: subcontractors with employees carry employer's liability cover",
+      "max_validity_years": 2
     },
     {
       "id": "subcontractor_tax_clearance",
@@ -535,7 +548,8 @@
         "expires"
       ],
       "blocks_site_access": false,
-      "basis": "Revenue tax clearance for subcontractors you pay (check RCT obligations too)"
+      "basis": "Revenue tax clearance for subcontractors you pay (check RCT obligations too)",
+      "max_validity_years": 2
     },
     {
       "id": "subcontractor_safety_statement",
@@ -560,7 +574,8 @@
         "expires"
       ],
       "blocks_site_access": true,
-      "basis": "Every operative on site holds a current Safe Pass; 'expires' is the earliest card expiry in the register"
+      "basis": "Every operative on site holds a current Safe Pass; 'expires' is the earliest card expiry in the register",
+      "max_validity_years": 5
     }
   ]
 }
