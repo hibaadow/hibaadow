@@ -75,6 +75,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
+| `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
@@ -82,6 +83,7 @@ These are product rules, not style preferences. Never weaken them in code.
 
 ```bash
 python -m opsengine demo                      # full scripted walkthrough
+python -m opsengine web                       # clickable portal on http://127.0.0.1:8000
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>

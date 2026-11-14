@@ -16,6 +16,14 @@
     "418fcf11b43ac14cded08ea4fafdc49f0da2d2a17225d659f34deeafdb6d88b6": {
       "sample": "insurance_certificate.png",
       "text": "{\"document_type\": \"public_liability\", \"name_on_document\": \"Liffey Interiors Limited\", \"fields\": {\"insurer\": {\"value\": \"Sample Insurer DAC\", \"confidence\": 0.97}, \"policy_number\": {\"value\": \"PL-77001\", \"confidence\": 0.96}, \"limit_eur\": {\"value\": \"EUR 13,000,000\", \"confidence\": 0.94}, \"expires\": {\"value\": \"2027-12-05\", \"confidence\": 0.95}, \"issued\": {\"value\": \"2026-12-01\", \"confidence\": 0.93}}, \"overall_confidence\": 0.94, \"notes\": \"\"}"
+    },
+    "83e75f80951ba0b557eea02f623ffffe3ac04a0d81cbde70f0f6893622f296f6": {
+      "sample": "bremore_groundworks/incoming/photos/safe_pass_andriy_kovalenko.png",
+      "text": "{\"document_type\": \"safe_pass\", \"name_on_document\": \"ANDRIY KOVALENKO\", \"fields\": {\"number\": {\"value\": \"SP-SAMPLE-70016\", \"confidence\": 0.98}, \"expires\": {\"value\": \"2030-11-09\", \"confidence\": 0.97}}, \"overall_confidence\": 0.97, \"notes\": \"\"}"
+    },
+    "b83b3dc4375f24e73a3f67fb7e129bbb2a2d475e8b9608bf107670ebe4db5ce0": {
+      "sample": "bremore_groundworks/incoming/photos/cscs_slinger_marcin_zielinski.png",
+      "text": "{\"document_type\": \"cscs_slinger_signaller\", \"name_on_document\": \"MARCIN ZIELINSKI\", \"fields\": {\"number\": {\"value\": \"CS-SAMPLE-80008\", \"confidence\": 0.96}, \"expires\": {\"value\": \"2031-10-31\", \"confidence\": 0.95}}, \"overall_confidence\": 0.95, \"notes\": \"\"}"
     }
   }
 }

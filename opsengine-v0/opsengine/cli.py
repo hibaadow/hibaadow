@@ -318,6 +318,11 @@ def cmd_insights(args):
         print(f"  - {rec}")
 
 
+def cmd_web(args):
+    from .web import serve
+    serve(host=args.host, port=args.port, fresh=args.reset)
+
+
 def cmd_demo(args):
     print(f"AI mode: {ai_mode()}")
     state = Path(args.state or ROOT / "state" / "demo")
@@ -437,6 +442,8 @@ def main(argv=None):
     sp = add("export", cmd_export); sp.add_argument("--out", required=True)
     sp = add("insights", cmd_insights, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
+    sp = add("web", cmd_web, customer=False); sp.add_argument("--host", default="127.0.0.1")
+    sp.add_argument("--port", type=int, default=8000); sp.add_argument("--reset", action="store_true")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")
