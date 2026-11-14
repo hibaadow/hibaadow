@@ -16,7 +16,7 @@ OLD = json.load(open(f"{SCR}/vo35/vo.json"))
 OUT = f"{SCR}/vo35n"
 os.makedirs(OUT, exist_ok=True)
 TARGET_WPM = float(os.environ.get("WPM", 155))
-VOICE = {"narr": "am_michael", "agent": "am_onyx"}
+VOICE = {"narr": os.environ.get("NARR", "am_puck"), "agent": "am_onyx"}
 ELLIPSIS_PAUSE = 0.38
 REVEAL_PAUSE = 0.55            # lines whose "..." leads into a reveal
 REVEALS = {20, 28}
@@ -110,7 +110,7 @@ for _ in range(3):
     wpm = w / d * 60
     speed *= TARGET_WPM / wpm
     print(f"wpm {wpm:.0f} -> speed {speed:.3f}")
-agent_speed = speed * 0.92
+agent_speed = 0.765   # agent (Onyx) keeps the delivery from the approved sample
 
 # ---- synthesize
 meta = []
