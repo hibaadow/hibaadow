@@ -29,8 +29,10 @@ MOODS = {
     20: (0.95, -0.6, 0), 21: (1.05, 0.5, 1.0), 22: (1.0, 0.0, 0), 23: (1.0, 0.6, 0.5), 24: (0.98, -0.2, 0),
     25: (0.95, 0.0, 0.5), 26: (0.95, -0.2, 0), 27: (1.03, 0.3, 0.5), 28: (0.9, -0.9, 0.5), 29: (1.0, 0.4, 0.5),
 }
-EMPH_PITCH, EMPH_GAIN = 1.0, 2.5      # lift on the chunk holding the lime-highlighted key word
-QUESTION_RISE = 1.6                   # last chunk of a question
+EMPH_PITCH, EMPH_GAIN = 1.8, 4.0      # lift on the chunk holding the lime-highlighted key word
+QUESTION_RISE = 2.5                   # last chunk of a question
+MOOD_STRENGTH = 1.7                   # exaggerates every line's mood (pace, pitch, level)
+MOODS = {k: (1 + (sp - 1) * 1.5, p * MOOD_STRENGTH, g * MOOD_STRENGTH) for k, (sp, p, g) in MOODS.items()}
 OLD_END = 132.0
 
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
