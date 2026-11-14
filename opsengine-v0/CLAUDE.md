@@ -126,7 +126,7 @@ per customer falling**. When adding features, ask whether they remove human work
    into document JSON, with a confidence score; low confidence goes to a human.
 3. **Rules library depth (started: SAMPLE Glenmara form adds PI, Safe-T-Cert/CIRI, accident history,
    references, plant CSCS cards):** build from real main contractor prequalification forms; add
-   registration, Sectoral Employment Order (SEO) pay/pension evidence, RCT, plant inspections
+   Sectoral Employment Order (SEO) pay/pension evidence, RCT, plant inspections
    (GA2/GA3 style registers), working-at-height and silica controls.
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall
    (e.g. chase after 2 days, escalate after 5).
