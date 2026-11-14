@@ -1,0 +1,21 @@
+{
+  "_about": "Recorded Claude replies for the fictional sample photos. Used when USE_MOCK_AI=true and by the tests. Matched by the photo's SHA-256, so a real customer photo never matches and always goes to human review.",
+  "replies": {
+    "c7a6ef1497650df9af00f9ca337eb7757659f35bf5e30d275cab0df4188877fc": {
+      "sample": "safe_pass_clear.png",
+      "text": "{\"document_type\": \"safe_pass\", \"name_on_document\": \"LUCAS PEREIRA\", \"fields\": {\"number\": {\"value\": \"SP-300006\", \"confidence\": 0.98}, \"expires\": {\"value\": \"2030-11-20\", \"confidence\": 0.97}, \"issued\": {\"value\": null, \"confidence\": 0.0}}, \"overall_confidence\": 0.97, \"notes\": \"\"}"
+    },
+    "a6f99b122be93f44d4a94a83c660f2ccf6c2a5454d7e1183518c5de26c345cee": {
+      "sample": "safe_pass_blurry.png",
+      "text": "{\"document_type\": \"safe_pass\", \"name_on_document\": \"LUCAS PEREIRA\", \"fields\": {\"number\": {\"value\": \"SP-300008\", \"confidence\": 0.41}, \"expires\": {\"value\": \"2030-11-20\", \"confidence\": 0.55}}, \"overall_confidence\": 0.5, \"notes\": \"Heavy blur and angle; digits uncertain\"}"
+    },
+    "21b002dd8f549cd545a5bea8da599644122d9f3a5c76fd3e2a92833d149d0576": {
+      "sample": "cscs_scaffolding.png",
+      "text": "```json\n{\"document_type\": \"cscs_scaffolding\", \"name_on_document\": \"Andrei Popescu\", \"fields\": {\"number\": {\"value\": \"CS-400003\", \"confidence\": 0.96}, \"expires\": {\"value\": \"2031-02-28\", \"confidence\": 0.95}, \"category\": {\"value\": \"Scaffolding\", \"confidence\": 0.9}}, \"overall_confidence\": 0.95, \"notes\": \"\"}\n```"
+    },
+    "418fcf11b43ac14cded08ea4fafdc49f0da2d2a17225d659f34deeafdb6d88b6": {
+      "sample": "insurance_certificate.png",
+      "text": "{\"document_type\": \"public_liability\", \"name_on_document\": \"Liffey Interiors Limited\", \"fields\": {\"insurer\": {\"value\": \"Sample Insurer DAC\", \"confidence\": 0.97}, \"policy_number\": {\"value\": \"PL-77001\", \"confidence\": 0.96}, \"limit_eur\": {\"value\": \"EUR 13,000,000\", \"confidence\": 0.94}, \"expires\": {\"value\": \"2027-12-05\", \"confidence\": 0.95}, \"issued\": {\"value\": \"2026-12-01\", \"confidence\": 0.93}}, \"overall_confidence\": 0.94, \"notes\": \"\"}"
+    }
+  }
+}

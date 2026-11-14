@@ -54,13 +54,16 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/engine.py` | The loop: scan, advance, approve/reject, ingest, verify |
 | `opsengine/actions.py` | Action executors; all outgoing work goes to the outbox |
 | `opsengine/llm.py` | Optional Claude API calls (stdlib only); falls back safely |
+| `opsengine/config.py` | Loads `.env` (never overrides real env vars); `USE_MOCK_AI` switch |
+| `.env.example` | Settings template: `ANTHROPIC_API_KEY=` placeholder, `USE_MOCK_AI=true` |
+| `data/sample/mock_ai/` | Recorded Claude replies for the sample photos, keyed by SHA-256 (mock mode + tests) |
 | `opsengine/store.py` | SQLite state + hash-chained audit log |
 | `opsengine/report.py` | Weekly customer summary + engine metrics |
 | `opsengine/vision.py` | Claude vision: photo/scan -> document JSON + confidence score |
 | `opsengine/scheduler.py` | Daily run per customer: scan, advance, chase after 2 days, escalate after 5 |
 | `opsengine/onboarding.py` | Create a customer folder from the template; list what is missing |
 | `opsengine/cli.py` | Command line |
-| `tests/fixtures/photos/` | Fictional sample card/certificate images + recorded Claude replies |
+| `tests/fixtures/photos/` | Fictional sample card/certificate images |
 
 ## Commands
 
@@ -90,6 +93,10 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Dates:** the engine takes `today` explicitly. Tests and the demo pin 2026-11-11.
 - Tests set `OPSENGINE_OFFLINE=1`. Never make network calls in tests. Vision tests pass a fake
   transport (`tests/helpers.py`) that returns recorded replies.
+- **Mock mode:** `USE_MOCK_AI=true` means no Claude calls at all, even with a key. It may only
+  replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
+  or a read of any other photo (boundaries 5 and 8 still hold). Tests force `USE_MOCK_AI=false`
+  and turn it on explicitly where needed, so a local `.env` can't change results.
 - **Waiting clocks:** steps record `waiting_since` / `awaiting_since` (the engine's `today`) in
   their result; the scheduler uses them and stores `chased_on` / `escalated_on` so each
   reminder or escalation happens once per waiting period.

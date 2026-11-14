@@ -81,11 +81,36 @@ Scans and advances every customer, sends a reminder to whoever a step is waiting
 team after 5 days. Every action goes into that customer's audit trail. Schedule it with cron:
 `5 7 * * * cd /path/to/opsengine-v0 && python -m opsengine daily`.
 
-## Turn on Claude (optional)
+## Settings and the Claude API key
 
-Set `ANTHROPIC_API_KEY` and the engine will use Claude to translate worker messages and draft
-documents (model set by `OPSENGINE_MODEL`, default `claude-sonnet-5-5`). Without a key it uses
-templates and flags translations as needed. It never pretends.
+Settings live in a `.env` file in this folder (git-ignored). Start from the example:
+
+```bash
+cp .env.example .env
+```
+
+**Where the real key goes:** when you have a key from https://platform.claude.com/settings/keys,
+put it on the `ANTHROPIC_API_KEY=` line of `.env` and set `USE_MOCK_AI=false`:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+USE_MOCK_AI=false
+```
+
+In a Claude Code cloud session, add the same two values as environment variables in the
+environment settings instead (they override `.env`), then start a new session.
+Never commit `.env` or paste the key into chat.
+
+| Mode | Photos | Translations | Drafts |
+| --- | --- | --- | --- |
+| `USE_MOCK_AI=true` (default in `.env.example`) | Sample photos get recorded reads; any other photo goes to human review | Flagged `[TRANSLATION NEEDED]` | Template DRAFT |
+| No key, mock off | Every photo goes to human review | Flagged | Template DRAFT |
+| Key set, mock off | Claude reads them; below 90% goes to human review | Claude translates; native-speaker review flagged | Claude DRAFT for safety reviewer |
+
+Mock mode never calls Claude, even if a key is set, and never fakes a translation or a read of
+a real photo. `python -m opsengine demo` prints which mode is active. Models can be changed with
+`OPSENGINE_MODEL` (drafting and translation, default `claude-sonnet-5-5`) and
+`OPSENGINE_VISION_MODEL` (photos, default `claude-opus-5-5`).
 
 ## How it's built
 

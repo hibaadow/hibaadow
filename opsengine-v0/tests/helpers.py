@@ -2,12 +2,14 @@ import json
 import os
 
 os.environ["OPSENGINE_OFFLINE"] = "1"  # tests never call the Claude API
+os.environ["USE_MOCK_AI"] = "false"  # tests choose mock mode explicitly; a local .env must not change results
 
 from opsengine.knowledge import ROOT
 
 SAMPLE = ROOT / "data" / "sample" / "liffey_interiors"
 PHOTOS = ROOT / "tests" / "fixtures" / "photos"
-REPLIES = json.loads((PHOTOS / "responses.json").read_text())
+MOCK_REPLIES = json.loads((ROOT / "data" / "sample" / "mock_ai" / "vision_replies.json").read_text())["replies"]
+REPLIES = {v["sample"]: v["text"] for v in MOCK_REPLIES.values()}
 
 
 def fake_claude(reply_text, calls=None, stop_reason="end_turn"):

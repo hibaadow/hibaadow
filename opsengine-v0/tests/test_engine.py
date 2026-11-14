@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 os.environ["OPSENGINE_OFFLINE"] = "1"  # tests never call the Claude API
+os.environ["USE_MOCK_AI"] = "false"
 
 from opsengine.detect import detect
 from opsengine.engine import Engine

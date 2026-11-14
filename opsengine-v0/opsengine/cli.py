@@ -31,6 +31,15 @@ from .report import metrics, weekly_summary
 SAMPLE = ROOT / "data" / "sample" / "liffey_interiors"
 
 
+def ai_mode():
+    from . import config, llm
+    if config.mock_ai():
+        return "mock (USE_MOCK_AI=true) - no Claude calls; sample photos use recorded reads"
+    if llm.available():
+        return f"live Claude ({llm.DEFAULT_MODEL})"
+    return "off (no ANTHROPIC_API_KEY) - photos go to human review, translations are flagged"
+
+
 def _engine(args):
     today = date.fromisoformat(args.today) if args.today else None
     return Engine(args.customer, state_dir=args.state, today=today)
@@ -109,7 +118,8 @@ def cmd_read_photo(args):
     r = _engine(args).ingest_photo(args.file, args.holder, context=args.context, expected_type=args.type,
                                    received_via=args.via)
     if r["status"] == "ingested":
-        print(f"Read {r['document']} with {r['confidence']:.0%} confidence; ingested.")
+        tag = " [mock AI]" if r["source"] == "mock" else ""
+        print(f"Read {r['document']} with {r['confidence']:.0%} confidence; ingested.{tag}")
         _print_events(r["events"])
     else:
         print(f"Sent to human review as {r['review']} ({r['confidence']:.0%} confidence):")
@@ -161,6 +171,7 @@ def cmd_daily(args):
 
 
 def cmd_demo(args):
+    print(f"AI mode: {ai_mode()}")
     state = Path(args.state or ROOT / "state" / "demo")
     if state.exists():
         shutil.rmtree(state)
@@ -197,7 +208,8 @@ def cmd_demo(args):
     h("7. PHOTO: Lucas sends a photo of his Safe Pass - Claude vision reads it")
     r = e.ingest_photo(incoming / "photo_safe_pass_w06.png", "w06", expected_type="safe_pass")
     if r["status"] == "ingested":
-        print(f"  Read with {r['confidence']:.0%} confidence and ingested")
+        tag = " [mock AI: recorded read of the sample photo]" if r["source"] == "mock" else ""
+        print(f"  Read with {r['confidence']:.0%} confidence and ingested{tag}")
         _print_events(r["events"])
     else:
         print(f"  Not confident enough ({r['confidence']:.0%}) - sent to human review as {r['review']}:")

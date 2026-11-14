@@ -4,7 +4,10 @@ document JSON with a confidence score.
 The engine only accepts a read on its own when it is confident (>= 90%) AND the read is
 consistent: the right document type, the right person's name, every required field present
 and well formed. Anything else goes to the human review queue. Without an API key nothing
-is read and every photo goes to a human - the engine never guesses."""
+is read and every photo goes to a human - the engine never guesses.
+
+Mock mode (USE_MOCK_AI=true) returns recorded reads for the fictional sample photos only,
+matched by file hash. Any other photo gets no read and goes to a human."""
 import base64
 import hashlib
 import json
@@ -13,7 +16,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from . import llm
+from . import config, llm
 from .detect import parse_date
 
 CONFIDENCE_THRESHOLD = 0.90
@@ -63,6 +66,22 @@ def _parse_json(text):
         return None
 
 
+MOCK_REPLIES = Path(__file__).resolve().parent.parent / "data" / "sample" / "mock_ai" / "vision_replies.json"
+
+
+def mock_call(path):
+    """Mock-mode transport: a recorded reply for a known sample photo, matched by SHA-256; otherwise no read."""
+    digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    replies = json.loads(MOCK_REPLIES.read_text(encoding="utf-8"))["replies"] if MOCK_REPLIES.exists() else {}
+    hit = replies.get(digest)
+
+    def call(body, betas=None):
+        if not hit:
+            return None
+        return {"model": "mock", "stop_reason": "end_turn", "content": [{"type": "text", "text": hit["text"]}]}
+    return call
+
+
 def read_photo(path, kb, expected_type=None, call=None):
     """Ask Claude to read one photo/scan. Returns an extraction dict; never raises on a bad read.
 
@@ -73,6 +92,9 @@ def read_photo(path, kb, expected_type=None, call=None):
             "fields": {}, "overall_confidence": 0.0, "notes": ""}
     if not media_type:
         return {**base, "source": "unsupported", "notes": f"unsupported file type {path.suffix}"}
+    mock = call is None and config.mock_ai()
+    if mock:
+        call = mock_call(path)
     data = base64.standard_b64encode(path.read_bytes()).decode()
     block_type = "document" if media_type == "application/pdf" else "image"
     body = {
@@ -88,6 +110,9 @@ def read_photo(path, kb, expected_type=None, call=None):
     response = (call or llm.call)(body, betas=["server-side-fallback-2026-07-01"])
     parsed = _parse_json(llm.text_of(response))
     if response is None:
+        if mock:
+            return {**base, "source": "mock", "model": "mock",
+                    "notes": "mock AI (USE_MOCK_AI=true) has no recorded read for this photo"}
         return {**base, "source": "unavailable", "notes": "Claude not available (no API key, offline or call failed)"}
     if not isinstance(parsed, dict):
         return {**base, "source": "unparseable", "notes": "Claude's reply was not usable JSON"}
@@ -95,7 +120,7 @@ def read_photo(path, kb, expected_type=None, call=None):
     for name, cell in (parsed.get("fields") or {}).items():
         if isinstance(cell, dict):
             fields[name] = {"value": cell.get("value"), "confidence": _num(cell.get("confidence"))}
-    return {**base, "source": "claude", "model": response.get("model", VISION_MODEL),
+    return {**base, "source": "mock" if mock else "claude", "model": response.get("model", VISION_MODEL),
             "document_type": parsed.get("document_type"), "name_on_document": parsed.get("name_on_document"),
             "fields": fields, "overall_confidence": _num(parsed.get("overall_confidence")),
             "notes": parsed.get("notes") or ""}
@@ -141,7 +166,7 @@ def assess(extraction, kb, customer, holder, expected_type=None):
     """Score a read. Returns (confidence 0-1, reasons it needs a human, cleaned field values)."""
     reasons = []
     doc_type = extraction.get("document_type")
-    if extraction.get("source") != "claude":
+    if extraction.get("source") not in ("claude", "mock") or not extraction.get("document_type"):
         return 0.0, [extraction.get("notes") or "document was not read"], {}
     if doc_type not in READABLE_TYPES:
         reasons.append(f"document type not recognised ({doc_type})")

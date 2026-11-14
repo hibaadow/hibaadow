@@ -232,14 +232,15 @@ class Engine:
                           "document_type": ex.get("document_type"), "confidence": confidence, "reasons": reasons})
         if not reasons:
             doc = vision.to_document(ex, values, holder, context, received_via, confidence=confidence)
-            return {"status": "ingested", "document": doc["id"], "confidence": confidence,
+            return {"status": "ingested", "document": doc["id"], "confidence": confidence, "source": ex["source"],
                     "events": self.ingest(doc, source="photo")}
         review_id = self.store.add_review({"file": str(path), "holder": holder, "context": context,
                                            "extraction": {**ex, "received_via": received_via, "values": values},
                                            "confidence": confidence, "reasons": reasons})
         self.store.audit("engine", "review_queued", review_id,
                          {"file": str(Path(path).name), "holder": holder, "confidence": confidence, "reasons": reasons})
-        return {"status": "needs_review", "review": review_id, "confidence": confidence, "reasons": reasons}
+        return {"status": "needs_review", "review": review_id, "confidence": confidence, "reasons": reasons,
+                "source": ex["source"]}
 
     def review_queue(self):
         return self.store.reviews("pending")
