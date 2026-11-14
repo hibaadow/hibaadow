@@ -135,9 +135,10 @@ for i, (shot, v, ch, opt) in enumerate(ITEMS):
     b, _ = sf.read(fin, dtype="float32")
     np.save(f"{OUT}/vo_{i:02d}.npy", b)
     if i > 0:
-        t += opt.get("pre", DEFAULT_GAP)
+        t += opt.get("pre", 0.35 if opt.get("chapter") else DEFAULT_GAP)
     dur = len(a) / SR
     meta.append({"i": i, "shot": shot, "voice": v, "start": round(t, 3), "dur": round(dur, 3), "chunks": times,
+                 "chapter": opt.get("chapter"),
                  "text": " ".join(s for s, _ in ch)})
     t += dur
 json.dump(meta, open(f"{OUT}/vo.json", "w"), indent=1)

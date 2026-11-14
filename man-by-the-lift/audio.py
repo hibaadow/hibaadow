@@ -161,16 +161,15 @@ drone += norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=60, hi=260))
 hum = norm(fft_filter(rng.normal(0, 1, N).astype(np.float32), lo=50, hi=140)) * 0.5   # building ventilation
 hum += (np.sin(2 * np.pi * 50 * tt) * 0.15).astype(np.float32)
 end = DUR
-drone *= env([(0, 0), (1.0, 0.55), (SHOT["cctv"], 0.7), (SHOT["cctv2"], 0.9), (SHOT["card5"], 0.6),
-              (SHOT["polaroid"], 1.0), (SHOT["card6"], 0.5), (SHOT["twodoors"], 0.9), (SHOT["open"] - 0.05, 1.0),
+drone *= env([(0, 0), (1.0, 0.55), (SHOT["cctv"], 0.7), (SHOT["cctv2"], 0.9), (SHOT["wardrobe"], 0.6),
+              (SHOT["polaroid"], 1.0), (SHOT["newhall"], 0.5), (SHOT["twodoors"], 0.9), (SHOT["open"] - 0.05, 1.0),
               (SHOT["open"], 0.2), (SHOT["open"] + 0.4, 1.0), (end - 1, 0.5), (end, 0)])
 music = (drone * 0.5 + hum * 0.25) * 0.45
 
 # ---------------------------------------------------------------- sfx
 sfx = np.zeros(N, np.float32)
-cards = [k for k in SHOT if k.startswith("card")]
-for c in cards:
-    place(sfx, boom(), SHOT[c], 0.8)
+for c in ("recep", "group", "phone4", "wardrobe", "newhall"):   # chapter changes: a soft hit, no pause
+    place(sfx, boom(), SHOT[c], 0.45)
 # hallway: lift ding, keys
 place(sfx, lift_ding(), SHOT["hall"] + 0.3, 0.25)
 for k in range(4):
@@ -208,7 +207,7 @@ for k in range(5):
     place(sfx, tone(1500, 0.08, 40), SHOT["cctv"] + 0.5 + k * 1.2, 0.08)
 m = items("cctv2")[0]
 place(sfx, boom(), chunk_t(m, 3, 0), 1.0)
-heartbeat_track(SHOT["cctv"], SHOT["card5"], 85, 125, 0.45)
+heartbeat_track(SHOT["cctv"], SHOT["wardrobe"], 85, 125, 0.45)
 # the door behind the wardrobe, the passage
 place(sfx, noise_burst(1.2, 100, 1200, 0.4, 1.5), SHOT["wardrobe"] + 0.5, 0.35)
 place(sfx, tone(160, 2.0, 1.2, ((1, 1), (1.5, 0.5))), SHOT["lair"], 0.18)
@@ -216,7 +215,7 @@ for k in range(10):
     place(sfx, noise_burst(0.04, 1500, 6000, 0.001, 60), SHOT["wall"] + chunk_t(items("wall")[0], 1, 0) - SHOT["wall"] + k * 0.12, 0.12)
 m = items("polaroid")[0]
 place(sfx, boom(), chunk_t(m, 2, 0), 1.0)
-heartbeat_track(SHOT["lair"], SHOT["card6"], 90, 130, 0.45)
+heartbeat_track(SHOT["lair"], SHOT["newhall"], 90, 130, 0.45)
 # new building
 place(sfx, lift_ding(), chunk_t(items("newhall")[0], 3, 0) - 0.4, 0.3)
 heartbeat_track(SHOT["phone5"], SHOT["open"], 85, 135, 0.5)

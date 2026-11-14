@@ -5,8 +5,7 @@
 #   options: pre = gap before (s), breath = quick inhale first, reveal = longer "..." pause
 
 ITEMS = [
-    ("card1", "her", [("Chapter one. The missing lock.", None)], {}),
-    ("hall", "her", [("I was unlocking my apartment", "I WAS *UNLOCKING*|MY APARTMENT"), ("when the guy by the lift said...", "WHEN THE GUY|BY THE _LIFT_...")], {}),
+    ("hall", "her", [("I was unlocking my apartment", "I WAS *UNLOCKING*|MY APARTMENT"), ("when the guy by the lift said...", "WHEN THE GUY|BY THE _LIFT_...")], {"chapter": 1}),
     ("hall", "him", [("You missed one.", "\"YOU *MISSED* ONE.\"")], {}),
     ("lock", "her", [("I always check the deadbolt the same way.", "I ALWAYS|CHECK THE _DEADBOLT_"), ("Lock. Unlock. Lock.", "*LOCK*. UNLOCK. LOCK.")], {}),
     ("lock", "him", [("There. That's better.", "\"THERE. THAT'S *BETTER*.\"")], {"pre": 0.4}),
@@ -20,32 +19,27 @@ ITEMS = [
     ("peep2", "her", [("The hallway was empty.", "THE HALLWAY|WAS *EMPTY*.")], {"breath": True}),
     ("phone3", "him", [("Good. You listened this time.", "GOOD.|YOU *LISTENED*|THIS _TIME_.")], {}),
 
-    ("card2", "her", [("Chapter two. Apartment six oh four.", None)], {"pre": 0.6}),
-    ("recep", "her", [("The next morning, I asked reception about him.", "THE NEXT *MORNING*,|I ASKED|_RECEPTION_.")], {}),
+    ("recep", "her", [("The next morning, I asked reception about him.", "THE NEXT *MORNING*,|I ASKED|_RECEPTION_.")], {"chapter": 2}),
     ("recep", "recep", [("There's no apartment six oh four.", "THERE'S *NO*|APARTMENT _604_.")], {}),
     ("plan", "her", [("On the plan, the flat opposite mine said...", "THE FLAT|OPPOSITE MINE..."), ("six oh four B. Vacant.", "*604B*. _VACANT_."), ("The last tenant...", "THE LAST TENANT..."), ("was a man.", "WAS A *MAN*.")], {}),
 
-    ("card3", "her", [("Chapter three. The previous tenant.", None)], {"pre": 0.6}),
-    ("group", "her", [("Eight months ago...", "*8 MONTHS* AGO..."), ("everyone was looking for Daniel from six oh four.", "EVERYONE WAS|LOOKING FOR _DANIEL_.")], {}),
+    ("group", "her", [("Eight months ago...", "*8 MONTHS* AGO..."), ("everyone was looking for Daniel from six oh four.", "EVERYONE WAS|LOOKING FOR _DANIEL_.")], {"chapter": 3}),
     ("group", "her", [("One reply said...", "ONE REPLY..."), ("I saw him by the lift.", "I SAW HIM|BY THE *LIFT*.")], {}),
     ("xmas", "her", [("Then I found a Christmas photo.", "THEN A|_CHRISTMAS_ PHOTO."), ("The man in the dark coat... by the lift.", "THE MAN IN|THE *DARK COAT*.")], {"breath": True}),
     ("xmas", "her", [("Uploaded by Daniel.", "UPLOADED BY|*DANIEL*."), ("One comment.", "ONE _COMMENT_.")], {}),
     ("xmas", "him", [("You missed one.", "\"YOU *MISSED* ONE.\"")], {}),
 
-    ("card4", "her", [("Chapter four. The routine.", None)], {"pre": 0.6}),
-    ("phone4", "her", [("I changed my routine.", "I _CHANGED_|MY ROUTINE."), ("The messages didn't stop.", "THE MESSAGES|DIDN'T *STOP*.")], {}),
+    ("phone4", "her", [("I changed my routine.", "I _CHANGED_|MY ROUTINE."), ("The messages didn't stop.", "THE MESSAGES|DIDN'T *STOP*.")], {"chapter": 4}),
     ("phone4", "him", [("You left the top lock. You forgot the chain.", "YOU LEFT|THE *TOP LOCK*.|YOU FORGOT|THE _CHAIN_.")], {}),
     ("cctv", "her", [("The police checked the CCTV.", "THE POLICE|CHECKED _CCTV_."), ("No man.", "*NO* MAN."), ("But every night at eleven forty seven...", "BUT AT *11:47*..."), ("my door opened.", "MY DOOR _OPENED_.")], {"breath": True}),
     ("cctv2", "her", [("I stepped out. Looked at the lift.", "I STEPPED OUT.|LOOKED AT|THE *LIFT*."), ("And behind me...", "AND _BEHIND_ ME..."), ("inside my apartment...", "INSIDE MY|APARTMENT..."), ("was him.", "WAS *HIM*.")], {"reveal": True}),
 
-    ("card5", "her", [("Chapter five. The door.", None)], {"pre": 0.6}),
-    ("wardrobe", "her", [("Behind my wardrobe...", "BEHIND MY|_WARDROBE_..."), ("a maintenance door.", "A *DOOR*."), ("A passage...", "A PASSAGE..."), ("to six oh four B.", "TO *604B*.")], {"breath": True}),
+    ("wardrobe", "her", [("Behind my wardrobe...", "BEHIND MY|_WARDROBE_..."), ("a maintenance door.", "A *DOOR*."), ("A passage...", "A PASSAGE..."), ("to six oh four B.", "TO *604B*.")], {"breath": True, "chapter": 5}),
     ("lair", "her", [("A mattress.", "A _MATTRESS_."), ("And photos of me.", "AND *PHOTOS*|OF ME."), ("Sleeping. Cooking.", "SLEEPING. _COOKING_."), ("Some from before I moved in.", "SOME FROM|*BEFORE* I MOVED IN.")], {}),
     ("wall", "her", [("On the wall...", "ON THE _WALL_..."), ("She always locks it three times.", "SHE ALWAYS|LOCKS IT|*THREE* TIMES.")], {}),
     ("polaroid", "her", [("The last photo was taken that morning.", "THE LAST|_PHOTO_...|THAT *MORNING*."), ("And he was standing...", "HE WAS|STANDING..."), ("right behind me.", "RIGHT *BEHIND* ME.")], {"breath": True, "reveal": True}),
 
-    ("card6", "her", [("Final chapter. One more time.", None)], {"pre": 0.6}),
-    ("newhall", "her", [("They never found him.", "THEY NEVER|*FOUND* HIM."), ("I moved out.", "I MOVED _OUT_."), ("Months later...", "*MONTHS* LATER..."), ("a new neighbour stepped out of the lift.", "A NEW|_NEIGHBOUR_...")], {}),
+    ("newhall", "her", [("They never found him.", "THEY NEVER|*FOUND* HIM."), ("I moved out.", "I MOVED _OUT_."), ("Months later...", "*MONTHS* LATER..."), ("a new neighbour stepped out of the lift.", "A NEW|_NEIGHBOUR_...")], {"chapter": 6}),
     ("newhall", "neigh", [("Sorry. You missed one.", "\"SORRY.|YOU *MISSED* ONE."), ("Your top lock.", "YOUR _TOP LOCK_.\"")], {}),
     ("lock2", "her", [("I went inside.", "I WENT|_INSIDE_."), ("Lock. Unlock. Lock.", "*LOCK*. UNLOCK. LOCK.")], {}),
     ("lock2", "neigh", [("There. That's better.", "\"THERE. THAT'S *BETTER*.\"")], {"pre": 0.4}),

@@ -32,6 +32,7 @@ SHOTS = []
 for m in VO:
     if not SHOTS or SHOTS[-1][0] != m["shot"]:
         SHOTS.append([m["shot"], max(0.0, m["start"] - 0.15), None])
+SHOTS[0][1] = 0.0
 for k in range(len(SHOTS) - 1):
     SHOTS[k][2] = SHOTS[k + 1][1]
 DUR = VO[-1]["start"] + VO[-1]["dur"] + 3.0
@@ -327,7 +328,7 @@ def xmas_photo(cv, t, t_comment):
     cv.rect(800, 560, 960, 1150, (24, 26, 50))           # lift at the far end
     cv.rect(812, 590, 948, 1150, (130, 136, 166))
     coat_man(cv, 880, 1150, s=0.45)
-    cv.text((540, 1240), "Christmas party! 🎄", "inters", 32, (60, 60, 70))
+    cv.text((540, 1240), "Christmas party!", "inters", 32, (60, 60, 70))
     cv.rect(60, 1320, 1020, 1520, (30, 32, 48))
     cv.circ(120, 1380, 26, (90, 96, 130))
     cv.text((160, 1370), "Uploaded by Daniel (604)", "interx", 30, WHITE, anchor="lm")
@@ -508,10 +509,29 @@ def draw_card(img, t, shot):
             d.text((W / 2, y), ln, font=fb, fill=(246, 246, 250, int(255 * q)), anchor="mt")
 
 
-HUD_STATES = [("card1", "NIGHT 1", "11:47 PM", "APT 604"), ("phone1", "NIGHT 1", "11:48 PM", "APT 604"),
-              ("card2", "DAY 2", "9:12 AM", "APT 604"), ("card3", "NIGHT 2", "10:58 PM", "APT 604"),
-              ("card4", "NIGHT 5", "11:47 PM", "APT 604"), ("card5", "DAY 6", "8:30 AM", "APT 604"),
-              ("card6", "MONTHS LATER", "11:47 PM", "APT 1207")]
+HUD_STATES = [("hall", "NIGHT 1", "11:47 PM", "APT 604"), ("phone1", "NIGHT 1", "11:48 PM", "APT 604"),
+              ("recep", "DAY 2", "9:12 AM", "APT 604"), ("group", "NIGHT 2", "10:58 PM", "APT 604"),
+              ("phone4", "NIGHT 5", "11:47 PM", "APT 604"), ("wardrobe", "DAY 6", "8:30 AM", "APT 604"),
+              ("newhall", "MONTHS LATER", "11:47 PM", "APT 1207")]
+CHAPTER_AT = [(m["start"] - 0.15, m["chapter"]) for m in VO if m.get("chapter")]
+
+
+def draw_chapter_tag(img, t):
+    """small red chapter label that rides over the first moments of each chapter (no pause, no voice)"""
+    for t0, n in CHAPTER_AT:
+        lt = t - t0
+        if 0 <= lt < 2.2:
+            lab, title = CARDS["card%d" % n]
+            a = eout(lt / 0.25) * (1 - clamp((lt - 1.8) / 0.4))
+            d = ImageDraw.Draw(img, "RGBA")
+            f = F("interx", 30)
+            tw = f.getlength(lab) + 44
+            y = 350
+            d.rounded_rectangle([W / 2 - tw / 2, y - 24, W / 2 + tw / 2, y + 24], radius=24, fill=(232, 36, 46, int(255 * a)))
+            d.text((W / 2, y + 1), lab, font=f, fill=(255, 255, 255, int(255 * a)), anchor="mm")
+            ft = F("anton", 64)
+            d.text((W / 2 + 3, y + 74), title, font=ft, fill=(0, 0, 0, int(170 * a)), anchor="mm")
+            d.text((W / 2, y + 70), title, font=ft, fill=(246, 246, 250, int(255 * a)), anchor="mm")
 
 
 def hud_state(t):
@@ -775,8 +795,8 @@ def frame(t):
         fn(img)
     img = post(img, t)
     draw_hud(img, t)
-    if not shot.startswith("card"):
-        draw_captions(img, t, y=cap_y)
+    draw_chapter_tag(img, t)
+    draw_captions(img, t, y=cap_y)
     return flash(img, fl_a)
 
 
