@@ -15,7 +15,7 @@ SCR = os.environ["SCR"]
 OLD = json.load(open(f"{SCR}/vo35/vo.json"))
 OUT = f"{SCR}/vo35n"
 os.makedirs(OUT, exist_ok=True)
-TARGET_WPM = float(os.environ.get("WPM", 170))
+TARGET_WPM = float(os.environ.get("WPM", 180))
 VOICE = {"narr": os.environ.get("NARR", "am_puck"), "agent": "am_onyx"}
 ELLIPSIS_PAUSE = 0.28
 REVEAL_PAUSE = 0.42            # lines whose "..." leads into a reveal
@@ -97,15 +97,12 @@ def synth_line(voice, chunks, speed, reveal):
 
 # delivery per line: (speed multiplier, gain dB). No pitch processing: Puck's own voice, untouched.
 # Pace follows what the character is going through: uneasy -> rushed -> sprinting -> slowing on the dark reveals.
-MOODS = {
-    0: (0.94, 0), 1: (0.96, 0), 2: (1.02, 0.5), 3: (1.08, 1.5), 4: (1.0, 0), 5: (1.12, 1.0),
-    6: (1.0, 0.5), 7: (1.1, 0.5), 8: (1.0, 0.5), 9: (1.06, 0.5), 10: (1.0, 0.5), 11: (1.08, 0.5),
-    12: (1.12, 1.0), 13: (1.12, 0.5), 14: (1.18, 1.5), 15: (1.2, 1.5), 16: (1.12, 0.5), 17: (1.04, 0),
-    18: (1.0, 0), 19: (1.0, 0), 20: (0.94, 0), 21: (1.14, 1.0), 22: (1.06, 0), 23: (1.0, 0.5),
-    24: (1.02, 0), 25: (1.0, 0.5), 26: (0.96, 0), 27: (1.06, 0.5), 28: (0.9, 0.5), 29: (1.04, 0.5),
-}
+MOODS = {i: (1.0, 1.0) for i in range(30)}          # the escape-scene delivery, everywhere
+MOODS.update({6: (0.96, 0.5), 8: (0.96, 0.5), 10: (0.96, 0.5),   # rules: a hair more deliberate
+              14: (1.04, 1.5), 15: (1.04, 1.5),                    # the run itself
+              20: (0.93, 0.5), 28: (0.92, 0.5)})                   # the two big reveals
 EMPH_GAIN = 2.0                 # key-word phrase a touch louder (volume only)
-BREATH_BEFORE = {3, 5, 12, 14, 15, 16, 21, 27}     # quick inhale before the panicked lines
+BREATH_BEFORE = {2, 3, 5, 7, 9, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23, 27}     # quick inhale before the panicked lines
 
 
 def breath(dur=0.24, seed=0):
@@ -151,7 +148,7 @@ for _ in range(3):
         if v == "narr":
             a, _ = synth_line(v, ch, speed * MOODS.get(i, (1,))[0], i in REVEALS)
             w += words(ch)
-            d += len(a) / SR
+            d += len(a) / SR + (0.28 if i in BREATH_BEFORE else 0)
     wpm = w / d * 60
     speed *= TARGET_WPM / wpm
     print(f"wpm {wpm:.0f} -> speed {speed:.3f}")
