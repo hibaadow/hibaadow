@@ -3,49 +3,146 @@
   "currency": "EUR",
   "vat": "excluding VAT",
   "plans": [
-    {"id": "starter", "name": "Starter", "monthly_eur": 199, "onboarding_eur": 199, "workers_min": 1, "workers_max": 10, "sites_included": 1,
-     "for": "Small construction subcontractors that need a central place to manage compliance.",
-     "features": {"dashboard": "Compliance dashboard", "tracking": "Worker and document tracking",
-                  "equipment": "Equipment and certificate monitoring", "reminders": "Automated compliance reminders",
-                  "issues": "Compliance issue identification", "basic_reports": "Basic compliance reporting"}},
-    {"id": "growth", "name": "Growth", "monthly_eur": 399, "onboarding_eur": 399, "workers_min": 11, "workers_max": 30, "sites_included": null,
-     "for": "Growing subcontractors managing multiple projects and compliance requirements.",
-     "features": {"multiple_sites": "Multiple projects and sites", "subcontractors": "Subcontractor compliance tracking",
-                  "corrective_actions": "Corrective-action coordination", "provider_comparisons": "Provider comparisons",
-                  "bookings": "Inspection and booking requests", "evidence_workflow": "Evidence collection and verification workflow",
-                  "weekly_reports": "Weekly compliance reports"}},
-    {"id": "business", "name": "Business", "monthly_eur": 699, "onboarding_eur": 699, "workers_min": 31, "workers_max": 75, "sites_included": null,
-     "for": "Established subcontractors with larger teams and more complex operations.",
-     "features": {"higher_limits": "Higher project and site limits", "extended_corrective_actions": "More extensive corrective-action management",
-                  "ops_support": "Dedicated operations support", "advanced_reports": "Advanced compliance reporting",
-                  "insights": "Compliance insights and analytics", "priority_issues": "Priority issue handling",
-                  "more_users": "Additional management users and access"}},
-    {"id": "scale", "name": "Scale", "monthly_eur": 999, "onboarding_eur": 999, "workers_min": 76, "workers_max": 150, "sites_included": null,
-     "for": "Larger contractors managing multiple sites, teams and subcontractors.",
-     "features": {"locations": "Multiple business locations", "large_networks": "Larger subcontractor networks",
-                  "central_oversight": "Centralised compliance oversight", "custom_reports": "Custom reporting",
-                  "high_volume_support": "Higher-volume operations support", "priority_service": "Priority service",
-                  "expanded_access": "Expanded management access"}},
-    {"id": "enterprise", "name": "Enterprise", "monthly_eur": null, "onboarding_eur": null, "workers_min": 151, "workers_max": null, "sites_included": null,
-     "for": "Large construction contractors and main contractors with complex compliance operations.",
-     "features": {"divisions": "Multiple divisions and regions", "custom_workflows": "Custom compliance workflows",
-                  "integrations": "Custom integrations", "tailored_reports": "Tailored reporting",
-                  "account_management": "Dedicated account and operations arrangements", "sla": "Bespoke service-level agreements",
-                  "enterprise_oversight": "Enterprise-level compliance oversight"},
-     "includes_previous": false}
+    {
+      "id": "starter",
+      "name": "Starter",
+      "monthly_eur": 199,
+      "onboarding_eur": 199,
+      "workers_min": 1,
+      "workers_max": 10,
+      "sites_included": 1,
+      "for": "Small construction subcontractors that need a central place to manage compliance.",
+      "features": {
+        "dashboard": "Compliance dashboard",
+        "tracking": "Worker and document tracking",
+        "equipment": "Equipment and certificate monitoring",
+        "reminders": "Automated compliance reminders",
+        "issues": "Compliance issue identification",
+        "basic_reports": "Basic compliance reporting"
+      }
+    },
+    {
+      "id": "growth",
+      "name": "Growth",
+      "monthly_eur": 399,
+      "onboarding_eur": 399,
+      "workers_min": 11,
+      "workers_max": 30,
+      "sites_included": null,
+      "for": "Growing subcontractors managing multiple projects and compliance requirements.",
+      "features": {
+        "multiple_sites": "Multiple projects and sites",
+        "subcontractors": "Subcontractor compliance tracking",
+        "corrective_actions": "Corrective-action coordination",
+        "provider_comparisons": "Provider comparisons",
+        "bookings": "Inspection and booking requests",
+        "evidence_workflow": "Evidence collection and verification workflow",
+        "weekly_reports": "Weekly compliance reports"
+      }
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "monthly_eur": 699,
+      "onboarding_eur": 699,
+      "workers_min": 31,
+      "workers_max": 75,
+      "sites_included": null,
+      "for": "Established subcontractors with larger teams and more complex operations.",
+      "features": {
+        "higher_limits": "Higher project and site limits",
+        "extended_corrective_actions": "More extensive corrective-action management",
+        "ops_support": "Dedicated operations support",
+        "advanced_reports": "Advanced compliance reporting",
+        "insights": "Compliance insights and analytics",
+        "priority_issues": "Priority issue handling",
+        "more_users": "Additional management users and access"
+      }
+    },
+    {
+      "id": "scale",
+      "name": "Scale",
+      "monthly_eur": 999,
+      "onboarding_eur": 999,
+      "workers_min": 76,
+      "workers_max": 150,
+      "sites_included": null,
+      "for": "Larger contractors managing multiple sites, teams and subcontractors.",
+      "features": {
+        "locations": "Multiple business locations",
+        "large_networks": "Larger subcontractor networks",
+        "central_oversight": "Centralised compliance oversight",
+        "custom_reports": "Custom reporting",
+        "high_volume_support": "Higher-volume operations support",
+        "priority_service": "Priority service",
+        "expanded_access": "Expanded management access"
+      }
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise",
+      "monthly_eur": null,
+      "onboarding_eur": null,
+      "workers_min": 151,
+      "workers_max": null,
+      "sites_included": null,
+      "for": "Large construction contractors and main contractors with complex compliance operations.",
+      "features": {
+        "divisions": "Multiple divisions and regions",
+        "custom_workflows": "Custom compliance workflows",
+        "integrations": "Custom integrations",
+        "tailored_reports": "Tailored reporting",
+        "account_management": "Dedicated account and operations arrangements",
+        "sla": "Bespoke service-level agreements",
+        "enterprise_oversight": "Enterprise-level compliance oversight"
+      },
+      "includes_previous": false
+    }
   ],
   "add_ons": [
-    {"id": "extra_site", "name": "Additional site", "price": "€30–€50 a month", "monthly_eur_min": 30, "monthly_eur_max": 50},
-    {"id": "extra_workers", "name": "Additional 25 workers", "price": "€100 a month", "monthly_eur": 100, "block": 25},
-    {"id": "integration", "name": "Custom integration", "price": "Quoted separately"},
-    {"id": "safety_review", "name": "Specialist safety review", "price": "Quoted separately"},
-    {"id": "training", "name": "Training courses", "price": "Provider's price"},
-    {"id": "inspections", "name": "Inspections and repairs", "price": "Provider's price"}
+    {
+      "id": "extra_site",
+      "name": "Additional site",
+      "price": "€30–€50 a month",
+      "monthly_eur_min": 30,
+      "monthly_eur_max": 50
+    },
+    {
+      "id": "extra_workers",
+      "name": "Additional 25 workers",
+      "price": "€100 a month",
+      "monthly_eur": 100,
+      "block": 25
+    },
+    {
+      "id": "integration",
+      "name": "Custom integration",
+      "price": "Quoted separately"
+    },
+    {
+      "id": "safety_review",
+      "name": "Additional specialist safety work",
+      "price": "Quoted separately, before any work starts",
+      "note": "Specialist work beyond the routine review of RAMS and Safety Statements, which every plan includes."
+    },
+    {
+      "id": "training",
+      "name": "Training courses",
+      "price": "Provider's price"
+    },
+    {
+      "id": "inspections",
+      "name": "Inspections and repairs",
+      "price": "Provider's price"
+    }
   ],
   "separate_charges": "External provider costs, training, inspections and specialist professional services are charged separately from the monthly subscription. Any coordination fees are disclosed clearly.",
   "_internal": {
     "focus": "Growth and Business customers first: subcontractors with multiple active projects, several dozen workers and no dedicated compliance administrator.",
     "starter_limits": "Starter should have reasonable usage limits: no unlimited corrective-action management or operational support. Limits to be set.",
     "positioning": "Not a compliance tracking dashboard: a compliance operations platform that identifies problems, determines corrective actions, coordinates approved solutions, tracks evidence and records outcomes."
-  }
+  },
+  "included_in_every_plan": [
+    "Competent-person review of drafted RAMS and Safety Statements: released for signature, or declined with the reason recorded"
+  ]
 }

@@ -557,11 +557,13 @@ def view_costs(eng, svc):
         rows.append(f'<tr{" style=\"font-weight:600\"" if p and x["id"] == p["id"] else ""}><td>{e_(x["name"])}</td><td>{e_(size)}</td>'
                     f'<td>{e_(price(x["monthly_eur"]))}</td><td>{e_(onboarding)}</td>'
                     f'<td class="small">{e_(prev + ", ".join(x["features"].values()))}</td></tr>')
-    addons = "".join(f'<tr><td>{e_(a["name"])}</td><td>{e_(a["price"])}</td></tr>' for a in prices["add_ons"])
+    addons = "".join(f'<tr><td>{e_(a["name"])}{"<div class=small>" + e_(a["note"]) + "</div>" if a.get("note") else ""}</td>'
+                     f'<td>{e_(a["price"])}</td></tr>' for a in prices["add_ons"])
     return f"""<section><h2>What it costs</h2><p class="note">All prices are monthly subscriptions in euro, excluding VAT.</p>
 <div class="grid">{plan_card}
 <div class="card"><h3>Courses, inspections and repairs</h3><p><b>Paid to the provider, at their price</b></p>
 <p class="small">They're charged separately from your subscription, and only once you've approved them. Every approval shows the provider's price on its own line. {e_(fee_line(svc)[0].upper() + fee_line(svc)[1:])}.</p></div></div>
+<p><b>Included in every plan:</b> {e_("; ".join(prices.get("included_in_every_plan", [])))}. OpsEngine itself never signs off safety documents: a competent person does.</p>
 <h3 style="margin-top:16px">All plans</h3><div style="overflow-x:auto"><table><thead><tr><th>Plan</th><th>For</th><th>Monthly</th><th>Onboarding</th><th>Includes</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div>
 <h3 style="margin-top:16px">Extras</h3><div style="overflow-x:auto"><table><thead><tr><th>Service</th><th>Price</th></tr></thead><tbody>{addons}</tbody></table></div>

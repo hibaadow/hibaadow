@@ -128,7 +128,8 @@ class Portal(unittest.TestCase):
                      "Paid to the provider, at their price", "we take no commission", "Setup: our team does it",
                      "You don't have to upload your certs", "Your workers' data", "never use the photo to recognise faces",
                      "Your plan: Growth", "€399 a month", "excluding VAT", "One-off onboarding fee", "Additional 25 workers",
-                     "Custom pricing"):
+                     "Custom pricing", "Included in every plan", "Competent-person review of drafted RAMS",
+                     "Additional specialist safety work", "never signs off safety documents"):
             self.assertIn(text, page.replace("&#x27;", "'"))
 
     def test_bookings_show_provider_price_apart_from_our_fee(self):
