@@ -1,24 +1,30 @@
-"""Market data service: maintains validated candle series, quotes, 24h stats and
-order-book depth for the configured universe, with staleness protection."""
+"""Market data service for gold & forex: validated candles, live quotes, readiness checks.
+
+Sources (``ATLAS_DATA_SOURCE``):
+* ``oanda`` / ``mt5``  — broker candles (bid/ask) and live prices.
+* ``public``           — Swissquote public quotes with locally-built bars (see brokers/public.py).
+When a broker is the source, the public quote feed is also polled as an independent reference to
+detect stale or manipulated prices (cross-source divergence check).
+"""
 from __future__ import annotations
 
-import asyncio
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
+from ..brokers.public import PublicSource
+from ..instruments import CONVERSION_PAIRS, INSTRUMENTS
 from ..logging import get_logger
+from ..marketdata.http import ProviderError
 from ..models import Candle as CandleRow
 from ..models import IntegrationStatus, MarketDataRef
-from .http import ProviderError
-from .providers import BinanceMarketData, CoinbaseMarketData, KrakenMarketData
-from .types import TF_MS, Candle, CandleSeries, Depth, MarketStats, Quote
+from ..sessions import is_market_open
+from .types import TF_MS, Candle, CandleSeries, Quote
 from .validation import validate_candles
-from .ws import CoinbaseTickerFeed, KrakenTickerFeed
 
 log = get_logger("atlas.marketdata")
 
@@ -33,9 +39,8 @@ class SymbolState:
     quality: dict[str, dict] = field(default_factory=dict)
     last_fetch: dict[str, float] = field(default_factory=dict)
     quote: Quote | None = None
-    ref_quotes: dict[str, Quote] = field(default_factory=dict)
-    stats: MarketStats | None = None
-    depth: Depth | None = None
+    ref_quote: Quote | None = None
+    spread_history: list[float] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
 
@@ -46,217 +51,157 @@ class Readiness:
 
 
 class MarketDataService:
-    def __init__(self, symbols: list[str], use_ws: bool | None = None, primary=None):
-        s = get_settings()
-        self.primary = primary or BinanceMarketData()
-        self.coinbase = CoinbaseMarketData()
-        self.kraken = KrakenMarketData()
+    def __init__(self, symbols: list[str], source=None, reference: PublicSource | None = None):
+        self.source = source or PublicSource()
+        self.reference = reference  # independent quote feed when trading from broker data
         self.state: dict[str, SymbolState] = {}
+        self.listeners: list = []
+        self._persisted_upto: dict[tuple[str, str], int] = {}
         self.set_symbols(symbols)
-        self.use_ws = s.enable_websockets if use_ws is None else use_ws
-        self.feeds = []
-        self._tasks: list[asyncio.Task] = []
-        self.listeners: list = []  # callables(Quote)
-        self.unsupported: dict[str, str] = {}
+
+    @property
+    def venue(self) -> str:
+        return self.source.name
 
     def set_symbols(self, symbols: list[str]) -> None:
-        for sym in symbols:
-            self.state.setdefault(sym, SymbolState(sym))
-        for sym in list(self.state):
-            if sym not in symbols:
-                del self.state[sym]
+        wanted = set(symbols) | set(CONVERSION_PAIRS.values())  # conversion pairs always quoted (pip values)
+        for s in wanted:
+            self.state.setdefault(s, SymbolState(s))
+        for s in list(self.state):
+            if s not in wanted:
+                del self.state[s]
+        self.traded = [s for s in symbols if s in INSTRUMENTS]
 
     @property
     def symbols(self) -> list[str]:
-        return [s for s in self.state if s not in self.unsupported]
+        return list(self.state)
 
-    # ---------------- websockets -----------------
-    def _on_ref_quote(self, q: Quote) -> None:
-        st = self.state.get(q.symbol)
-        if st is not None:
-            st.ref_quotes[q.venue] = q
+    # ------------------------------------------------------------- quotes
+    async def refresh_quotes(self) -> None:
+        try:
+            qs = await self.source.quotes(self.symbols)
+        except ProviderError as e:
+            log.warning("quote refresh failed", extra={"data": {"error": str(e)[:160]}})
+            qs = {}
+        for sym, q in qs.items():
+            st = self.state.get(sym)
+            if st is None:
+                continue
+            st.quote = q
+            st.spread_history = (st.spread_history + [q.ask - q.bid])[-500:]
             for fn in self.listeners:
                 try:
                     fn(q)
                 except Exception:  # noqa: BLE001
                     pass
 
-    def start_feeds(self) -> None:
-        if not self.use_ws or self.feeds:
+    async def refresh_reference(self) -> None:
+        if self.reference is None:
             return
-        s = get_settings()
-        syms = list(self.state)
-        self.feeds = [CoinbaseTickerFeed(s.coinbase_ws_url, syms, self._on_ref_quote),
-                      KrakenTickerFeed(s.kraken_ws_url, syms, self._on_ref_quote)]
-        self._tasks = [asyncio.create_task(f.run(), name=f.name) for f in self.feeds]
+        try:
+            for sym, q in (await self.reference.quotes(self.traded)).items():
+                self.state[sym].ref_quote = q
+        except ProviderError:
+            pass
 
-    async def stop(self) -> None:
-        for f in self.feeds:
-            f.stop()
-        for t in self._tasks:
-            t.cancel()
-        await asyncio.gather(*self._tasks, return_exceptions=True)
-        self.feeds, self._tasks = [], []
-        for c in (self.primary.client, self.coinbase.client, self.kraken.client):
-            await c.close()
+    def mids(self) -> dict[str, float]:
+        return {s: st.quote.mid for s, st in self.state.items() if st.quote}
 
-    # ---------------- candles -----------------
+    # ------------------------------------------------------------- candles
     def _due(self, st: SymbolState, tf: str, now: float) -> bool:
         last = st.last_fetch.get(tf)
         if last is None or tf not in st.candles:
             return True
         step = TF_MS[tf] / 1000
-        # refresh shortly after each bar closes, or at least every 60s for fast TFs
-        return int(now // step) != int(last // step) or (tf in ("1m", "5m") and now - last > 60)
+        return int(now // step) != int(last // step) or now - last > 60
 
     async def refresh_candles(self, symbol: str, timeframes=TIMEFRAMES, force: bool = False) -> None:
         st = self.state[symbol]
+        inst = INSTRUMENTS[symbol]
         now = time.time()
         for tf in timeframes:
             if not force and not self._due(st, tf, now):
                 continue
             try:
-                if tf not in st.candles:
-                    fresh = await self.primary.candles(symbol, tf, INITIAL_BARS[tf])
-                    merged = fresh
-                else:
-                    fresh = await self.primary.candles(symbol, tf, 10)
+                need = INITIAL_BARS[tf] if tf not in st.candles else 20
+                fresh = await self.source.candles(symbol, tf, need)
+                if tf in st.candles and self.source.name != "public":
                     by_t = {c.open_time: c for c in st.candles[tf]}
-                    for c in fresh:
-                        by_t[c.open_time] = c
-                    merged = sorted(by_t.values(), key=lambda c: c.open_time)[-INITIAL_BARS[tf]:]
-                clean, report = validate_candles(merged, tf)
-                if report["missing_bars"] and tf in st.candles:
-                    # attempt a targeted backfill once (recovers from transient gaps)
-                    full = await self.primary.candles(symbol, tf, INITIAL_BARS[tf])
-                    clean, report = validate_candles(full, tf)
+                    by_t.update({c.open_time: c for c in fresh})
+                    fresh = sorted(by_t.values(), key=lambda c: c.open_time)[-INITIAL_BARS[tf]:]
+                clean, report = validate_candles(fresh, tf, asset_class=inst.asset_class, drop_open=True)
+                report["source"] = self.source.name
+                if self.source.name == "public":
+                    report["note"] = "bars built from sampled public quotes"
                 st.candles[tf] = clean
                 st.quality[tf] = report
                 st.last_fetch[tf] = now
             except ProviderError as e:
-                if e.status == 400 and "Invalid symbol" in str(e):
-                    self.unsupported[symbol] = "symbol not listed on primary venue"
-                    return
                 st.errors = (st.errors + [f"{tf}: {e}"])[-5:]
-                if not await self._fallback(st, symbol, tf, now):
-                    st.quality.setdefault(tf, {})["usable"] = False
-
-    async def _fallback(self, st: SymbolState, symbol: str, tf: str, now: float) -> bool:
-        """REST fallback: replace the WHOLE series from one fallback venue (never mix venues within a series)."""
-        for prov in (self.coinbase, self.kraken):
-            try:
-                fresh = await prov.candles(symbol, tf, INITIAL_BARS[tf])
-            except (ProviderError, KeyError, ValueError):
-                continue
-            clean, report = validate_candles(fresh, tf)
-            if report["usable"] and len(clean) >= 100:
-                report["source"] = prov.venue
-                report["issues"] = report["issues"] + [f"primary venue unavailable — using {prov.venue} fallback (USD book)"]
-                st.candles[tf] = clean
-                st.quality[tf] = report
-                st.last_fetch[tf] = now
-                log.warning("candle fallback used", extra={"data": {"symbol": symbol, "tf": tf, "venue": prov.venue}})
-                return True
-        return False
+                st.quality.setdefault(tf, {})["usable"] = False
 
     def series(self, symbol: str, tf: str) -> CandleSeries | None:
         st = self.state.get(symbol)
         if not st or tf not in st.candles:
             return None
-        return CandleSeries.from_candles(symbol, tf, self.primary.venue, st.candles[tf], st.quality.get(tf))
+        return CandleSeries.from_candles(symbol, tf, self.source.name, st.candles[tf], st.quality.get(tf))
 
-    # ---------------- quotes / stats -----------------
-    async def refresh_quotes(self) -> None:
-        syms = self.symbols
-        if not syms:
-            return
-        try:
-            qs = await self.primary.quotes(syms)
-        except ProviderError as e:
-            # Fallback: fresh WebSocket reference quotes (Coinbase/Kraken USD books), clearly tagged by venue.
-            log.warning("primary quote refresh failed; using reference feeds", extra={"data": {"error": str(e)}})
-            qs = {}
-            for sym in syms:
-                refs = sorted((q for q in self.state[sym].ref_quotes.values() if q.age() < 10), key=lambda q: q.age())
-                if refs:
-                    qs[sym] = refs[0]
-        for sym, q in qs.items():
-            if sym in self.state:
-                self.state[sym].quote = q
-                for fn in self.listeners:
-                    try:
-                        fn(q)
-                    except Exception:  # noqa: BLE001
-                        pass
+    def typical_spread(self, symbol: str) -> float | None:
+        h = self.state[symbol].spread_history
+        if not h:
+            return None
+        s = sorted(h)
+        return s[len(s) // 2]
 
-    async def refresh_stats(self) -> None:
-        syms = self.symbols
-        if not syms:
-            return
-        try:
-            stats = await self.primary.stats_24h(syms)
-        except ProviderError as e:
-            if e.status == 400:
-                # one bad symbol poisons the batch: fall back to per-symbol calls
-                stats = {}
-                for s in syms:
-                    try:
-                        stats.update(await self.primary.stats_24h([s]))
-                    except ProviderError:
-                        self.unsupported[s] = "symbol not listed on primary venue"
-            else:
-                return
-        for sym, st in stats.items():
-            if sym in self.state:
-                self.state[sym].stats = st
-
-    async def refresh_depth(self, symbol: str) -> None:
-        try:
-            self.state[symbol].depth = await self.primary.depth(symbol)
-        except ProviderError as e:
-            self.state[symbol].errors = (self.state[symbol].errors + [f"depth: {e}"])[-5:]
-
-    # ---------------- safety -----------------
-    def readiness(self, symbol: str, tfs: tuple[str, ...], max_quote_age: float, max_divergence_pct: float) -> Readiness:
-        """Is the data for ``symbol`` complete and fresh enough to trade on?"""
+    # ------------------------------------------------------------- safety
+    def readiness(self, symbol: str, tfs: tuple[str, ...], max_quote_age: float, max_divergence_pips: float = 15.0,
+                  min_bars: int = 150, now: datetime | None = None) -> Readiness:
         st = self.state.get(symbol)
+        if st is None or symbol not in INSTRUMENTS:
+            return Readiness(False, ["unsupported instrument"])
+        inst = INSTRUMENTS[symbol]
         reasons: list[str] = []
-        if st is None or symbol in self.unsupported:
-            return Readiness(False, [self.unsupported.get(symbol, "unknown symbol")])
+        if not is_market_open(now or datetime.now(timezone.utc), inst.asset_class):
+            reasons.append("market closed")
         for tf in tfs:
             q = st.quality.get(tf)
+            n = len(st.candles.get(tf, []))
             if not q:
                 reasons.append(f"{tf} candles not loaded")
             elif not q.get("usable"):
-                reasons.append(f"{tf} candles unusable: {', '.join(q.get('issues') or ['fetch failed'])}")
+                if self.source.name == "public" and n == 0:
+                    reasons.append(f"{tf}: building bars from the public quote feed (no history yet — connect OANDA/MT5 for instant history)")
+                else:
+                    reasons.append(f"{tf} candles unusable: {', '.join(q.get('issues') or ['fetch failed'])}")
+            elif n < min_bars and tf in tfs[:1]:
+                reasons.append(f"{tf}: only {n} closed bars (need {min_bars}) — still accumulating history")
         if st.quote is None:
-            reasons.append("no top-of-book quote")
+            reasons.append("no live quote")
         elif st.quote.age() > max_quote_age:
             reasons.append(f"quote is stale ({st.quote.age():.0f}s old)")
-        if st.quote is not None:
-            refs = [r for r in st.ref_quotes.values() if r.age() < 120]
-            for r in refs:
-                div = abs(r.mid / st.quote.mid - 1) * 100
-                # USD vs USDC books can differ slightly; large divergence = suspect data
-                if div > max_divergence_pct:
-                    reasons.append(f"price diverges {div:.2f}% from {r.venue} reference — possible bad data")
+        if st.quote is not None and st.ref_quote is not None and st.ref_quote.age() < 60:
+            div = inst.to_pips(abs(st.ref_quote.mid - st.quote.mid))
+            if div > max_divergence_pips:
+                reasons.append(f"price differs {div:.1f} pips from independent reference — possible bad data")
         return Readiness(not reasons, reasons)
 
-    # ---------------- persistence -----------------
+    # ------------------------------------------------------------- persistence
     def persist(self, db: Session, symbol: str) -> None:
         st = self.state.get(symbol)
         if not st:
             return
-        venue = self.primary.venue
+        venue = self.source.name
         for tf, candles in st.candles.items():
-            tail = candles[-50:]
-            if tail and db.bind is not None and db.bind.dialect.name == "postgresql":
-                stmt = pg_insert(CandleRow).values([
-                    dict(venue=venue, symbol=symbol, timeframe=tf, open_time=c.open_time, open=c.open, high=c.high,
-                         low=c.low, close=c.close, volume=c.volume, quote_volume=c.quote_volume) for c in tail])
+            key = (symbol, tf)
+            upto = self._persisted_upto.get(key, 0)
+            rows = [c for c in candles if c.open_time > upto]
+            if rows and db.bind is not None and db.bind.dialect.name == "postgresql":
+                stmt = pg_insert(CandleRow).values([dict(venue=venue, symbol=symbol, timeframe=tf, open_time=c.open_time, open=c.open, high=c.high,
+                                                          low=c.low, close=c.close, volume=c.volume, quote_volume=0.0, spread=c.spread) for c in rows[-1000:]])
                 stmt = stmt.on_conflict_do_update(index_elements=["venue", "symbol", "timeframe", "open_time"],
-                                                  set_={k: stmt.excluded[k] for k in ("open", "high", "low", "close", "volume", "quote_volume")})
+                                                  set_={k: stmt.excluded[k] for k in ("open", "high", "low", "close", "volume", "spread")})
                 db.execute(stmt)
+                self._persisted_upto[key] = rows[-1].open_time
             q = st.quality.get(tf, {})
             ref = db.query(MarketDataRef).filter_by(venue=venue, symbol=symbol, timeframe=tf).one_or_none()
             if ref is None:
@@ -271,23 +216,48 @@ class MarketDataService:
             ref.status = "ok" if q.get("usable") else ("stale" if q.get("stale") else "degraded")
             ref.last_validated = datetime.now(timezone.utc)
 
+    def persist_public_bars(self, db: Session) -> int:
+        """Store completed 1-minute bars built from public quotes so history survives restarts."""
+        if not isinstance(self.source, PublicSource):
+            return 0
+        done = self.source.builder.completed
+        self.source.builder.completed = []
+        if not done or db.bind is None or db.bind.dialect.name != "postgresql":
+            return 0
+        stmt = pg_insert(CandleRow).values([dict(venue="public", symbol=s, timeframe="1m", open_time=c.open_time, open=c.open, high=c.high,
+                                                 low=c.low, close=c.close, volume=c.volume, quote_volume=0.0, spread=c.spread) for s, c in done])
+        db.execute(stmt.on_conflict_do_nothing(index_elements=["venue", "symbol", "timeframe", "open_time"]))
+        return len(done)
+
+    def load_public_history(self, db: Session, days: int = 5) -> int:
+        if not isinstance(self.source, PublicSource):
+            return 0
+        since = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp() * 1000)
+        n = 0
+        for sym in self.state:
+            rows = db.execute(select(CandleRow).where(CandleRow.venue == "public", CandleRow.symbol == sym, CandleRow.timeframe == "1m",
+                                                      CandleRow.open_time >= since).order_by(CandleRow.open_time)).scalars().all()
+            self.source.builder.load(sym, [Candle(r.open_time, r.open, r.high, r.low, r.close, r.volume, 0.0, r.spread or 0.0) for r in rows])
+            n += len(rows)
+        return n
+
     def integration_health(self) -> dict[str, dict]:
-        out = {
-            "binance_rest": self.primary.client.health(),
-            "coinbase_rest": self.coinbase.client.health(),
-            "kraken_rest": self.kraken.client.health(),
-        }
-        for f in self.feeds:
-            out[f.name] = f.health()
+        out = dict(self.source.health())
+        if self.reference is not None:
+            out.update(self.reference.health())
         return out
 
-    def write_integration_status(self, db: Session) -> None:
-        for name, h in self.integration_health().items():
+    def write_integration_status(self, db: Session, extra: dict[str, dict] | None = None) -> None:
+        for name, h in {**self.integration_health(), **(extra or {})}.items():
             row = db.get(IntegrationStatus, name) or IntegrationStatus(name=name)
             row.status = h.get("status", "unknown")
-            row.last_error = h.get("last_error")
+            row.last_error = h.get("last_error") or h.get("detail")
             row.latency_ms = h.get("latency_ms")
-            if h.get("last_ok") or h.get("last_message"):
-                row.last_ok = datetime.fromtimestamp(h.get("last_ok") or h.get("last_message"), timezone.utc)
-            row.details = {k: v for k, v in h.items() if k in ("reconnects",)}
+            if h.get("last_ok"):
+                row.last_ok = datetime.fromtimestamp(h["last_ok"], timezone.utc)
             db.merge(row)
+
+    async def stop(self) -> None:
+        await self.source.close()
+        if self.reference is not None:
+            await self.reference.close()

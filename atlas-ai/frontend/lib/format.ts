@@ -1,11 +1,14 @@
 export const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-export function price(v: number | null | undefined): string {
+export function price(v: number | null | undefined, digits?: number): string {
   if (!isNum(v)) return "—";
   const a = Math.abs(v);
-  const d = a >= 1000 ? 2 : a >= 1 ? 4 : a >= 0.01 ? 5 : 8;
-  return v.toLocaleString("en-US", { minimumFractionDigits: Math.min(d, 2), maximumFractionDigits: d });
+  const d = digits ?? (a >= 1000 ? 2 : a >= 20 ? 3 : 5);
+  return v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
+
+export const lots = (v: number | null | undefined) => (isNum(v) ? v.toFixed(2) : "—");
+export const pips = (v: number | null | undefined, d = 1) => (isNum(v) ? `${v.toFixed(d)} pips` : "—");
 
 export function usd(v: number | null | undefined, digits = 2): string {
   if (!isNum(v)) return "—";
@@ -55,4 +58,4 @@ export function time(iso: string | null | undefined, withDate = false): string {
     : d.toLocaleTimeString("en-GB", { hour12: false });
 }
 
-export const pair = (s: string) => (s.endsWith("USDC") ? `${s.slice(0, -4)}/USDC` : s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : s);
+export const pair = (s: string) => (s.length === 6 ? `${s.slice(0, 3)}/${s.slice(3)}` : s);

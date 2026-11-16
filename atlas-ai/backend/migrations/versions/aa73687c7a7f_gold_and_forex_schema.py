@@ -1,8 +1,8 @@
-"""initial schema
+"""gold and forex schema
 
-Revision ID: 2d0d3370138e
+Revision ID: aa73687c7a7f
 Revises: 
-Create Date: 2026-11-16 19:47:11.985543
+Create Date: 2026-11-16 20:19:54.969806
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2d0d3370138e'
+revision: str = 'aa73687c7a7f'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -88,6 +88,7 @@ def upgrade() -> None:
     sa.Column('close', sa.Float(), nullable=False),
     sa.Column('volume', sa.Float(), nullable=False),
     sa.Column('quote_volume', sa.Float(), nullable=False),
+    sa.Column('spread', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('venue', 'symbol', 'timeframe', 'open_time')
     )
     op.create_table('commands',
@@ -164,31 +165,6 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('name')
     )
-    op.create_table('token_scans',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('ts', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('mint', sa.String(length=64), nullable=False),
-    sa.Column('symbol', sa.String(length=32), nullable=False),
-    sa.Column('name', sa.String(length=80), nullable=False),
-    sa.Column('pair_address', sa.String(length=64), nullable=True),
-    sa.Column('dex', sa.String(length=32), nullable=True),
-    sa.Column('price_usd', sa.Float(), nullable=True),
-    sa.Column('liquidity_usd', sa.Float(), nullable=True),
-    sa.Column('volume_24h', sa.Float(), nullable=True),
-    sa.Column('market_cap', sa.Float(), nullable=True),
-    sa.Column('fdv', sa.Float(), nullable=True),
-    sa.Column('pair_created_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('top10_holder_pct', sa.Float(), nullable=True),
-    sa.Column('mint_authority', sa.String(length=64), nullable=True),
-    sa.Column('freeze_authority', sa.String(length=64), nullable=True),
-    sa.Column('risk_score', sa.Integer(), nullable=False),
-    sa.Column('risk_level', sa.String(length=12), nullable=False),
-    sa.Column('flags', sa.JSON(), nullable=False),
-    sa.Column('checks', sa.JSON(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_token_scans_mint'), 'token_scans', ['mint'], unique=False)
-    op.create_index(op.f('ix_token_scans_ts'), 'token_scans', ['ts'], unique=False)
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=64), nullable=False),
@@ -210,6 +186,19 @@ def upgrade() -> None:
     sa.Column('strategy', sa.String(length=32), nullable=False),
     sa.Column('classification', sa.String(length=24), nullable=False),
     sa.Column('confidence', sa.Integer(), nullable=False),
+    sa.Column('direction', sa.String(length=4), nullable=True),
+    sa.Column('timeframe', sa.String(length=4), nullable=True),
+    sa.Column('entry', sa.Float(), nullable=True),
+    sa.Column('stop_loss', sa.Float(), nullable=True),
+    sa.Column('take_profit', sa.Float(), nullable=True),
+    sa.Column('take_profit_2', sa.Float(), nullable=True),
+    sa.Column('risk_reward', sa.Float(), nullable=True),
+    sa.Column('lots', sa.Float(), nullable=True),
+    sa.Column('risk_amount', sa.Float(), nullable=True),
+    sa.Column('est_costs', sa.JSON(), nullable=False),
+    sa.Column('evidence', sa.JSON(), nullable=False),
+    sa.Column('events', sa.JSON(), nullable=False),
+    sa.Column('invalidation', sa.JSON(), nullable=False),
     sa.Column('score_breakdown', sa.JSON(), nullable=False),
     sa.Column('risk_flags', sa.JSON(), nullable=False),
     sa.Column('explanation', sa.Text(), nullable=False),
@@ -243,7 +232,11 @@ def upgrade() -> None:
     sa.Column('mode', sa.String(length=8), nullable=False),
     sa.Column('symbol', sa.String(length=24), nullable=False),
     sa.Column('strategy', sa.String(length=32), nullable=False),
-    sa.Column('side', sa.String(length=8), nullable=False),
+    sa.Column('side', sa.String(length=4), nullable=False),
+    sa.Column('broker_id', sa.String(length=64), nullable=True),
+    sa.Column('commission', sa.Float(), nullable=False),
+    sa.Column('swap', sa.Float(), nullable=False),
+    sa.Column('pip_value_usd', sa.Float(), nullable=False),
     sa.Column('status', sa.String(length=12), nullable=False),
     sa.Column('opened_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('closed_at', sa.DateTime(timezone=True), nullable=True),
@@ -277,6 +270,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_positions_account_id'), 'positions', ['account_id'], unique=False)
+    op.create_index(op.f('ix_positions_broker_id'), 'positions', ['broker_id'], unique=False)
     op.create_index(op.f('ix_positions_mode'), 'positions', ['mode'], unique=False)
     op.create_index(op.f('ix_positions_status'), 'positions', ['status'], unique=False)
     op.create_index(op.f('ix_positions_symbol'), 'positions', ['symbol'], unique=False)
@@ -342,6 +336,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_positions_symbol'), table_name='positions')
     op.drop_index(op.f('ix_positions_status'), table_name='positions')
     op.drop_index(op.f('ix_positions_mode'), table_name='positions')
+    op.drop_index(op.f('ix_positions_broker_id'), table_name='positions')
     op.drop_index(op.f('ix_positions_account_id'), table_name='positions')
     op.drop_table('positions')
     op.drop_index('ix_snap_acct_ts', table_name='portfolio_snapshots')
@@ -351,9 +346,6 @@ def downgrade() -> None:
     op.drop_table('decisions')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_table('users')
-    op.drop_index(op.f('ix_token_scans_ts'), table_name='token_scans')
-    op.drop_index(op.f('ix_token_scans_mint'), table_name='token_scans')
-    op.drop_table('token_scans')
     op.drop_table('strategy_configs')
     op.drop_index(op.f('ix_signals_ts'), table_name='signals')
     op.drop_index(op.f('ix_signals_symbol'), table_name='signals')

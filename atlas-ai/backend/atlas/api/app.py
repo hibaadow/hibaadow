@@ -14,7 +14,6 @@ from ..config import get_settings
 from ..db import init_db, session_scope
 from ..events import get_bus
 from ..logging import get_logger, setup_logging
-from ..marketdata.providers import BinanceMarketData
 from ..security import COOKIE, client_ip, ensure_admin, limiter, user_from_token
 from . import backtests, routes
 
@@ -29,7 +28,14 @@ async def lifespan(app: FastAPI):
         msg = ensure_admin(db)
         if msg:
             log.warning(msg)
-    app.state.binance = BinanceMarketData()
+    app.state.history = None
+    s = get_settings()
+    if s.data_source in ("oanda", "mt5"):
+        from ..agent import make_source
+        try:
+            app.state.history = make_source(s.data_source)
+        except Exception as e:  # noqa: BLE001 — misconfiguration is reported via integrations, not a crash
+            log.warning("history source unavailable", extra={"data": {"error": str(e)[:200]}})
     app.state.agent = None
     if get_settings().embedded_worker and not getattr(app.state, "disable_agent", False):
         from ..agent import TradingAgent
@@ -39,7 +45,8 @@ async def lifespan(app: FastAPI):
     yield
     if app.state.agent:
         await app.state.agent.stop()
-    await app.state.binance.client.close()
+    if app.state.history is not None:
+        await app.state.history.close()
 
 
 def create_app(disable_agent: bool = False) -> FastAPI:

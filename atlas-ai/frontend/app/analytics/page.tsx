@@ -29,10 +29,10 @@ function GroupTable({ rows, label }: { rows: Grp[]; label: string }) {
 }
 
 export default function Analytics() {
-  const [mode, setMode] = useState<"paper" | "live">("paper");
+  const [mode, setMode] = useState<"paper" | "demo" | "live">("paper");
   const [period, setPeriod] = useState<"intraday" | "daily" | "weekly" | "monthly">("intraday");
   const { data, error } = usePoll<A>(`/api/analytics?mode=${mode}`, 30000);
-  const cal = usePoll<Cal>("/api/decisions/calibration", 60000);
+  const cal = usePoll<Cal>("/api/analyst/calibration", 60000);
   const curve = data ? (period === "intraday" ? data.equity_intraday : data[`equity_${period}`]).map((p) => ({ t: ts(p.t), v: p.equity })) : [];
   const dd = (data?.drawdown || []).map((p) => ({ t: ts(p.t), v: p.dd }));
   const buckets = [-1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3];
@@ -41,8 +41,8 @@ export default function Analytics() {
   return (
     <div className="max-w-[1600px] mx-auto">
       <PageHeader title="Performance Analytics" subtitle={data?.label}
-        right={<Tabs value={mode} onChange={setMode} options={[{ value: "paper", label: "Paper trading" }, { value: "live", label: "Live trading" }]} />} />
-      <div className="text-[11.5px] text-mute -mt-2 mb-3">Paper, live and backtested results are tracked separately and never combined. Backtests live under <Link href="/backtest" className="text-accent">Backtesting</Link>.</div>
+        right={<Tabs value={mode} onChange={setMode} options={[{ value: "paper", label: "Paper" }, { value: "demo", label: "Demo account" }, { value: "live", label: "Live account" }]} />} />
+      <div className="text-[11.5px] text-mute -mt-2 mb-3">Paper, demo, live and backtested results are tracked separately and never combined. Backtests live under <Link href="/backtest" className="text-accent">Backtesting</Link>.</div>
       <ErrorNote error={error} />
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         <Stat label="Trades" value={t.total_trades ?? 0} /><Stat label="Win rate" value={t.win_rate == null ? "—" : pct(t.win_rate as number, 1, false)} />
@@ -69,7 +69,7 @@ export default function Analytics() {
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-3">
         <Panel title="Strategy comparison" pad={false}><GroupTable rows={data?.by_strategy || []} label="Strategy" /></Panel>
-        <Panel title="Performance by asset" pad={false}><GroupTable rows={data?.by_asset || []} label="Asset" /></Panel>
+        <Panel title="Performance by instrument (gold & forex)" pad={false}><GroupTable rows={data?.by_asset || []} label="Instrument" /></Panel>
         <Panel title="Performance by session" pad={false}><GroupTable rows={data?.by_session || []} label="Session (UTC)" /></Panel>
       </div>
     </div>

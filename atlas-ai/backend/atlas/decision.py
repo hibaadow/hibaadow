@@ -1,56 +1,52 @@
-"""AI decision engine.
+"""AI trading analyst for gold & forex.
 
-Evaluates structured strategy signals in the context of market regime,
-liquidity, costs, structure and portfolio exposure, and classifies each
-opportunity. The scoring model is deterministic and fully explainable: every
-point of the 0–100 confidence score is attributed to a named factor.
+Scores each strategy signal on independent factors (confluence, multi-timeframe trend, session,
+costs, volatility regime, currency strength / USD & yields for gold, upcoming events, structure)
+and classifies it. Every point is attributed to a named factor and the analyst can — and usually
+does — reject opportunities, with the reason recorded.
 
-IMPORTANT: the confidence score is a ranking of setup quality, NOT a
-probability of profit. ``calibration()`` reports how scores have actually
-mapped to outcomes historically so users can judge it empirically.
+The 0–100 confidence is a setup-QUALITY score, NOT a probability of profit. ``calibration()``
+reports how scores have mapped to realised outcomes so it can be judged empirically.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from datetime import datetime
 
+import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .econ import EconEvent
+from .instruments import INSTRUMENTS
 from .models import Decision as DecisionRow
+from .sessions import SessionInfo
 from .strategies.base import Signal
 
-STRONG_BUY = "STRONG BUY CANDIDATE"
-BUY = "BUY CANDIDATE"
-WAIT = "WAIT"
-NO_TRADE = "NO TRADE"
-EXIT = "EXIT"
-HIGH_RISK = "HIGH RISK"
-CLASSES = (STRONG_BUY, BUY, WAIT, NO_TRADE, EXIT, HIGH_RISK)
-
-WAIT_HINTS = ("waiting", "consolidating", "pullback in progress", "trend intact")
+STRONG_BUY, BUY = "STRONG BUY CANDIDATE", "BUY CANDIDATE"
+STRONG_SELL, SELL = "STRONG SELL CANDIDATE", "SELL CANDIDATE"
+WAIT, NO_TRADE, EXIT, HIGH_RISK = "WAIT", "NO TRADE", "EXIT", "HIGH RISK"
+ACTIONABLE = (STRONG_BUY, BUY, STRONG_SELL, SELL)
+WAIT_HINTS = ("waiting", "pullback in progress", "not available yet", "no sweep or accepted")
 
 
 @dataclass
 class MarketContext:
     symbol: str
-    price: float | None
-    spread_bps: float | None
-    liquidity_usd: float | None
-    volume_24h_usd: float | None
-    change_24h_pct: float | None
-    atr_pct: float | None
-    regime: str  # BTC 1h trend: up | range | down | unknown
+    bid: float | None
+    ask: float | None
+    spread_pips: float | None
+    spread_limit_pips: float
+    atr_percentile: float | None
+    session: SessionInfo
     data_ready: bool
     data_issues: list[str] = field(default_factory=list)
-    round_trip_cost_bps: float | None = None
-
-
-@dataclass
-class PortfolioContext:
-    open_symbols: list[str]
-    exposure_pct: float
-    max_exposure_pct: float
+    strength: dict[str, float] = field(default_factory=dict)  # derived currency strength
+    us10y_trend: str | None = None
+    upcoming: list[EconEvent] = field(default_factory=list)  # relevant events next ~24h
+    blackout: EconEvent | None = None
+    now: datetime | None = None
 
 
 @dataclass
@@ -61,122 +57,138 @@ class Evaluation:
     risk_flags: list[str]
     explanation: str
     actionable: bool
+    events: list[dict] = field(default_factory=list)
 
 
-def _f(x, default=None):
+def _f(x, d=None):
     try:
         v = float(x)
-        return v if math.isfinite(v) else default
+        return v if math.isfinite(v) else d
     except (TypeError, ValueError):
-        return default
+        return d
 
 
-def evaluate(sig: Signal, m: MarketContext, p: PortfolioContext, min_liquidity: float, max_spread_bps: float,
-             strategy_penalty: tuple[int, str] | None = None, has_position: bool = False) -> Evaluation:
+def atr_percentile(atr: np.ndarray, window: int = 120) -> float | None:
+    a = atr[~np.isnan(atr)][-window:]
+    if len(a) < 30:
+        return None
+    return float((a < a[-1]).mean())
+
+
+def evaluate(sig: Signal, m: MarketContext, strategy_penalty: tuple[int, str] | None = None, has_position: str | None = None) -> Evaluation:
+    inst = INSTRUMENTS[sig.symbol]
     flags: list[str] = []
     if not m.data_ready:
         flags.append("market data incomplete/stale: " + "; ".join(m.data_issues)[:200])
-    if m.spread_bps is not None and m.spread_bps > max_spread_bps:
-        flags.append(f"spread {m.spread_bps:.1f} bps exceeds {max_spread_bps}")
-    if m.liquidity_usd is not None and m.liquidity_usd < min_liquidity:
-        flags.append(f"insufficient liquidity (${m.liquidity_usd:,.0f} within ±1%)")
-    if m.atr_pct is not None and m.atr_pct > 3.0:
-        flags.append(f"extreme volatility (ATR {m.atr_pct:.2f}% per bar)")
-    if m.change_24h_pct is not None and abs(m.change_24h_pct) > 25:
-        flags.append(f"24h move {m.change_24h_pct:+.1f}% — abnormal")
+    if not m.session.market_open:
+        flags.append("market closed")
+    if m.spread_pips is not None and m.spread_pips > m.spread_limit_pips:
+        flags.append(f"spread {m.spread_pips:.1f} pips exceeds {m.spread_limit_pips}")
+    if m.blackout is not None:
+        e = m.blackout
+        flags.append(f"news blackout: {e.currency} {e.title} at {e.time:%H:%M} UTC")
+    if m.atr_percentile is not None and m.atr_percentile > 0.97:
+        flags.append("extreme volatility (ATR in top 3% of recent range)")
+    events = [e.to_dict() for e in m.upcoming[:6]]
 
     if sig.direction == "exit":
-        cls = EXIT if has_position else NO_TRADE
-        expl = f"{sig.strategy}: exit conditions present — " + "; ".join(sig.reasons)
-        return Evaluation(cls, 0, {}, flags, expl, has_position)
-    if sig.direction != "long":
+        holds = has_position == sig.features.get("exit_for")
+        return Evaluation(EXIT if holds else NO_TRADE, 0, {}, flags, f"{sig.strategy}: exit conditions — " + "; ".join(sig.reasons), holds, events)
+    if sig.direction not in ("buy", "sell"):
         reason = "; ".join(sig.reasons) or "no setup"
         cls = WAIT if any(h in reason for h in WAIT_HINTS) else NO_TRADE
         if flags and cls == WAIT:
             cls = HIGH_RISK
             reason += " [risk: " + "; ".join(flags) + "]"
-        return Evaluation(cls, 0, {}, flags, f"{sig.strategy}: {reason}", False)
+        return Evaluation(cls, 0, {}, flags, f"{sig.strategy}: {reason}", False, events)
 
+    side = sig.direction
+    sg = 1 if side == "buy" else -1
     f = sig.features
     b: dict[str, dict] = {}
 
     def add(name, pts, maxp, why):
         b[name] = {"points": round(max(0.0, min(pts, maxp)), 2), "max": maxp, "why": why}
 
-    add("signal_strength", 25 * sig.strength, 25, f"strategy conviction {sig.strength:.2f}")
-    htf = (f.get("htf") or {}).get("trend", "unknown")
-    add("higher_timeframe", {"up": 15, "range": 6, "down": 0}.get(htf, 4), 15, f"1h trend {htf}")
-    add("market_regime", {"up": 10, "range": 5, "down": 0}.get(m.regime, 3), 10, f"BTC 1h regime {m.regime}")
-    rv = _f(f.get("rel_volume"))
-    add("volume", 10 * min((rv or 0) / 2, 1), 10, f"relative volume {rv:.2f}x" if rv is not None else "volume n/a")
-    if m.atr_pct is None:
-        add("volatility", 4, 10, "volatility unknown")
-    else:
-        a = m.atr_pct
-        pts = 10 if 0.15 <= a <= 1.5 else (6 if 0.08 <= a <= 2.5 else 1)
-        add("volatility", pts, 10, f"ATR {a:.3f}% per bar ({'healthy' if pts == 10 else 'outside ideal band'})")
-    if m.liquidity_usd is None:
-        add("liquidity", 0, 10, "depth unavailable")
-    else:
-        ratio = m.liquidity_usd / max(min_liquidity, 1)
-        add("liquidity", 10 * min(math.log10(max(ratio, 1e-9)) / 1.0 + 0.5, 1) if ratio >= 1 else 0, 10,
-            f"±1% depth ${m.liquidity_usd:,.0f} ({ratio:.1f}x minimum)")
+    cats = sig.categories
+    add("confluence", {3: 12, 4: 18}.get(len(cats), 22 if len(cats) >= 5 else 0), 22, f"{len(cats)} independent evidence categories: {', '.join(sorted(cats))}")
+    add("signal_strength", 13 * sig.strength, 13, f"strategy conviction {sig.strength:.2f}")
+    h1 = (f.get("h1") or {}).get("trend", "unknown")
+    h4 = (f.get("h4") or {}).get("trend", "unknown")
+    want = "up" if side == "buy" else "down"
+    against = "down" if side == "buy" else "up"
+    pts = 15 if (h1 == want and h4 in (want, "unknown")) else 10 if h1 == want else 0 if against in (h1, h4) else 5
+    add("multi_timeframe", pts, 15, f"1h {h1}, 4h {h4}")
+    add("session", 10 * m.session.quality, 10, f"{m.session.label}")
     r = sig.risk_per_unit or 0
-    if r > 0 and m.round_trip_cost_bps is not None and sig.entry:
-        cost_r = sig.entry * m.round_trip_cost_bps / 1e4 / r
-        add("costs", 10 * (1 - min(cost_r / 0.3, 1)), 10, f"round-trip costs = {cost_r:.2f}R")
+    if r > 0 and m.spread_pips is not None:
+        cost_r = (m.spread_pips + 2 * inst.slippage_pips) * inst.pip_size / r
+        add("costs", 10 * (1 - min(cost_r / 0.25, 1)), 10, f"spread + slippage = {cost_r:.2f}R of the stop distance")
     else:
         add("costs", 0, 10, "cost estimate unavailable")
-    res = f.get("resistance")
-    res_price = res.get("price") if isinstance(res, dict) else None
-    if res_price and r > 0 and sig.entry:
-        room = (res_price - sig.entry) / r
-        add("structure", 10 if room >= 3 else (6 if room >= 2 else 0), 10, f"nearest resistance {room:.1f}R away")
+    ap = m.atr_percentile
+    add("volatility", 4 if ap is None else (10 if 0.2 <= ap <= 0.85 else 5 if ap <= 0.95 else 1), 10,
+        "ATR percentile n/a" if ap is None else f"ATR at {ap:.0%} percentile of recent range")
+    if inst.asset_class == "gold":
+        usd = m.strength.get("USD")
+        score, why = 5, []
+        if usd is not None:
+            score += 3 if -sg * usd > 0.05 else (-3 if sg * usd > 0.05 else 0)
+            why.append(f"USD strength {usd:+.2f}%")
+        if m.us10y_trend in ("rising", "falling"):
+            good = (side == "buy") == (m.us10y_trend == "falling")
+            score += 2 if good else -2
+            why.append(f"US10Y {m.us10y_trend}")
+        add("macro", score, 10, ", ".join(why) or "USD/yields data unavailable")
     else:
-        add("structure", 7, 10, "no overhead resistance identified in lookback")
+        bs, qs = m.strength.get(inst.base), m.strength.get(inst.quote)
+        if bs is None or qs is None:
+            add("currency_strength", 4, 10, "currency strength unavailable")
+        else:
+            diff = sg * (bs - qs)
+            add("currency_strength", 10 if diff > 0.1 else 6 if diff > 0 else 0, 10, f"{inst.base} {bs:+.2f}% vs {inst.quote} {qs:+.2f}%")
+    rr = sig.rr or 0
+    add("structure_rr", 10 if rr >= 3 else 7 if rr >= 2 else 3, 10, f"gross {rr:.1f}R to first structural target")
     score = sum(x["points"] for x in b.values())
-    if p.exposure_pct > p.max_exposure_pct * 0.5:
-        score -= 5
-        b["exposure_penalty"] = {"points": -5, "max": 0, "why": f"portfolio exposure {p.exposure_pct:.0f}% already high"}
+    soon = [e for e in m.upcoming if e.impact == "High" and m.now and 0 <= (e.time - m.now).total_seconds() <= 7200]
+    if soon:
+        score -= 8
+        b["event_risk"] = {"points": -8, "max": 0, "why": f"high-impact {soon[0].currency} {soon[0].title} within 2h"}
     if strategy_penalty and strategy_penalty[0]:
         score -= strategy_penalty[0]
-        b["track_record_penalty"] = {"points": -strategy_penalty[0], "max": 0, "why": strategy_penalty[1]}
+        b["track_record"] = {"points": -strategy_penalty[0], "max": 0, "why": strategy_penalty[1]}
     conf = int(round(max(0, min(100, score))))
     if flags:
         cls = HIGH_RISK
     elif conf >= 75:
-        cls = STRONG_BUY
+        cls = STRONG_BUY if side == "buy" else STRONG_SELL
     elif conf >= 60:
-        cls = BUY
+        cls = BUY if side == "buy" else SELL
     elif conf >= 45:
         cls = WAIT
     else:
         cls = NO_TRADE
-    top = sorted(b.items(), key=lambda kv: kv[1]["points"] - kv[1]["max"])
-    weak = [f"{k.replace('_', ' ')} ({v['why']})" for k, v in top[:2] if v["points"] < v["max"] * 0.5]
-    rr = sig.rr
-    expl = (f"{sig.strategy} long setup on {sig.symbol} {sig.timeframe}: " + "; ".join(sig.reasons[:4]) +
-            f". Entry ≈{sig.entry:.6g}, stop {sig.stop:.6g}, TP1 {sig.targets[0]:.6g}" + (f" ({rr:.1f}R gross)" if rr else "") +
-            f". Confidence {conf}/100 → {cls}." + (f" Weakest factors: {', '.join(weak)}." if weak else "") +
-            (f" Risk flags: {'; '.join(flags)}." if flags else ""))
-    return Evaluation(cls, conf, b, flags, expl, cls in (STRONG_BUY, BUY))
+    weak = [f"{k.replace('_', ' ')} ({v['why']})" for k, v in sorted(b.items(), key=lambda kv: kv[1]["points"] - kv[1]["max"])[:2]
+            if v["max"] and v["points"] < v["max"] * 0.5]
+    expl = (f"{side.upper()} {inst.display} ({sig.strategy}, {sig.timeframe}). Evidence: " + "; ".join(sig.reasons[:5]) +
+            f". Entry ≈{sig.entry:.{inst.digits}f}, stop {sig.stop:.{inst.digits}f}, target {sig.targets[0]:.{inst.digits}f}"
+            + (f" ({rr:.1f}R gross)" if rr else "") + f". Confidence {conf}/100 → {cls}."
+            + (f" Weakest factors: {', '.join(weak)}." if weak else "") + (f" Risk flags: {'; '.join(flags)}." if flags else ""))
+    return Evaluation(cls, conf, b, flags, expl, cls in ACTIONABLE, events)
 
 
 def strategy_track_record(db: Session, strategy: str, min_trades: int = 30) -> tuple[int, str] | None:
-    """Penalty from measured live/paper outcomes: negative expectancy over a meaningful sample lowers scores."""
     rows = db.execute(select(DecisionRow.outcome_r).where(DecisionRow.strategy == strategy, DecisionRow.executed.is_(True),
                                                           DecisionRow.outcome_r.is_not(None)).order_by(DecisionRow.id.desc()).limit(200)).scalars().all()
     if len(rows) < min_trades:
         return None
     exp = sum(rows) / len(rows)
     if exp < 0:
-        pts = int(min(15, round(-exp * 20)))
-        return pts, f"{strategy} expectancy {exp:+.2f}R over last {len(rows)} paper trades"
+        return int(min(15, round(-exp * 20))), f"{strategy} expectancy {exp:+.2f}R over last {len(rows)} trades"
     return 0, f"{strategy} expectancy {exp:+.2f}R over last {len(rows)} trades"
 
 
 def calibration(db: Session, buckets=((0, 45), (45, 60), (60, 75), (75, 101))) -> list[dict]:
-    """Empirical outcome rate per confidence bucket for executed decisions."""
     rows = db.execute(select(DecisionRow.confidence, DecisionRow.outcome, DecisionRow.outcome_r)
                       .where(DecisionRow.executed.is_(True), DecisionRow.outcome.is_not(None))).all()
     out = []
@@ -185,6 +197,5 @@ def calibration(db: Session, buckets=((0, 45), (45, 60), (60, 75), (75, 101))) -
         n = len(sel)
         wins = sum(1 for r in sel if r[1] == "win")
         out.append({"bucket": f"{lo}-{min(hi, 100)}", "trades": n, "win_rate": round(wins / n * 100, 1) if n else None,
-                    "avg_r": round(sum(r[2] or 0 for r in sel) / n, 3) if n else None,
-                    "note": "insufficient sample" if n < 20 else ""})
+                    "avg_r": round(sum(r[2] or 0 for r in sel) / n, 3) if n else None, "note": "insufficient sample" if n < 20 else ""})
     return out

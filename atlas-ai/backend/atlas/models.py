@@ -78,8 +78,9 @@ class Candle(Base):
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)
     close: Mapped[float] = mapped_column(Float)
-    volume: Mapped[float] = mapped_column(Float)
+    volume: Mapped[float] = mapped_column(Float)  # tick volume / sample count
     quote_volume: Mapped[float] = mapped_column(Float, default=0.0)
+    spread: Mapped[float] = mapped_column(Float, default=0.0)
 
 
 class MarketDataRef(Base):
@@ -102,8 +103,8 @@ class MarketDataRef(Base):
 class Account(Base):
     __tablename__ = "accounts"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    mode: Mapped[str] = mapped_column(String(8), unique=True)  # paper | live
-    quote_asset: Mapped[str] = mapped_column(String(8), default="USDC")
+    mode: Mapped[str] = mapped_column(String(8), unique=True)  # paper | demo | live (never mixed)
+    quote_asset: Mapped[str] = mapped_column(String(8), default="USD")  # account currency
     starting_capital: Mapped[float] = mapped_column(Float)
     cash: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(TS, default=utcnow)
@@ -117,7 +118,7 @@ class Signal(Base):
     symbol: Mapped[str] = mapped_column(String(24), index=True)
     timeframe: Mapped[str] = mapped_column(String(4))
     strategy: Mapped[str] = mapped_column(String(32), index=True)
-    direction: Mapped[str] = mapped_column(String(8))  # long | exit | none
+    direction: Mapped[str] = mapped_column(String(8))  # buy | sell | exit | none
     candle_time: Mapped[int] = mapped_column(BigInteger)
     entry: Mapped[float | None] = mapped_column(Float, nullable=True)
     stop: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -136,6 +137,19 @@ class Decision(Base):
     strategy: Mapped[str] = mapped_column(String(32))
     classification: Mapped[str] = mapped_column(String(24))
     confidence: Mapped[int] = mapped_column(Integer)
+    direction: Mapped[str | None] = mapped_column(String(4), nullable=True)  # BUY | SELL
+    timeframe: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    entry: Mapped[float | None] = mapped_column(Float, nullable=True)
+    stop_loss: Mapped[float | None] = mapped_column(Float, nullable=True)
+    take_profit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    take_profit_2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    risk_reward: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lots: Mapped[float | None] = mapped_column(Float, nullable=True)
+    risk_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    est_costs: Mapped[dict] = mapped_column(JSON, default=dict)
+    evidence: Mapped[list] = mapped_column(JSON, default=list)
+    events: Mapped[list] = mapped_column(JSON, default=list)
+    invalidation: Mapped[list] = mapped_column(JSON, default=list)
     score_breakdown: Mapped[dict] = mapped_column(JSON, default=dict)
     risk_flags: Mapped[list] = mapped_column(JSON, default=list)
     explanation: Mapped[str] = mapped_column(Text)
@@ -154,11 +168,15 @@ class Position(Base):
     mode: Mapped[str] = mapped_column(String(8), index=True)
     symbol: Mapped[str] = mapped_column(String(24), index=True)
     strategy: Mapped[str] = mapped_column(String(32))
-    side: Mapped[str] = mapped_column(String(8), default="long")
+    side: Mapped[str] = mapped_column(String(4), default="buy")  # buy | sell
+    broker_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    commission: Mapped[float] = mapped_column(Float, default=0.0)
+    swap: Mapped[float] = mapped_column(Float, default=0.0)
+    pip_value_usd: Mapped[float] = mapped_column(Float, default=0.0)  # per 1.0 lot at entry
     status: Mapped[str] = mapped_column(String(12), default="pending", index=True)  # pending | open | closed | cancelled
     opened_at: Mapped[datetime | None] = mapped_column(TS, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(TS, nullable=True)
-    qty: Mapped[float] = mapped_column(Float, default=0.0)  # currently held
+    qty: Mapped[float] = mapped_column(Float, default=0.0)  # LOTS currently open
     initial_qty: Mapped[float] = mapped_column(Float, default=0.0)
     planned_qty: Mapped[float] = mapped_column(Float, default=0.0)
     entry_price: Mapped[float] = mapped_column(Float, default=0.0)  # average fill
@@ -286,30 +304,6 @@ class AuditLog(Base):
     target: Mapped[str | None] = mapped_column(String(128), nullable=True)
     details: Mapped[dict] = mapped_column(JSON, default=dict)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
-
-
-class TokenScan(Base):
-    __tablename__ = "token_scans"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ts: Mapped[datetime] = mapped_column(TS, default=utcnow, index=True)
-    mint: Mapped[str] = mapped_column(String(64), index=True)
-    symbol: Mapped[str] = mapped_column(String(32))
-    name: Mapped[str] = mapped_column(String(80))
-    pair_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    dex: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    price_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
-    liquidity_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
-    volume_24h: Mapped[float | None] = mapped_column(Float, nullable=True)
-    market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
-    fdv: Mapped[float | None] = mapped_column(Float, nullable=True)
-    pair_created_at: Mapped[datetime | None] = mapped_column(TS, nullable=True)
-    top10_holder_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
-    mint_authority: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    freeze_authority: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    risk_score: Mapped[int] = mapped_column(Integer)
-    risk_level: Mapped[str] = mapped_column(String(12))
-    flags: Mapped[list] = mapped_column(JSON, default=list)
-    checks: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class Command(Base):

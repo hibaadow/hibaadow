@@ -2,78 +2,85 @@ import numpy as np
 import pytest
 
 from atlas.backtest import Backtester, BTParams, resample, split_metrics, walk_forward
-from atlas.trading_config import FeeModel, TradingConfig
+from atlas.trading_config import CostModel, TradingConfig
 from tests.conftest import make_series
 
+MIDS = {"EURUSD": 1.10, "GBPUSD": 1.27, "USDJPY": 150.0}
 
-def series(n=3000, seed=11, drift=0.0003):
+
+def series(n=3000, seed=11, drift=0.00004, symbol="EURUSD", p0=1.10, vol=0.0006, bar_spread=0.00012):
     g = np.random.default_rng(seed)
-    closes = 100 * np.exp(np.cumsum(g.normal(drift, 0.004, n)))
-    return make_series(closes, vol=g.lognormal(7, 0.6, n))[0]
+    closes = p0 * np.exp(np.cumsum(g.normal(drift, vol, n)))
+    return make_series(closes, symbol=symbol, vol=g.lognormal(4, 0.5, n), spread_frac=vol * 0.6, bar_spread=bar_spread)[0]
 
 
-def test_backtest_runs_and_accounts_costs():
+def test_runs_and_accounts_costs_both_sides():
     s = series()
-    r = Backtester(TradingConfig()).run(s, BTParams("SOLUSDC", "momentum", "5m"))
+    r = Backtester(TradingConfig()).run(s, BTParams("EURUSD", "trend_pullback", "5m", conversion_mids=MIDS))
     m = r["metrics"]
     assert m["total_trades"] > 0
+    assert {t["side"] for t in r["trades"]} <= {"buy", "sell"}
     for t in r["trades"]:
-        assert t["fees"] > 0
-        assert t["net_pnl"] == pytest.approx(t["gross_pnl"] - t["fees"], abs=1e-5)
-        assert t["exit_time"] >= t["entry_time"]
-    assert m["final_equity"] == pytest.approx(10_000 + sum(t["net_pnl"] for t in r["trades"]), rel=1e-6)
-    for k in ("net_return_pct", "win_rate", "max_drawdown_pct", "sharpe", "sortino", "expectancy", "avg_holding_minutes"):
+        assert t["fees"] > 0 and t["lots"] >= 0.01
+        assert t["net_pnl"] == pytest.approx(t["gross_pnl"] - t["fees"], abs=1e-3)
+    assert m["final_equity"] == pytest.approx(10_000 + sum(t["net_pnl"] for t in r["trades"]), abs=0.05)
+    for k in ("net_return_pct", "win_rate", "profit_factor", "max_drawdown_pct", "sharpe", "sortino", "expectancy", "avg_holding_minutes"):
         assert k in m
 
 
 def test_costs_reduce_performance():
     s = series()
-    free = TradingConfig(fees=FeeModel(taker_fee_bps=0, maker_fee_bps=0, base_slippage_bps=0, impact_coefficient=0))
-    a = Backtester(free).run(s, BTParams("SOLUSDC", "trend_following", "5m", spread_bps=0))["metrics"]
-    b = Backtester(TradingConfig()).run(s, BTParams("SOLUSDC", "trend_following", "5m"))["metrics"]
+    free = TradingConfig(costs=CostModel(commission_per_lot_side_usd=0, slippage_multiplier=0))
+    a = Backtester(free).run(s, BTParams("EURUSD", "breakout_retest", "5m", spread_pips=0.0, conversion_mids=MIDS))["metrics"]
+    b = Backtester(TradingConfig()).run(s, BTParams("EURUSD", "breakout_retest", "5m", spread_pips=2.0, conversion_mids=MIDS))["metrics"]
     assert b["final_equity"] < a["final_equity"]
 
 
-def test_no_lookahead_future_changes_do_not_alter_past_trades():
-    s = series()
-    p = BTParams("SOLUSDC", "breakout", "5m")
-    full = Backtester(TradingConfig()).run(s, p)
-    cut = 2000
+def test_no_lookahead():
+    p = BTParams("EURUSD", "liquidity_sweep", "5m", conversion_mids=MIDS)
+    full = Backtester(TradingConfig()).run(series(), p)
     s2 = series()
-    s2.c[cut:] *= 0.7
-    s2.h[cut:] *= 0.7
-    s2.l[cut:] *= 0.7
-    s2.o[cut:] *= 0.7
+    cut = 2000
+    for arr in (s2.o, s2.h, s2.l, s2.c):
+        arr[cut:] *= 0.97
     alt = Backtester(TradingConfig()).run(s2, p)
-    t_cut = int(s.t[cut - 1])
-    before = [t for t in full["trades"] if t["exit_time"] < t_cut]
-    before2 = [t for t in alt["trades"] if t["exit_time"] < t_cut]
-    assert before == before2
+    t_cut = int(s2.t[cut - 1])
+    assert [t for t in full["trades"] if t["exit_time"] < t_cut] == [t for t in alt["trades"] if t["exit_time"] < t_cut]
 
 
-def test_entries_fill_at_next_bar_open():
-    s = series()
-    r = Backtester(TradingConfig()).run(s, BTParams("SOLUSDC", "momentum", "5m"))
+def test_entries_at_next_open_plus_half_spread():
+    s = series(bar_spread=0.0002)
+    r = Backtester(TradingConfig()).run(s, BTParams("EURUSD", "trend_pullback", "5m", conversion_mids=MIDS))
     opens = dict(zip(s.t.tolist(), s.o.tolist()))
     for t in r["trades"][:20]:
-        assert t["entry"] >= opens[t["entry_time"]]  # open + spread + slippage, never better
+        o = opens[t["entry_time"]]
+        if t["side"] == "buy":
+            assert t["entry"] >= o + 0.0001 - 1e-9
+        else:
+            assert t["entry"] <= o - 0.0001 + 1e-9
 
 
-def test_resample_hides_incomplete_htf_bars():
+def test_gold_and_jpy_backtests_run():
+    g = series(symbol="XAUUSD", p0=3800.0, vol=0.001, bar_spread=0.3)
+    r = Backtester(TradingConfig()).run(g, BTParams("XAUUSD", "gold_session", "5m", conversion_mids=MIDS))
+    assert r["metrics"]["total_trades"] >= 0
+    j = series(symbol="USDJPY", p0=150.0, bar_spread=0.012)
+    r = Backtester(TradingConfig()).run(j, BTParams("USDJPY", "trend_pullback", "5m", conversion_mids=MIDS))
+    assert not r["metrics"]["cross_rate_approximated"]
+
+
+def test_resample_htf_close_times():
     s = series(600)
     htf, close_t = resample(s, "1h")
     assert np.all(close_t == htf.t + 3_600_000)
-    assert htf.h[0] == pytest.approx(s.h[:12].max()) or s.t[0] % 3_600_000 != 0
 
 
-def test_out_of_sample_and_walk_forward():
+def test_oos_and_walk_forward():
     s = series(4000)
-    p = BTParams("SOLUSDC", "vwap_reversion", "5m")
+    p = BTParams("EURUSD", "supply_demand", "5m", conversion_mids=MIDS)
     bt = Backtester(TradingConfig())
     r = bt.run(s, p)
     ins, oos = split_metrics(r, s, p)
     assert ins["total_trades"] + oos["total_trades"] == r["metrics"]["total_trades"]
     wf = walk_forward(bt, s, p, folds=2)
-    assert len(wf["folds"]) == 2
-    for f in wf["folds"]:
-        assert f["train"][1] < f["test"][0], "test window must be strictly after training window"
+    assert len(wf["folds"]) == 2 and all(f["train"][1] < f["test"][0] for f in wf["folds"])

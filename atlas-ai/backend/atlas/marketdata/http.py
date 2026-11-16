@@ -50,7 +50,7 @@ class ProviderClient:
     """One instance per external provider."""
 
     def __init__(self, name: str, base_url: str, rate_per_sec: float = 5, burst: int = 10,
-                 max_retries: int = 3, timeout: float | None = None):
+                 max_retries: int = 3, timeout: float | None = None, headers: dict | None = None):
         self.name = name
         self.base_url = base_url.rstrip("/")
         self.bucket = TokenBucket(rate_per_sec, burst)
@@ -61,12 +61,13 @@ class ProviderClient:
         self.last_error: str | None = None
         self.last_ok: float | None = None
         self.consecutive_failures = 0
+        self._headers = headers or {}
 
     def _http(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 timeout=self.timeout,
-                headers={"User-Agent": "atlas-ai/1.0", "Accept": "application/json"},
+                headers={"User-Agent": "atlas-ai/1.0", "Accept": "application/json", **self._headers},
                 limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
                 follow_redirects=False,
             )
@@ -76,7 +77,7 @@ class ProviderClient:
         if self._client is not None:
             await self._client.aclose()
 
-    async def request(self, method: str, path: str, *, params: dict | None = None, json: Any = None) -> Any:
+    async def request(self, method: str, path: str, *, params: dict | None = None, json: Any = None, expect: str = "json") -> Any:
         url = path if path.startswith("http") else f"{self.base_url}{path}"
         delay = 0.5
         for attempt in range(self.max_retries + 1):
@@ -108,8 +109,14 @@ class ProviderClient:
                 continue
             if r.status_code >= 400:
                 self._fail(f"client error {r.status_code}")
-                raise ProviderError(self.name, f"HTTP {r.status_code}: {r.text[:200]}", r.status_code)
+                body = r.text[:200] if r.status_code not in (401, 403) else "unauthorized (check credentials)"
+                raise ProviderError(self.name, f"HTTP {r.status_code}: {body}", r.status_code)
             ctype = r.headers.get("content-type", "")
+            if expect == "text":
+                self.last_ok = time.time()
+                self.last_error = None
+                self.consecutive_failures = 0
+                return r.text[:5_000_000]
             if "json" not in ctype:
                 self._fail(f"unexpected content-type {ctype!r}")
                 raise ProviderError(self.name, f"unexpected content-type {ctype!r}")
@@ -129,8 +136,14 @@ class ProviderClient:
     async def get(self, path: str, **params) -> Any:
         return await self.request("GET", path, params={k: v for k, v in params.items() if v is not None})
 
+    async def get_text(self, path: str, **params) -> str:
+        return await self.request("GET", path, params={k: v for k, v in params.items() if v is not None}, expect="text")
+
     async def post(self, path: str, payload: Any) -> Any:
         return await self.request("POST", path, json=payload)
+
+    async def put(self, path: str, payload: Any) -> Any:
+        return await self.request("PUT", path, json=payload)
 
     def _fail(self, msg: str) -> None:
         self.last_error = msg

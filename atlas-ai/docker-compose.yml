@@ -1,4 +1,4 @@
-# ATLAS AI — full stack: PostgreSQL, Redis, API (serves the web UI), trading worker.
+# ATLAS AI (gold & forex) — full stack: PostgreSQL, Redis, API (serves the web UI), trading worker.
 # Usage:  cp .env.example .env  &&  edit secrets  &&  docker compose up -d --build
 services:
   postgres:
@@ -36,8 +36,7 @@ services:
       ATLAS_DATABASE_URL: postgresql+psycopg://atlas:${POSTGRES_PASSWORD}@postgres:5432/atlas
       ATLAS_REDIS_URL: redis://redis:6379/0
     healthcheck: { disable: true }
-    # Live trading only: mount the keypair as a read-only secret, e.g.
-    # volumes: ["./secrets/solana-keypair.json:/run/secrets/solana-keypair.json:ro"]
+    # Broker credentials (OANDA token/account, MT5 bridge URL/token) come from .env — never commit them.
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy }, api: { condition: service_started } }
     restart: unless-stopped
 

@@ -23,8 +23,8 @@ describe("ui", () => {
     expect(fn).toHaveBeenCalledWith(true);
   });
   it("renders activity with explanations and escapes content", () => {
-    render(<ActivityList rows={[{ id: 1, ts: new Date().toISOString(), kind: "risk", symbol: "SOLUSDC", message: "Rejecting <b>trade</b>", explanation: "insufficient liquidity", data: {} }]} />);
+    render(<ActivityList rows={[{ id: 1, ts: new Date().toISOString(), kind: "risk", symbol: "XAUUSD", message: "Rejecting <b>trade</b>", explanation: "news blackout: USD CPI", data: {} }]} />);
     expect(screen.getByText("Rejecting <b>trade</b>")).toBeTruthy();
-    expect(screen.getByText("insufficient liquidity")).toBeTruthy();
+    expect(screen.getByText("news blackout: USD CPI")).toBeTruthy();
   });
 });

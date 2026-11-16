@@ -11,7 +11,8 @@ type M = Record<string, any>;
 type Run = { id: number; created_at: string; status: string; params: M; metrics: M; oos_metrics: M; error: string | null };
 type Detail = Run & { walk_forward: M; equity_curve: { t: number; equity: number }[]; trades: M[]; data_quality: M; disclaimer: string };
 
-const STRATS = ["trend_following", "momentum", "breakout", "vwap_reversion"];
+const STRATS = ["trend_pullback", "breakout_retest", "liquidity_sweep", "supply_demand", "gold_session"];
+const SYMS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "GBPJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "EURGBP", "EURJPY"];
 const iso = (d: Date) => d.toISOString().slice(0, 16);
 
 function MetricRow({ label, a, b, fmt }: { label: string; a: unknown; b?: unknown; fmt: (v: any) => string }) {
@@ -26,8 +27,8 @@ export default function Backtest() {
   const [cmp, setCmp] = useState<number[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const now = new Date();
-  const [f, setF] = useState({ symbol: "SOLUSDC", strategy: "momentum", timeframe: "5m", start: iso(new Date(now.getTime() - 30 * 864e5)), end: iso(now),
-    starting_capital: 10000, taker_fee_bps: 10, maker_fee_bps: 10, base_slippage_bps: 2, spread_bps: 2, risk_per_trade_pct: 0.5, oos_fraction: 0.3, walk_forward: true, folds: 3 });
+  const [f, setF] = useState({ symbol: "XAUUSD", strategy: "gold_session", timeframe: "5m", start: iso(new Date(now.getTime() - 30 * 864e5)), end: iso(now),
+    starting_capital: 10000, commission_per_lot_side: 3.5, spread_pips: "" as number | "", risk_per_trade_pct: 0.5, oos_fraction: 0.3, walk_forward: true, folds: 3 });
   const upd = (k: string, v: unknown) => setF((x) => ({ ...x, [k]: v }));
 
   useEffect(() => {
@@ -40,7 +41,8 @@ export default function Backtest() {
   const submit = async () => {
     setErr(null);
     try {
-      const r = await post<{ id: number }>("/api/backtests", { ...f, symbol: f.symbol.toUpperCase(), start: new Date(f.start).toISOString(), end: new Date(f.end).toISOString() });
+      const r = await post<{ id: number }>("/api/backtests", { ...f, spread_pips: f.spread_pips === "" ? null : Number(f.spread_pips),
+        start: new Date(f.start).toISOString(), end: new Date(f.end).toISOString() });
       runs.refresh(); setSel(r.id);
     } catch (e) { setErr((e as Error).message); }
   };
@@ -51,25 +53,25 @@ export default function Backtest() {
   const curve = (detail?.equity_curve || []).map((p) => ({ t: Math.floor(p.t / 1000), v: p.equity }));
   const field = (k: string, label: string, type = "number", step?: string) => (
     <label className="block"><span className="label block mb-1">{label}</span>
-      <input className="input w-full" type={type} step={step} value={(f as M)[k]} onChange={(e) => upd(k, type === "number" ? Number(e.target.value) : e.target.value)} /></label>);
+      <input className="input w-full" type={type} step={step} value={(f as M)[k]} onChange={(e) => upd(k, type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)} /></label>);
   const cmpRuns = (runs.data || []).filter((r) => cmp.includes(r.id) && r.status === "done");
 
   return (
     <div className="max-w-[1700px] mx-auto">
-      <PageHeader title="Backtesting" subtitle="Historical simulation on Binance candles · next-bar-open fills · fees, spread and slippage modelled · in/out-of-sample and walk-forward" />
+      <PageHeader title="Backtesting" subtitle="XAU/USD & forex · broker history (OANDA/MT5) or bars recorded by ATLAS · next-bar-open fills · spread, commission & slippage · in/out-of-sample and walk-forward" />
       <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-3">
         <div className="flex flex-col gap-3">
           <Panel title="New backtest">
             <div className="grid grid-cols-2 gap-3">
-              {field("symbol", "Symbol", "text")}
+              <label className="block"><span className="label block mb-1">Instrument</span>
+                <select className="input w-full" value={f.symbol} onChange={(e) => upd("symbol", e.target.value)}>{SYMS.map((x) => <option key={x} value={x}>{x.slice(0, 3)}/{x.slice(3)}</option>)}</select></label>
               <label className="block"><span className="label block mb-1">Strategy</span>
-                <select className="input w-full" value={f.strategy} onChange={(e) => upd("strategy", e.target.value)}>{STRATS.map((s) => <option key={s}>{s}</option>)}</select></label>
+                <select className="input w-full" value={f.strategy} onChange={(e) => upd("strategy", e.target.value)}>{STRATS.filter((s) => s !== "gold_session" || f.symbol === "XAUUSD").map((s) => <option key={s}>{s}</option>)}</select></label>
               <label className="block"><span className="label block mb-1">Timeframe</span>
                 <select className="input w-full" value={f.timeframe} onChange={(e) => upd("timeframe", e.target.value)}>{["1m", "5m", "15m", "1h", "4h"].map((s) => <option key={s}>{s}</option>)}</select></label>
-              {field("starting_capital", "Capital (USDC)")}
+              {field("starting_capital", "Capital (USD)")}
               <div className="col-span-2 grid grid-cols-2 gap-3">{field("start", "Start (UTC)", "datetime-local")}{field("end", "End (UTC)", "datetime-local")}</div>
-              {field("taker_fee_bps", "Taker fee bps", "number", "0.5")}{field("maker_fee_bps", "Maker fee bps", "number", "0.5")}
-              {field("base_slippage_bps", "Slippage bps", "number", "0.5")}{field("spread_bps", "Spread bps", "number", "0.5")}
+              {field("commission_per_lot_side", "Commission $/lot/side", "number", "0.5")}{field("spread_pips", "Spread pips (blank = data)", "number", "0.1")}
               {field("risk_per_trade_pct", "Risk / trade %", "number", "0.1")}{field("oos_fraction", "Out-of-sample", "number", "0.05")}
               <label className="flex items-center gap-2 text-[12px] text-ink-2 col-span-2"><Toggle checked={f.walk_forward} onChange={(v) => upd("walk_forward", v)} />Walk-forward optimisation ({f.folds} folds)</label>
             </div>
@@ -105,10 +107,10 @@ export default function Backtest() {
                   <td className="num text-right">{num(r.metrics.sharpe, 2)}</td><td className="num text-right">—</td></tr>)}</tbody></table></div>
             </Panel>)}
           {!detail ? <Panel><Empty>Run or select a backtest to see results.</Empty></Panel> : detail.status !== "done" ? (
-            <Panel title={`Backtest #${detail.id}`}>{detail.status === "failed" ? <ErrorNote error={detail.error} /> : <div className="text-[12.5px] text-ink-2">{detail.status === "fetching" ? "Downloading historical candles from Binance…" : "Simulating…"} this can take up to a minute with walk-forward enabled.</div>}</Panel>
+            <Panel title={`Backtest #${detail.id}`}>{detail.status === "failed" ? <ErrorNote error={detail.error} /> : <div className="text-[12.5px] text-ink-2">{detail.status === "fetching" ? "Loading historical candles…" : "Simulating…"} this can take up to a minute with walk-forward enabled.</div>}</Panel>
           ) : (
             <>
-              <div className="text-[11.5px] text-warn bg-warn/8 border border-warn/25 rounded-md px-3 py-2">BACKTEST — {detail.disclaimer}</div>
+              <div className="text-[11.5px] text-warn bg-warn/8 border border-warn/25 rounded-md px-3 py-2">BACKTEST — {detail.disclaimer} Data: {detail.data_quality?.source}. The news blackout and session filters are not replayed historically{m.cross_rate_approximated ? "; cross-pair pip values use the current conversion rate" : ""}.</div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <Stat label="Net return" value={pct(m.net_return_pct)} tone={tone(m.net_return_pct)} sub={signedUsd(m.final_equity - detail.params.starting_capital)} />
                 <Stat label="Win rate" value={pct(m.win_rate, 1, false)} sub={`${m.wins}W / ${m.losses}L`} />
@@ -146,10 +148,11 @@ export default function Backtest() {
                 </Panel>
               </div>
               <Panel title={`Trades (${detail.trades.length})`} pad={false}>
-                <div className="overflow-x-auto max-h-[420px]"><table className="tbl"><thead><tr><th>Entry</th><th>Exit</th><th className="text-right">Entry px</th><th className="text-right">Exit px</th>
+                <div className="overflow-x-auto max-h-[420px]"><table className="tbl"><thead><tr><th>Entry</th><th>Exit</th><th>Side</th><th className="text-right">Lots</th><th className="text-right">Entry px</th><th className="text-right">Exit px</th>
                   <th className="text-right">Fees</th><th className="text-right">Net</th><th className="text-right">R</th><th>Exit reason</th></tr></thead>
                   <tbody>{detail.trades.slice().reverse().map((t, i) => <tr key={i}><td className="num text-ink-2">{new Date(t.entry_time).toISOString().slice(5, 16).replace("T", " ")}</td>
-                    <td className="num text-ink-2">{new Date(t.exit_time).toISOString().slice(5, 16).replace("T", " ")}</td><td className="num text-right">{price(t.entry)}</td><td className="num text-right">{price(t.exit)}</td>
+                    <td className="num text-ink-2">{new Date(t.exit_time).toISOString().slice(5, 16).replace("T", " ")}</td><td className={t.side === "buy" ? "text-up" : "text-down"}>{String(t.side).toUpperCase()}</td>
+                    <td className="num text-right">{num(t.lots, 2)}</td><td className="num text-right">{price(t.entry)}</td><td className="num text-right">{price(t.exit)}</td>
                     <td className="num text-right text-ink-2">{num(t.fees, 2)}</td><td className={`num text-right ${tone(t.net_pnl)}`}>{signedUsd(t.net_pnl)}</td>
                     <td className={`num text-right ${tone(t.r_multiple)}`}>{num(t.r_multiple, 2)}</td><td className="text-ink-2 max-w-[340px] truncate" title={t.exit_reason}>{t.exit_reason}</td></tr>)}</tbody></table></div>
               </Panel>

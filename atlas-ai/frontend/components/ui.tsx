@@ -19,7 +19,7 @@ export function Stat({ label, value, sub, tone = "", hint }: { label: string; va
   return (
     <div className="panel px-4 py-3 min-w-0" title={hint}>
       <div className="label truncate">{label}</div>
-      <div className={`num text-[19px] font-semibold mt-1.5 truncate ${tone}`}>{value}</div>
+      <div className={`num text-[18px] font-semibold mt-1.5 truncate ${tone}`}>{value}</div>
       {sub !== undefined && <div className="num text-[11.5px] text-mute mt-0.5 truncate">{sub}</div>}
     </div>
   );
@@ -28,6 +28,8 @@ export function Stat({ label, value, sub, tone = "", hint }: { label: string; va
 const SIGNAL_STYLE: Record<string, string> = {
   "STRONG BUY CANDIDATE": "bg-up/15 text-up border-up/30",
   "BUY CANDIDATE": "bg-up/10 text-up/90 border-up/20",
+  "STRONG SELL CANDIDATE": "bg-down/15 text-down border-down/30",
+  "SELL CANDIDATE": "bg-down/10 text-down/90 border-down/20",
   WAIT: "bg-warn/10 text-warn border-warn/25",
   "NO TRADE": "bg-white/[0.03] text-mute border-line-2",
   EXIT: "bg-accent/10 text-accent border-accent/25",
@@ -35,6 +37,12 @@ const SIGNAL_STYLE: Record<string, string> = {
 };
 export function SignalChip({ value }: { value: string }) {
   return <span className={`chip ${SIGNAL_STYLE[value] || SIGNAL_STYLE["NO TRADE"]}`}>{value}</span>;
+}
+
+export function SideChip({ side }: { side: string | null | undefined }) {
+  if (!side) return <span className="text-mute">—</span>;
+  const buy = side.toLowerCase() === "buy";
+  return <span className={`chip ${buy ? "bg-up/12 text-up border-up/30" : "bg-down/12 text-down border-down/30"}`}>{buy ? "BUY" : "SELL"}</span>;
 }
 
 export function Chip({ children, tone = "mute" }: { children: ReactNode; tone?: "up" | "down" | "warn" | "accent" | "mute" }) {

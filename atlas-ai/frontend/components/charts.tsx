@@ -28,8 +28,8 @@ function precisionFor(p: number) {
 export type CandleData = { t: number; o: number; h: number; l: number; c: number; v: number };
 export type Level = { price: number; label: string; color: "up" | "down" | "accent" | "warn" };
 
-export function CandleChart({ candles, overlays, levels, live, height = 460 }: {
-  candles: CandleData[]; overlays: Record<string, (number | null)[]>; levels: Level[]; live?: number | null; height?: number;
+export function CandleChart({ candles, overlays, levels, live, height = 460, digits }: {
+  candles: CandleData[]; overlays: Record<string, (number | null)[]>; levels: Level[]; live?: number | null; height?: number; digits?: number;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -59,7 +59,7 @@ export function CandleChart({ candles, overlays, levels, live, height = 460 }: {
   useEffect(() => {
     const s = series.current;
     if (!s.candle || !candles.length) return;
-    const fmt = precisionFor(candles[candles.length - 1].c);
+    const fmt = digits != null ? { type: "price" as const, precision: digits, minMove: Math.pow(10, -digits) } : precisionFor(candles[candles.length - 1].c);
     s.candle.applyOptions({ priceFormat: fmt });
     s.candle.setData(candles.map((x) => ({ time: x.t as UTCTimestamp, open: x.o, high: x.h, low: x.l, close: x.c })));
     s.vol!.setData(candles.map((x) => ({ time: x.t as UTCTimestamp, value: x.v, color: x.c >= x.o ? "rgba(22,199,132,.28)" : "rgba(239,69,89,.28)" })));
@@ -70,7 +70,7 @@ export function CandleChart({ candles, overlays, levels, live, height = 460 }: {
     }
     const r = overlays.rsi || [];
     s.rsi!.setData(candles.flatMap((x, i) => (r[i] == null ? [] : [{ time: x.t as UTCTimestamp, value: r[i] as number }])));
-  }, [candles, overlays]);
+  }, [candles, overlays, digits]);
 
   useEffect(() => {
     const s = series.current;

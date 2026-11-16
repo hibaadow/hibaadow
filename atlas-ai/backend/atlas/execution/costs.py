@@ -1,44 +1,53 @@
-"""Transaction cost model shared by risk sizing, paper execution and backtesting."""
+"""Transaction-cost model for gold & forex: spread + commission + slippage, in account currency (USD)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..trading_config import FeeModel
+from ..instruments import Instrument, pip_value_usd
+from ..trading_config import CostModel
 
 
 @dataclass
 class CostEstimate:
-    fee_bps: float
-    slippage_bps: float
-    spread_bps: float
+    spread_usd: float
+    commission_usd: float
+    slippage_usd: float
+    spread_pips: float
+    slippage_pips: float
 
     @property
-    def total_bps(self) -> float:
-        return self.fee_bps + self.slippage_bps
+    def total_usd(self) -> float:
+        return self.spread_usd + self.commission_usd + self.slippage_usd
+
+    def to_dict(self) -> dict:
+        return {"spread_usd": round(self.spread_usd, 2), "commission_usd": round(self.commission_usd, 2), "slippage_usd": round(self.slippage_usd, 2),
+                "total_usd": round(self.total_usd, 2), "spread_pips": round(self.spread_pips, 2), "slippage_pips": round(self.slippage_pips, 2)}
 
 
-def slippage_bps(fees: FeeModel, notional: float, minute_quote_volume: float | None, spread_bps: float) -> float:
-    """Base slippage + half the spread + market impact proportional to participation.
-
-    impact = impact_coefficient bps for every 1% of the average 1-minute quote
-    volume consumed. If volume is unknown we assume a thin market (conservative).
-    """
-    if minute_quote_volume and minute_quote_volume > 0:
-        participation_pct = notional / minute_quote_volume * 100
-    else:
-        participation_pct = 50.0
-    return fees.base_slippage_bps + max(spread_bps, 0) / 2 + fees.impact_coefficient * participation_pct
+def commission_per_side(inst: Instrument, lots: float, cm: CostModel) -> float:
+    rate = cm.gold_commission_per_lot_side_usd if inst.asset_class == "gold" else cm.commission_per_lot_side_usd
+    return abs(lots) * rate
 
 
-def estimate(fees: FeeModel, notional: float, minute_quote_volume: float | None, spread_bps: float, taker: bool = True) -> CostEstimate:
-    return CostEstimate(fees.taker_fee_bps if taker else fees.maker_fee_bps,
-                        slippage_bps(fees, notional, minute_quote_volume, spread_bps), spread_bps)
+def slippage_pips(inst: Instrument, cm: CostModel, news: bool = False, stop: bool = False) -> float:
+    s = inst.slippage_pips * cm.slippage_multiplier
+    if stop:
+        s *= 2  # stop orders fill as market orders in fast markets
+    if news:
+        s *= cm.news_slippage_multiplier
+    return s
 
 
-def fee(fees: FeeModel, notional: float, taker: bool = True) -> float:
-    return abs(notional) * (fees.taker_fee_bps if taker else fees.maker_fee_bps) / 1e4
+def estimate(inst: Instrument, lots: float, spread_price: float, mids: dict[str, float], cm: CostModel, news: bool = False) -> CostEstimate | None:
+    pv = pip_value_usd(inst, mids)
+    if pv is None:
+        return None
+    sp_pips = inst.to_pips(spread_price)
+    sl = slippage_pips(inst, cm, news)
+    return CostEstimate(sp_pips * pv * lots, 2 * commission_per_side(inst, lots, cm), 2 * sl * pv * lots, sp_pips, sl)
 
 
-def apply_slippage(price: float, bps: float, side: str) -> float:
+def apply_slippage(price: float, pips: float, inst: Instrument, side: str) -> float:
     """Buys fill higher, sells fill lower."""
-    return price * (1 + bps / 1e4) if side == "buy" else price * (1 - bps / 1e4)
+    d = pips * inst.pip_size
+    return price + d if side == "buy" else price - d

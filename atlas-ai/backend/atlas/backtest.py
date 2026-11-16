@@ -1,18 +1,20 @@
-"""Event-driven historical backtester.
+"""Event-driven historical backtester for gold & forex.
 
 Bias controls
 -------------
-* Strategies only see CLOSED bars up to and including bar i (same 500-bar window as live).
-* Higher-timeframe bars are built from primary bars and only become visible once fully closed.
-* Signals at bar i close are executed at bar i+1 OPEN (+ half spread + modelled slippage + taker fee).
-* Stops are evaluated before targets inside a bar (conservative); gaps through a stop fill at the open.
-* Targets fill only when price trades through them; maker fee applied.
-* Identical sizing (``risk.size_position``) and position rules (``execution.rules``) as paper trading.
-* Daily loss limit and loss-streak cooldown are simulated.
-* Out-of-sample: metrics reported separately for the last ``oos_fraction`` of the data.
-* Walk-forward: parameters are optimised on a training window and evaluated on the following unseen window.
-
-Historical performance is not evidence of future profitability.
+* Strategies only see CLOSED bars up to bar i (same window as live); 1h/4h bars are built from the
+  primary bars and only become visible once complete. No look-ahead.
+* Signals at bar i close are executed at bar i+1 OPEN: buys at mid + half spread + slippage, sells at
+  mid − half spread − slippage. The per-bar spread comes from the data when the broker supplies bid/ask
+  candles (OANDA "BA", MT5 spread); otherwise the configured fixed spread is used.
+* Exits: longs are evaluated on bid (mid − half spread), shorts on ask. Stops are checked before targets
+  inside a bar; gaps through a stop fill at the open. Commission is charged per lot per side.
+* Identical sizing (``risk.size_position``: pip value, stop distance, lot step, margin) and position rules
+  (``execution.rules``) as paper trading. Daily loss limit and loss-streak cooldown are simulated.
+* Sessions and the economic calendar are NOT replayed historically (no reliable archive is wired in);
+  results therefore exclude the news blackout — a known optimistic/pessimistic bias, reported in the UI.
+* Pip values for crosses (e.g. EUR/GBP, GBP/JPY) use the conversion rate at run time (approximation).
+* Out-of-sample and walk-forward evaluation as before. Historical performance is not evidence of future profitability.
 """
 from __future__ import annotations
 
@@ -24,7 +26,8 @@ from datetime import datetime, timezone
 import numpy as np
 
 from .execution import costs
-from .execution.rules import Action, PosState, RuleParams, apply, manage
+from .execution.rules import PosState, RuleParams, apply, manage
+from .instruments import INSTRUMENTS, CONVERSION_PAIRS
 from .marketdata.types import TF_MS, Candle, CandleSeries
 from .portfolio import max_drawdown, trade_metrics
 from .risk import size_position
@@ -42,9 +45,10 @@ class BTParams:
     strategy: str
     timeframe: str
     starting_capital: float = 10_000.0
-    spread_bps: float = 2.0
+    spread_pips: float | None = None  # None → use per-bar spread from data, else the instrument default
     strategy_params: dict = field(default_factory=dict)
     oos_fraction: float = 0.3
+    conversion_mids: dict = field(default_factory=dict)  # live mids for cross-currency pip values
 
 
 def resample(series: CandleSeries, tf: str) -> tuple[CandleSeries, np.ndarray]:
@@ -55,8 +59,9 @@ def resample(series: CandleSeries, tf: str) -> tuple[CandleSeries, np.ndarray]:
     starts = np.flatnonzero(np.r_[True, bucket[1:] != bucket[:-1]])
     ends = np.r_[starts[1:], len(bucket)]
     for a, b in zip(starts, ends):
+        sp = float(series.sp[a:b].mean()) if series.sp is not None else 0.0
         out.append(Candle(int(bucket[a]), float(series.o[a]), float(series.h[a:b].max()), float(series.l[a:b].min()),
-                          float(series.c[b - 1]), float(series.v[a:b].sum()), float(series.qv[a:b].sum())))
+                          float(series.c[b - 1]), float(series.v[a:b].sum()), 0.0, sp))
     htf = CandleSeries.from_candles(series.symbol, tf, series.venue, out)
     return htf, htf.t + step
 
@@ -106,136 +111,171 @@ class Backtester:
         self.cfg = cfg
         self.rules = rules or RuleParams()
 
+    def _mids(self, inst, price: float, p: BTParams) -> dict[str, float]:
+        """Conversion rates for pip value: exact for USD-quoted / USD-based pairs, live rate for crosses."""
+        mids = dict(p.conversion_mids)
+        if inst.quote == "USD" or inst.base == "USD":
+            mids[inst.symbol] = price
+        pair = CONVERSION_PAIRS.get(inst.quote)
+        if pair and pair not in mids:
+            mids[pair] = {"JPY": 150.0, "CHF": 0.9, "CAD": 1.37, "GBP": 1.27, "EUR": 1.08, "AUD": 0.65, "NZD": 0.6}[inst.quote]
+            mids["_approx"] = 1
+        return mids
+
     def run(self, series: CandleSeries, p: BTParams, start_index: int = 0, end_index: int | None = None) -> dict:
-        cfg, fees = self.cfg, self.cfg.fees
+        cfg, cm = self.cfg, self.cfg.costs
+        inst = INSTRUMENTS[p.symbol]
         n = len(series) if end_index is None else end_index
         step = TF_MS[series.timeframe]
-        htf, htf_close = resample(series, "1h")
+        h1, h1_close = resample(series, "1h")
+        h4, h4_close = resample(series, "4h")
         strat = build(p.strategy, p.strategy_params)
-        equity = cash = p.starting_capital
+        balance = p.starting_capital
         pos: dict | None = None
-        pending_entry: dict | None = None
+        pending: dict | None = None
         pending_exit: str | None = None
         trades: list[dict] = []
         curve: list[dict] = []
-        day_key, day_start_eq = None, equity
-        losses_streak, last_loss_t = 0, None
+        day_key, day_start = None, balance
+        streak, last_loss_t = 0, None
         signals = rejected = 0
         first = max(WARMUP, start_index)
+        default_sp = (p.spread_pips if p.spread_pips is not None else inst.max_spread_pips * 0.5) * inst.pip_size
+
+        def spread_at(i):
+            if p.spread_pips is None and series.sp is not None and series.sp[i] > 0:
+                return float(series.sp[i])
+            return default_sp
+
+        def upnl(px_mid, i):
+            if not pos:
+                return 0.0
+            st = pos["st"]
+            close_px = px_mid - st.sign * spread_at(i) / 2
+            mids = self._mids(inst, px_mid, p)
+            rate = costs.pip_value_usd(inst, mids) / inst.pip_value_quote if costs.pip_value_usd(inst, mids) else 1.0
+            return st.sign * (close_px - st.entry) * st.qty * inst.contract_size * rate
+
         for i in range(first, n):
             t_open = int(series.t[i])
             o, h, l, c = float(series.o[i]), float(series.h[i]), float(series.l[i]), float(series.c[i])
-            minute_qv = float(series.qv[i]) / (step / 60000)
+            half = spread_at(i) / 2
             dk = t_open // 86_400_000
             if dk != day_key:
-                day_key, day_start_eq = dk, cash + (pos["qty"] * o if pos else 0)
-            # ---- 1) execute orders decided at the previous bar's close, at this bar's OPEN
+                day_key, day_start = dk, balance + upnl(o, i)
             if pending_exit and pos:
-                self._close(pos, o, minute_qv, pending_exit, i, t_open, trades, fees, p)
-                cash += pos["cash_delta"]
-                losses_streak, last_loss_t = self._streak(trades, losses_streak, last_loss_t, t_open)
+                balance += self._exit(pos, o, half, pending_exit, i, t_open, trades, p, "exit")
+                streak, last_loss_t = self._streak(trades, streak, last_loss_t, t_open)
                 pos = None
             pending_exit = None
-            if pending_entry and pos is None:
-                e = pending_entry
-                ref = o * (1 + p.spread_bps / 2e4)
-                if e["stop"] < ref:
-                    sz = size_position(cfg, cash, cash, 0.0, losses_streak, ref, e["stop"], e["target"], p.spread_bps, minute_qv)
-                    if sz.net_rr >= cfg.risk.min_risk_reward - 1e-9 and sz.notional >= 10 and sz.slippage_bps <= cfg.risk.max_slippage_bps:
-                        fill = costs.apply_slippage(ref, sz.slippage_bps, "buy")
-                        fee = costs.fee(fees, sz.qty * fill)
-                        cash -= sz.qty * fill + fee
-                        tp1 = sz.target
-                        r = fill - e["stop"]
-                        tp2 = max(e.get("tp2") or 0, tp1 + r)
-                        pos = {"entry_i": i, "entry_t": t_open, "entry": fill, "qty": sz.qty, "initial_qty": sz.qty, "fees": fee,
-                               "slip": abs(fill - o) * sz.qty, "risk_amount": sz.risk_amount, "exit_value": 0.0, "exit_qty": 0.0,
-                               "conf": e["strength"], "reason": e["reason"], "cash_delta": 0.0,
-                               "st": PosState(fill, sz.qty, sz.qty, e["stop"], e["stop"], tp1, tp2, t_open / 1000,
-                                              high_water=fill, fee_per_unit=fill * 2 * fees.taker_fee_bps / 1e4)}
+            if pending and pos is None:
+                e = pending
+                side, sg = e["side"], (1 if e["side"] == "buy" else -1)
+                ref = o + sg * half
+                mids = self._mids(inst, o, p)
+                if sg * (ref - e["stop"]) > 0:
+                    sz = size_position(cfg, inst, side, balance, 0.0, 0.0, streak, ref, e["stop"], e["target"], 2 * half, mids)
+                    if sz and sz.lots >= inst.min_lot and sz.net_rr >= cfg.risk.min_risk_reward - 1e-6:
+                        slip = costs.slippage_pips(inst, cm)
+                        fill = costs.apply_slippage(ref, slip, inst, side)
+                        comm = costs.commission_per_side(inst, sz.lots, cm)
+                        balance -= comm
+                        r = sg * (fill - e["stop"])
+                        tp2 = sz.target + sg * r
+                        pos = {"entry_i": i, "entry_t": t_open, "lots": sz.lots, "fees": comm, "pv": sz.pip_value_usd, "risk": sz.risk_amount,
+                               "slip": slip * sz.pip_value_usd * sz.lots, "pnl": 0.0, "reason": e["reason"], "side": side, "strength": e["strength"], "eq": balance,
+                               "st": PosState(fill, sz.lots, sz.lots, e["stop"], e["stop"], sz.target, tp2, t_open / 1000, side,
+                                              best=fill, cost_per_unit=2 * comm / sz.lots / sz.pip_value_usd * inst.pip_size, through=inst.pip_size * 0.1)}
                     else:
                         rejected += 1
                 else:
                     rejected += 1
-            pending_entry = None
-            # ---- 2) manage open position within this bar
+            pending = None
             if pos:
                 st: PosState = pos["st"]
-                for act in manage(st, l, h, c, (t_open + step) / 1000, self.rules, open_=o):
+                sg = st.sign
+                # prices on the closing side of the book
+                co, ch, cl, cc = o - sg * half, h - sg * half, l - sg * half, c - sg * half
+                for act in manage(st, cl, ch, cc, (t_open + step) / 1000, self.rules, open_=co):
                     if act.kind == "move_stop":
                         apply(st, act)
                         continue
-                    qty = st.qty * act.fraction if act.fraction < 1 else st.qty
+                    lots = round(st.qty * act.fraction, 2) if act.fraction < 1 else st.qty
                     if act.kind in ("tp1", "tp2"):
-                        px, taker = act.price, False
+                        px = act.price
                     else:
-                        slip = costs.slippage_bps(fees, qty * act.price, minute_qv, p.spread_bps) + (fees.base_slippage_bps if act.kind == "stop" else 0)
-                        px, taker = costs.apply_slippage(act.price * (1 - p.spread_bps / 2e4), slip, "sell"), True
-                        pos["slip"] += abs(act.price - px) * qty
-                    fee = costs.fee(fees, qty * px, taker)
-                    cash += qty * px - fee
-                    pos["fees"] += fee
-                    pos["exit_value"] += qty * px
-                    pos["exit_qty"] += qty
-                    apply(st, act, qty)
-                    if st.qty <= 1e-12:
+                        slip = costs.slippage_pips(inst, cm, stop=act.kind == "stop")
+                        px = costs.apply_slippage(act.price, slip, inst, "sell" if sg == 1 else "buy")
+                        pos["slip"] += slip * pos["pv"] * lots
+                    balance += self._realize(pos, px, lots, p)
+                    apply(st, act, lots)
+                    if st.qty <= 1e-9:
                         self._record(pos, i, t_open, act.reason, act.kind, trades)
-                        losses_streak, last_loss_t = self._streak(trades, losses_streak, last_loss_t, t_open)
+                        streak, last_loss_t = self._streak(trades, streak, last_loss_t, t_open)
                         pos = None
                         break
-            # ---- 3) at this bar's CLOSE, evaluate the strategy on closed data only
             lo = max(0, i + 1 - WINDOW)
-            visible_htf = int(np.searchsorted(htf_close, t_open + step, side="right"))
-            ctx = StrategyContext(p.symbol, series.slice(i + 1, lo), htf.slice(visible_htf, max(0, visible_htf - 300)))
+            close_t = t_open + step
+            j1 = int(np.searchsorted(h1_close, close_t, side="right"))
+            j4 = int(np.searchsorted(h4_close, close_t, side="right"))
+            ctx = StrategyContext(p.symbol, series.slice(i + 1, lo), h1.slice(j1, max(0, j1 - 300)), h4.slice(j4, max(0, j4 - 200)), close_t)
             sig = strat.evaluate(ctx)
-            mtm = cash + (pos["st"].qty * c if pos else 0)
-            if pos and sig.direction == "exit":
+            mtm = balance + upnl(c, i)
+            if pos and sig.direction == "exit" and sig.features.get("exit_for") == pos["side"]:
                 pending_exit = "strategy exit: " + "; ".join(sig.reasons)
-            elif pos is None and sig.direction == "long" and i + 1 < n:
+            elif pos is None and sig.direction in ("buy", "sell") and i + 1 < n:
                 signals += 1
-                day_loss = (mtm / day_start_eq - 1) * 100 if day_start_eq else 0
-                cooling = (losses_streak >= cfg.risk.consecutive_loss_cooldown and last_loss_t is not None
-                           and t_open - last_loss_t < cfg.risk.cooldown_minutes * 60000)
+                day_loss = (mtm / day_start - 1) * 100 if day_start else 0
+                cooling = streak >= cfg.risk.consecutive_loss_cooldown and last_loss_t is not None and t_open - last_loss_t < cfg.risk.cooldown_minutes * 60000
                 if day_loss <= -cfg.risk.max_daily_loss_pct or cooling:
                     rejected += 1
                 else:
-                    pending_entry = {"stop": sig.stop, "target": sig.targets[0], "tp2": sig.targets[1] if len(sig.targets) > 1 else None,
-                                     "strength": sig.strength, "reason": "; ".join(sig.reasons[:3])}
-            curve.append({"t": t_open + step, "equity": round(mtm, 6)})
-        if pos:  # close at the final close for accounting
-            self._close(pos, float(series.c[n - 1]), float(series.qv[n - 1]) / (step / 60000), "end of backtest", n - 1,
-                        int(series.t[n - 1]), trades, fees, p)
-            cash += pos["cash_delta"]
+                    pending = {"side": sig.direction, "stop": sig.stop, "target": sig.targets[0], "strength": sig.strength, "reason": "; ".join(sig.reasons[:3])}
+            curve.append({"t": close_t, "equity": round(mtm, 4)})
+        if pos:
+            last = n - 1
+            balance += self._exit(pos, float(series.c[last]), spread_at(last) / 2, "end of backtest", last, int(series.t[last]), trades, p, "exit")
             if curve:
-                curve[-1]["equity"] = round(cash, 6)
-        return {"trades": trades, "curve": curve, "signals": signals, "rejected": rejected,
-                "metrics": metrics(trades, curve, p.starting_capital, max(0, n - first), step)}
+                curve[-1]["equity"] = round(balance, 4)
+        res = {"trades": trades, "curve": curve, "signals": signals, "rejected": rejected,
+               "metrics": metrics(trades, curve, p.starting_capital, max(0, n - first), step)}
+        res["metrics"]["cross_rate_approximated"] = bool(self._mids(inst, float(series.c[-1]), p).get("_approx"))
+        return res
 
-    def _close(self, pos, price, minute_qv, reason, i, t, trades, fees, p):
+    def _realize(self, pos, px, lots, p: BTParams) -> float:
+        inst = INSTRUMENTS[p.symbol]
         st: PosState = pos["st"]
-        qty = st.qty
-        slip = costs.slippage_bps(fees, qty * price, minute_qv, p.spread_bps)
-        px = costs.apply_slippage(price * (1 - p.spread_bps / 2e4), slip, "sell")
-        fee = costs.fee(fees, qty * px)
-        pos["cash_delta"] = qty * px - fee
-        pos["fees"] += fee
-        pos["slip"] += abs(price - px) * qty
-        pos["exit_value"] += qty * px
-        pos["exit_qty"] += qty
+        rate = pos["pv"] / inst.pip_value_quote
+        gross = st.sign * (px - st.entry) * lots * inst.contract_size * rate
+        comm = costs.commission_per_side(inst, lots, self.cfg.costs)
+        pos["pnl"] += gross
+        pos["fees"] += comm
+        pos.setdefault("exit_value", 0.0)
+        pos["exit_value"] = pos["exit_value"] + px * lots
+        pos["exit_lots"] = pos.get("exit_lots", 0.0) + lots
+        return gross - comm
+
+    def _exit(self, pos, mid, half, reason, i, t, trades, p, kind) -> float:
+        inst = INSTRUMENTS[p.symbol]
+        st: PosState = pos["st"]
+        slip = costs.slippage_pips(inst, self.cfg.costs)
+        px = costs.apply_slippage(mid - st.sign * half, slip, inst, "sell" if st.sign == 1 else "buy")
+        pos["slip"] += slip * pos["pv"] * st.qty
+        delta = self._realize(pos, px, st.qty, p)
         st.qty = 0
-        self._record(pos, i, t, reason, "exit", trades)
+        self._record(pos, i, t, reason, kind, trades)
+        return delta
 
     @staticmethod
     def _record(pos, i, t, reason, kind, trades):
-        gross = pos["exit_value"] - pos["entry"] * pos["exit_qty"]
-        net = gross - pos["fees"]
-        cost = pos["entry"] * pos["initial_qty"]
-        trades.append({"entry_time": pos["entry_t"], "exit_time": t, "entry": round(pos["entry"], 10),
-                       "exit": round(pos["exit_value"] / pos["exit_qty"], 10) if pos["exit_qty"] else None, "qty": pos["initial_qty"],
-                       "gross_pnl": round(gross, 6), "net_pnl": round(net, 6), "fees": round(pos["fees"], 6), "slippage_cost": round(pos["slip"], 6),
-                       "risk_amount": round(pos["risk_amount"], 6), "r_multiple": round(net / pos["risk_amount"], 4) if pos["risk_amount"] else None,
-                       "return_pct": round(net / cost * 100, 4) if cost else 0, "bars_held": i - pos["entry_i"] + 1,
-                       "exit_reason": reason, "exit_kind": kind, "entry_reason": pos["reason"], "strength": pos["conf"]})
+        st: PosState = pos["st"]
+        net = pos["pnl"] - pos["fees"]
+        trades.append({"entry_time": pos["entry_t"], "exit_time": t, "side": pos["side"], "entry": round(st.entry, 6),
+                       "exit": round(pos["exit_value"] / pos["exit_lots"], 6) if pos.get("exit_lots") else None, "lots": pos["lots"],
+                       "gross_pnl": round(pos["pnl"], 4), "net_pnl": round(net, 4), "fees": round(pos["fees"], 4), "slippage_cost": round(pos["slip"], 4),
+                       "risk_amount": round(pos["risk"], 4), "r_multiple": round(net / pos["risk"], 4) if pos["risk"] else None,
+                       "return_pct": round(net / pos["eq"] * 100, 4) if pos.get("eq") else 0.0, "bars_held": i - pos["entry_i"] + 1,
+                       "exit_reason": reason, "exit_kind": kind, "entry_reason": pos["reason"], "strength": pos["strength"]})
 
     @staticmethod
     def _streak(trades, streak, last_t, t):

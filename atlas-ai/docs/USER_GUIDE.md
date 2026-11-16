@@ -1,65 +1,34 @@
-# ATLAS AI — User Guide
+# ATLAS AI — User Guide (Gold & Forex)
 
 ## Roles
-| Role | Can |
-|---|---|
-| viewer | See everything except the audit log and user management |
-| trader | + toggle scanning / auto paper trading, close positions, flatten, run backtests, engage emergency stop, trigger token scans |
-| admin | + edit settings & strategy parameters, release kill switch, re-enable trading, reset paper account, arm/disarm live trading, manage users, view audit log |
+viewer: read everything except the audit log and users · trader: analysis/auto-trading toggles, close/flatten
+positions, emergency stop, backtests · admin: settings, strategy parameters, trading mode, live arming, release
+the emergency stop, users, audit log.
 
 ## Pages
-
-### Overview
-Portfolio value, available capital, open positions, realised/unrealised P&L, daily/weekly/monthly P&L, win rate,
-profit factor, max drawdown, total trades and average win/loss. These are computed from the database for the
-current mode only. The **Risk gates** panel shows each portfolio-level check and whether new trades are allowed right now.
-
-### Market Scanner
-One row per asset in the universe. Price, 24 h change and volume come from the execution venue. Market cap is shown
-only when DexScreener's price agrees with the exchange within 3 %. Depth ±1 % is order-book liquidity, RSI and ATR
-are on the 5 m timeframe, and trend comes from the 1 h chart. Each row also shows the best signal across strategies
-(classification + confidence), a risk rating and data freshness. Click a column header to sort; use the filters to narrow.
-
-Classifications: **STRONG BUY CANDIDATE** (≥ 75), **BUY CANDIDATE** (≥ 60), **WAIT** (setup developing or score
-45–59), **NO TRADE**, **EXIT** (exit conditions for an open position), **HIGH RISK** (data, liquidity, spread or
-volatility flags). Confidence is a deterministic quality score, *not* a probability. Its measured calibration is on **Performance**.
-
-### Trading Terminal
-Candles (1m–4h) with EMA 9/21/50/200, session VWAP, volume and RSI. For an open position the chart draws ENTRY / STOP
-/ TP1 / TP2 lines; otherwise it shows the latest signal's levels. The side panel shows position size, entry, stop,
-targets, R:R, capital at risk, fees and the stop-adjustment history. Open orders and active positions are listed below.
-
-### AI Activity
-A live stream of everything the agent does: scans, per-strategy analysis (with the reason each one passed or not),
-signals and scores, risk rejections (with every check), sizing, fills, stop moves, exits, token scans and system events.
-Filter by event type or symbol, pause the stream, and load older events.
-
-### Trade Journal
-Every closed trade: entry and exit, size, fees, slippage, gross and net P&L, R multiple, duration, strategy, and entry and
-exit reasons. Click a row to see its fills (with reference price and slippage) and the decision that opened it.
-**Export CSV** exports whatever the current filter shows.
-
-### Performance
-Paper and live are separate tabs and are never combined. The page shows the equity curve (1-minute, daily, weekly,
-monthly), drawdown history, the R-multiple distribution, a strategy comparison, results by asset and by trading session,
-fees and slippage totals, and the confidence-calibration table.
-
-### Backtesting
-Choose symbol, strategy, timeframe, date range, capital, fees, slippage, spread and risk, then run. Results show
-net return, win rate, profit factor, max drawdown, Sharpe/Sortino, expectancy, average trade return and holding time,
-in-sample vs out-of-sample, walk-forward folds (with parameters chosen in-sample) and every trade. Tick several runs to compare them.
-
-### Solana Tokens
-New Solana tokens with a 0–100 risk score and flags: active mint or freeze authority, Token-2022 transfer fees, hooks or
-permanent delegate, low liquidity, very new pool, no sells / buy-sell imbalance (honeypot pattern), wash-trading turnover,
-holder concentration, no Jupiter sell route, and unverified LP lock. **These tokens are never traded.**
-
-### Settings & Risk
-Risk limits, trading mode, kill switch, live-trading preflight, automation toggles, universe and filters, enabled
-strategies, fee and slippage model, trading hours, integration health, strategy parameters, users, and the audit log.
+- **Dashboard**: balance, equity, daily/weekly/monthly P&L, margin, exposure, a gold analysis card, the forex
+  table, active positions, risk gates, net risk by currency, analyst signals, next high-impact events, equity curve,
+  pending orders, recent trades and activity.
+- **Markets · Gold & Forex**: the two markets ATLAS trades: a GOLD table (XAU/USD) and a FOREX table (10 pairs) with
+  bid/ask, spread in pips, 24h change, 1h/4h trend, structure, RSI, ATR, signal, confidence, risk and data status,
+  plus the derived currency-strength chart.
+- **XAU/USD Workspace**: the dedicated gold terminal. Chart with Asian range, prior-day high/low and position levels;
+  session (London/NY overlap); trend, structure, momentum and volatility; USD strength and US10Y yield; USD events;
+  the latest gold proposals; and the contract specification.
+- **Forex Terminal**: the same terminal for any of the 10 pairs, with base and quote currency strength.
+- **AI Analyst**: every proposal (executed or rejected) with direction, entry, stop, target, R:R, lots, costs,
+  evidence, events, invalidation, confidence breakdown, risk checks and calibration.
+- **Economic Calendar**: this week's events by impact and currency, central-bank events, and the active news-blackout rule.
+- **Activity Feed**: a live stream of analysis, proposals, rejections, sizing, fills, stop moves and exits, with explanations.
+- **Trade Journal**: closed trades (paper/demo/live tabs, gold/forex filter), searchable, with CSV export and fill-level detail.
+- **Performance**: equity curves, drawdown, R distribution, by strategy/instrument/session, costs, calibration. Modes are never mixed.
+- **Backtesting**: run, compare, in/out-of-sample and walk-forward.
+- **Risk, Brokers & Settings**: limits, per-instrument spread/slippage, news and session filters, automation, instruments,
+  costs, trading mode (paper/demo/live), integrations, strategy parameters, users and audit log.
 
 ## Typical workflow
-1. Backtest each strategy on the assets you care about and check the **out-of-sample** and **walk-forward** numbers, not just the full-period return.
-2. Disable strategies with negative walk-forward expectancy (Settings → Enabled strategies).
-3. Turn on auto paper trading and let it run for weeks. Compare paper results to the backtest. Large gaps usually mean the cost model or the regime doesn't match.
-4. Only then consider live trading (see the README section "Live trading: what remains").
+1. Start in paper mode. On the public feed, let ATLAS accumulate bars, or connect OANDA practice for instant history.
+2. Connect a broker data source and backtest each strategy per instrument. Judge the **out-of-sample** and
+   **walk-forward** results.
+3. Disable strategies or instruments that don't hold up, then run paper → broker demo for weeks.
+4. Consider live only after the checklist in `docs/BROKERS.md`.

@@ -46,7 +46,11 @@ def db():
         yield s
 
 
-def make_series(closes, symbol="SOLUSDC", tf="5m", start=1_700_000_100_000 // 300_000 * 300_000, vol=None, spread=0.002):
+# Tuesday 2026-11-17 08:00 UTC (London session) — deterministic, market open
+T0 = 1_794_902_400_000
+
+
+def make_series(closes, symbol="EURUSD", tf="5m", start=T0, vol=None, spread_frac=0.00015, bar_spread=0.0):
     from atlas.marketdata.types import TF_MS, Candle, CandleSeries
 
     step = TF_MS[tf]
@@ -55,10 +59,10 @@ def make_series(closes, symbol="SOLUSDC", tf="5m", start=1_700_000_100_000 // 30
     prev = closes[0]
     for i, c in enumerate(closes):
         o = prev
-        h = max(o, c) * (1 + spread / 2)
-        l = min(o, c) * (1 - spread / 2)
-        v = (vol[i] if vol is not None else 1000.0)
-        out.append(Candle(start + i * step, o, h, l, c, v, v * c))
+        h = max(o, c) * (1 + spread_frac)
+        l = min(o, c) * (1 - spread_frac)
+        v = vol[i] if vol is not None else 100.0
+        out.append(Candle(start + i * step, o, h, l, c, v, 0.0, bar_spread))
         prev = c
     return CandleSeries.from_candles(symbol, tf, "test", out), out
 
@@ -68,6 +72,6 @@ def series_factory():
     return make_series
 
 
-def rng_walk(n=800, seed=1, drift=0.0, vol=0.004, p0=100.0):
+def rng_walk(n=800, seed=1, drift=0.0, vol=0.0006, p0=1.10):
     r = np.random.default_rng(seed)
     return p0 * np.exp(np.cumsum(r.normal(drift, vol, n)))

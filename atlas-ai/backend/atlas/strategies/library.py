@@ -1,250 +1,361 @@
-"""Strategies A–D. All computations use closed bars only (no look-ahead)."""
+"""Gold & forex strategies. All computations use closed bars only (no look-ahead).
+
+1. trend_pullback   — multi-timeframe trend following with pullback entries
+2. breakout_retest  — consolidation breakout, retest entry, false-breakout filter
+3. liquidity_sweep  — stop-run through a liquidity pool + market-structure shift
+4. supply_demand    — first return to a fresh supply/demand zone with rejection
+5. gold_session     — XAU/USD London/New York session model (Asian range sweep/breakout, USD & yields)
+"""
 from __future__ import annotations
+
+from datetime import datetime, timezone
 
 import numpy as np
 
+from .. import analysis as an
 from .. import indicators as ind
-from .base import Signal, Strategy, StrategyContext, clean, htf_trend
+from ..instruments import GOLD, INSTRUMENTS
+from ..sessions import LDN, NY, active_sessions
+from .base import Signal, Strategy, StrategyContext, aligned, clean, htf_trend
 
 
-def _common(ctx: StrategyContext) -> dict:
+def _base(ctx: StrategyContext) -> dict:
     s = ctx.primary
     a = ind.atr(s.h, s.l, s.c, 14)
-    return {"atr": a, "atr_last": float(a[-1]), "close": float(s.c[-1]),
-            "atr_pct": float(a[-1] / s.c[-1] * 100) if s.c[-1] else float("nan")}
+    return {"atr": a, "atr_last": float(a[-1]), "close": float(s.c[-1])}
 
 
-class TrendFollowing(Strategy):
-    """Strategy A — trend continuation on pullbacks to the EMA21 in an EMA-stacked trend."""
+def _vwap_session(ctx: StrategyContext) -> float | None:
+    """VWAP anchored at today's London open (the institutional session start for gold & FX)."""
+    s = ctx.primary
+    now = datetime.fromtimestamp(ctx.now / 1000, timezone.utc)
+    lo = now.astimezone(LDN).replace(hour=8, minute=0, second=0, microsecond=0)
+    if lo > now:
+        return None
+    return an.anchored_vwap(s.t, s.h, s.l, s.c, s.v, int(lo.timestamp() * 1000))
 
-    name = "trend_following"
-    label = "Trend Following"
-    default_params = {"stop_atr_mult": 1.5, "min_rel_volume": 1.0, "pullback_bars": 4}
-    param_grid = {"stop_atr_mult": [1.2, 1.5, 2.0], "min_rel_volume": [0.8, 1.0, 1.3]}
+
+def _bias(ctx: StrategyContext) -> tuple[str, dict, dict]:
+    h1, h4 = htf_trend(ctx.htf), htf_trend(ctx.htf2, min_bars=40)
+    if h1["trend"] in ("up", "down") and h4["trend"] in (h1["trend"], "range", "unknown"):
+        return h1["trend"], h1, h4
+    return "none", h1, h4
+
+
+def _vol_ok(s, i=-1, mult=1.2) -> tuple[bool, float | None]:
+    if s.v[-25:].sum() <= 0:
+        return False, None
+    rv = ind.relative_volume(s.v, 20)
+    return bool(rv[i] >= mult), clean(rv[i], 2)
+
+
+class TrendPullback(Strategy):
+    name = "trend_pullback"
+    label = "Trend Following · Pullback"
+    default_params = {"pullback_bars": 5, "stop_atr_min": 1.0, "stop_atr_max": 2.5, "rsi_floor": 40.0}
+    param_grid = {"stop_atr_min": [0.8, 1.0, 1.3], "pullback_bars": [4, 6]}
 
     def evaluate(self, ctx: StrategyContext) -> Signal:
         s = ctx.primary
         if len(s) < self.min_bars:
             return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
-        c = s.c
-        e9, e21, e50, e200 = ind.ema(c, 9), ind.ema(c, 21), ind.ema(c, 50), ind.ema(c, 200)
-        line, sig, hist = ind.macd(c)
-        rv = ind.relative_volume(s.v, 20)
-        k = _common(ctx)
+        c, o, h, l = s.c, s.o, s.h, s.l
+        e9, e21, e50 = ind.ema(c, 9), ind.ema(c, 21), ind.ema(c, 50)
+        rsi = ind.rsi(c, 14)
+        _, _, hist = ind.macd(c)
+        k = _base(ctx)
         atr = k["atr_last"]
-        htf = htf_trend(ctx.htf)
-        f = {"ema9": clean(e9[-1]), "ema21": clean(e21[-1]), "ema50": clean(e50[-1]), "ema200": clean(e200[-1]),
-             "macd_hist": clean(hist[-1], 8), "rel_volume": clean(rv[-1], 3), "atr": clean(atr), "htf": htf}
-        # Exit logic for open positions: trend structure broken.
-        if c[-1] < e21[-1] and hist[-1] < 0 and hist[-2] < 0:
-            sig_exit = self.none(ctx, "close below EMA21 with negative MACD histogram", **f)
-            sig_exit.direction = "exit"
-            return sig_exit
-        stacked = e9[-1] > e21[-1] > e50[-1] and c[-1] > e200[-1]
-        if not stacked:
-            return self.none(ctx, "EMAs not stacked bullish (9>21>50, price>200)", **f)
+        bias, h1, h4 = _bias(ctx)
+        st = an.market_structure(h, l, c)
+        vw = _vwap_session(ctx)
+        f = {"h1": h1, "h4": h4, "structure": st.trend, "ema21": clean(e21[-1]), "ema50": clean(e50[-1]), "rsi": clean(rsi[-1], 1),
+             "macd_hist": clean(hist[-1], 8), "atr": clean(atr), "vwap": clean(vw)}
+        # exits for open positions: structure flips against the trade
+        if c[-1] < e50[-1] and st.bos == "bearish":
+            return self.exit(ctx, "buy", "bearish break of structure below EMA50", **f)
+        if c[-1] > e50[-1] and st.bos == "bullish":
+            return self.exit(ctx, "sell", "bullish break of structure above EMA50", **f)
+        if bias == "none":
+            return self.none(ctx, f"no clear higher-timeframe trend (1h {h1['trend']}, 4h {h4['trend']})", **f)
+        side = "buy" if bias == "up" else "sell"
+        sg = 1 if side == "buy" else -1
         n = self.params["pullback_bars"]
-        touched = bool((s.l[-n:] <= e21[-n:] * 1.002).any())
-        resumed = c[-1] > e9[-1] and c[-1] > s.o[-1]
+        if sg * (e21[-1] - e50[-1]) <= 0:
+            return self.none(ctx, f"{s.timeframe} EMAs not aligned with the {bias} trend", **f)
+        touched = bool(((l[-n:] <= e21[-n:] * (1 + 0.0002)) if side == "buy" else (h[-n:] >= e21[-n:] * (1 - 0.0002))).any())
         if not touched:
-            return self.none(ctx, "trend intact but no pullback to EMA21 — avoiding chasing extended price", **f)
+            return self.none(ctx, f"trend intact, waiting for a pullback to the EMA21/50 value area", **f)
+        resumed = (c[-1] > e9[-1] and c[-1] > o[-1]) if side == "buy" else (c[-1] < e9[-1] and c[-1] < o[-1])
         if not resumed:
-            return self.none(ctx, "pullback in progress; waiting for a close back above EMA9", **f)
-        macd_ok = hist[-1] > 0 or (hist[-1] > hist[-2] > hist[-3])
-        if not macd_ok:
-            return self.none(ctx, "MACD momentum not confirming continuation", **f)
-        if not (rv[-1] >= self.params["min_rel_volume"]):
-            return self.none(ctx, f"volume {rv[-1]:.2f}x average below {self.params['min_rel_volume']}x confirmation", **f)
-        swing_low = float(s.l[-10:].min())
-        stop = self.clamp_stop(c[-1], min(swing_low, e50[-1]) - 0.25 * atr, atr, 0.8, self.params["stop_atr_mult"] * 2)
-        stop = max(stop, c[-1] - self.params["stop_atr_mult"] * 2 * atr)
-        strength = 0.45 + 0.15 * (htf["trend"] == "up") + 0.1 * min(rv[-1] / 2, 1) + 0.1 * (hist[-1] > 0) \
-            + 0.1 * ((e50[-1] / e50[-10] - 1) > 0) + 0.1 * (htf.get("above_ema200") is True)
-        reasons = ["EMA 9>21>50 stacked and price above EMA200", f"pullback touched EMA21 within {n} bars and resumed above EMA9",
-                   f"MACD histogram {hist[-1]:+.6g}", f"volume {rv[-1]:.2f}x 20-bar average", f"1h trend: {htf['trend']}"]
-        return self.make_long(ctx, float(c[-1]), float(stop), strength, reasons, f)
+            return self.none(ctx, "pullback in progress — waiting for a resumption candle", **f)
+        mom_ok = (rsi[-1] > rsi[-2] and self.params["rsi_floor"] <= rsi[-1] <= 70) if side == "buy" else \
+                 (rsi[-1] < rsi[-2] and 30 <= rsi[-1] <= 100 - self.params["rsi_floor"])
+        ev = [("trend", f"1h trend {h1['trend']}, 4h {h4['trend']}"),
+              ("level", f"pullback into EMA21 ({e21[-1]:.5g}) value area within {n} bars")]
+        if st.trend == ("bullish" if side == "buy" else "bearish"):
+            ev.append(("structure", f"{s.timeframe} structure {st.trend} ({st.detail})"))
+        if mom_ok and sg * hist[-1] > sg * hist[-2]:
+            ev.append(("momentum", f"RSI turning {'up' if side == 'buy' else 'down'} ({rsi[-2]:.0f}→{rsi[-1]:.0f}) with MACD histogram improving"))
+        if vw and sg * (c[-1] - vw) > 0:
+            ev.append(("vwap", f"price on the {'bullish' if side == 'buy' else 'bearish'} side of London-anchored VWAP {vw:.5g}"))
+        swing = float(l[-n - 2:].min()) if side == "buy" else float(h[-n - 2:].max())
+        stop = self.atr_stop(side, float(c[-1]), swing - sg * 0.25 * atr, atr, self.params["stop_atr_min"], self.params["stop_atr_max"])
+        strength = 0.35 + 0.1 * len(ev) + 0.1 * (h4["trend"] == h1["trend"])
+        inval = [f"{s.timeframe} close {'below' if side == 'buy' else 'above'} {stop:.5g} (pullback {'low' if side == 'buy' else 'high'})",
+                 f"1h close back {'below' if side == 'buy' else 'above'} EMA50 ({h1.get('ema50')})"]
+        return self.make(ctx, side, float(c[-1]), stop, strength, ev, inval, f)
 
 
-class Momentum(Strategy):
-    """Strategy B — developing momentum with RSI/MACD/volume confirmation and an overextension guard."""
-
-    name = "momentum"
-    label = "Momentum"
-    default_params = {"rsi_low": 55, "rsi_high": 70, "min_rel_volume": 1.5, "stop_atr_mult": 1.5, "max_ext_atr": 2.5}
-    param_grid = {"min_rel_volume": [1.3, 1.5, 2.0], "stop_atr_mult": [1.2, 1.5, 2.0]}
+class BreakoutRetest(Strategy):
+    name = "breakout_retest"
+    label = "Breakout · Retest"
+    default_params = {"range_bars": 24, "max_range_atr": 4.5, "min_body_atr": 0.6, "max_wait": 8}
+    param_grid = {"range_bars": [18, 24, 36], "max_range_atr": [3.5, 4.5]}
 
     def evaluate(self, ctx: StrategyContext) -> Signal:
         s = ctx.primary
+        p = self.params
         if len(s) < self.min_bars:
             return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
-        c = s.c
-        r = ind.rsi(c, 14)
-        line, sig, hist = ind.macd(c)
-        rv = ind.relative_volume(s.v, 20)
-        roc3 = ind.roc(c, 3)
-        e21 = ind.ema(c, 21)
-        k = _common(ctx)
-        atr = k["atr_last"]
-        ext = (c[-1] - e21[-1]) / atr if atr > 0 else np.inf
-        htf = htf_trend(ctx.htf)
-        f = {"rsi": clean(r[-1], 2), "macd": clean(line[-1], 8), "macd_signal": clean(sig[-1], 8), "rel_volume": clean(rv[-1], 3),
-             "roc3": clean(roc3[-1], 4), "roc3_prev": clean(roc3[-2], 4), "extension_atr": clean(ext, 3), "atr": clean(atr), "htf": htf}
-        if r[-1] < 45 or (line[-1] < sig[-1] and line[-2] >= sig[-2]):
-            out = self.none(ctx, "momentum fading (RSI<45 or bearish MACD cross)", **f)
-            out.direction = "exit"
-            return out
-        p = self.params
-        if r[-1] > 75:
-            return self.none(ctx, f"RSI {r[-1]:.1f} overextended (>75) — not buying exhaustion", **f)
-        if not (p["rsi_low"] <= r[-1] <= p["rsi_high"] and r[-1] > r[-2]):
-            return self.none(ctx, f"RSI {r[-1]:.1f} not in rising {p['rsi_low']}-{p['rsi_high']} momentum band", **f)
-        crossed = any(line[-i] > sig[-i] and line[-i - 1] <= sig[-i - 1] for i in range(1, 4))
-        if not (crossed and hist[-1] > 0):
-            return self.none(ctx, "no fresh bullish MACD cross in last 3 bars", **f)
-        if not (rv[-1] >= p["min_rel_volume"]):
-            return self.none(ctx, f"relative volume {rv[-1]:.2f}x below {p['min_rel_volume']}x", **f)
-        if not (roc3[-1] > 0 and roc3[-1] > roc3[-2]):
-            return self.none(ctx, "price not accelerating (3-bar ROC not rising)", **f)
-        if ext > p["max_ext_atr"]:
-            return self.none(ctx, f"price {ext:.1f} ATR above EMA21 — overextended", **f)
-        stop = c[-1] - p["stop_atr_mult"] * atr
-        stop = min(stop, float(s.l[-3:].min()) - 0.1 * atr) if float(s.l[-3:].min()) - 0.1 * atr > c[-1] - 3 * atr else stop
-        strength = 0.4 + 0.15 * (htf["trend"] == "up") + 0.15 * min(rv[-1] / 3, 1) + 0.15 * (1 - ext / p["max_ext_atr"]) + 0.15 * (60 <= r[-1] <= 68)
-        reasons = [f"RSI {r[-1]:.1f} rising inside momentum band", "fresh bullish MACD cross", f"relative volume {rv[-1]:.2f}x",
-                   f"3-bar ROC accelerating ({roc3[-2]:.2f}% → {roc3[-1]:.2f}%)", f"extension {ext:.2f} ATR above EMA21 (limit {p['max_ext_atr']})"]
-        return self.make_long(ctx, float(c[-1]), float(stop), strength, reasons, f)
-
-
-class Breakout(Strategy):
-    """Strategy C — consolidation breakouts and retests with false-breakout filtering."""
-
-    name = "breakout"
-    label = "Breakout"
-    default_params = {"range_bars": 24, "max_range_atr": 4.5, "min_rel_volume": 1.8, "buffer_pct": 0.05}
-    param_grid = {"range_bars": [18, 24, 36], "min_rel_volume": [1.5, 1.8, 2.2]}
-
-    def _range(self, s, end: int, n: int):
-        return float(s.h[end - n:end].max()), float(s.l[end - n:end].min())
-
-    def evaluate(self, ctx: StrategyContext) -> Signal:
-        s = ctx.primary
-        p = self.params
+        c, o, h, l = s.c, s.o, s.h, s.l
+        k = _base(ctx)
+        a, atr = k["atr"], k["atr_last"]
+        bias, h1, h4 = _bias(ctx)
         n = p["range_bars"]
-        if len(s) < self.min_bars:
-            return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
-        c, h, l, o = s.c, s.h, s.l, s.o
-        a = ind.atr(h, l, c, 14)
-        atr = float(a[-1])
-        atr50 = float(np.nanmean(a[-50:]))
-        rv = ind.relative_volume(s.v, 20)
-        sr = ind.support_resistance(h, l, c)
-        htf = htf_trend(ctx.htf)
-        # consolidation measured on bars BEFORE the breakout bar
-        hi, lo = self._range(s, len(s) - 1, n)
-        width_atr = (hi - lo) / atr if atr > 0 else np.inf
-        compressed = width_atr <= p["max_range_atr"] and atr <= atr50 * 1.1
-        f = {"range_high": clean(hi), "range_low": clean(lo), "range_width_atr": clean(width_atr, 3), "atr": clean(atr),
-             "atr50": clean(atr50), "rel_volume": clean(rv[-1], 3), "resistance": sr["resistance"], "support": sr["support"], "htf": htf}
-        # false-breakout history: breakouts above a rolling range that closed back inside within 3 bars
-        failures = 0
-        for i in range(len(s) - 60, len(s) - 4):
-            rh = float(h[i - n:i].max())
-            if c[i] > rh and (c[i + 1:i + 4] < rh).any():
-                failures += 1
-        f["recent_false_breakouts"] = failures
-        bar_range = h[-1] - l[-1]
-        close_pos = (c[-1] - l[-1]) / bar_range if bar_range > 0 else 0
-        upper_wick = (h[-1] - max(c[-1], o[-1])) / bar_range if bar_range > 0 else 0
-        level = hi * (1 + p["buffer_pct"] / 100)
-        # Retest mode: breakout happened 2-6 bars ago, price came back to the level and held
-        for j in range(2, 7):
-            bh, bl = self._range(s, len(s) - j, n)
-            if c[-j] > bh * (1 + p["buffer_pct"] / 100) and (bh - bl) / atr <= p["max_range_atr"] and rv[-j] >= p["min_rel_volume"]:
-                touched = l[-1] <= bh * 1.003
-                held = c[-1] > bh and c[-1] > o[-1]
-                if touched and held and (c[-j + 1:] > bl).all():
-                    stop = self.clamp_stop(c[-1], min(l[-1], bh) - 0.5 * atr, atr, 0.8, 2.5)
-                    strength = 0.55 + 0.15 * (htf["trend"] == "up") + 0.15 * (failures == 0) + 0.15 * min(rv[-j] / 3, 1)
-                    f.update(mode="retest", breakout_level=clean(bh), bars_since_breakout=j)
-                    reasons = [f"breakout above {bh:.6g} {j} bars ago on {rv[-j]:.2f}x volume", "price retested the breakout level and held",
-                               f"{failures} false breakouts in last 60 bars", f"1h trend: {htf['trend']}"]
-                    return self.make_long(ctx, float(c[-1]), float(stop), strength, reasons, f)
-        if not compressed:
-            return self.none(ctx, f"no consolidation (range {width_atr:.1f} ATR, limit {p['max_range_atr']})", **f)
-        if not c[-1] > level:
-            return self.none(ctx, f"consolidating between {lo:.6g} and {hi:.6g}; no breakout yet", **f)
-        if not rv[-1] >= p["min_rel_volume"]:
-            return self.none(ctx, f"breakout on weak volume ({rv[-1]:.2f}x) — likely false breakout", **f)
-        if close_pos < 0.7 or upper_wick > 0.4:
-            return self.none(ctx, "breakout bar closed weak / large upper wick — rejection risk", **f)
-        if failures >= 3:
-            return self.none(ctx, f"{failures} recent false breakouts — level is unreliable", **f)
-        stop = self.clamp_stop(c[-1], (hi + lo) / 2, atr, 1.0, 2.5)
-        strength = 0.45 + 0.15 * (htf["trend"] == "up") + 0.15 * min(rv[-1] / 3, 1) + 0.15 * close_pos + 0.1 * (failures == 0)
-        f["mode"] = "breakout"
-        reasons = [f"{n}-bar consolidation {width_atr:.1f} ATR wide with ATR compression", f"close {c[-1]:.6g} broke range high {hi:.6g}",
-                   f"breakout volume {rv[-1]:.2f}x average", f"strong close (top {100 * (1 - close_pos):.0f}% of bar)",
-                   f"{failures} false breakouts in last 60 bars"]
-        return self.make_long(ctx, float(c[-1]), float(stop), strength, reasons, f)
+        f = {"h1": h1, "atr": clean(atr)}
+        for j in range(2, p["max_wait"] + 1):  # breakout happened j bars ago
+            b = len(s) - j
+            hi, lo = float(h[b - n:b].max()), float(l[b - n:b].min())
+            width = (hi - lo) / a[b] if a[b] > 0 else 99
+            if width > p["max_range_atr"]:
+                continue
+            body = abs(c[b] - o[b])
+            for side, lvl, broke in (("buy", hi, c[b] > hi), ("sell", lo, c[b] < lo)):
+                if not broke or body < p["min_body_atr"] * a[b]:
+                    continue
+                sg = 1 if side == "buy" else -1
+                after = c[b + 1:]
+                if (sg * (after - lvl) < 0).any():
+                    return self.none(ctx, f"breakout of {lvl:.5g} failed (closed back inside) — false breakout", **f)
+                touched = (l[-1] <= lvl + 0.15 * atr) if side == "buy" else (h[-1] >= lvl - 0.15 * atr)
+                held = sg * (c[-1] - lvl) > 0 and sg * (c[-1] - o[-1]) > 0
+                if not (touched and held):
+                    return self.none(ctx, f"{side} breakout of {lvl:.5g} {j} bars ago; waiting for a retest that holds", **f)
+                fails = 0
+                for i in range(len(s) - 80, len(s) - n - 4):
+                    rh, rl = h[i - n:i].max(), l[i - n:i].min()
+                    if (c[i] > rh and (c[i + 1:i + 4] < rh).any()) or (c[i] < rl and (c[i + 1:i + 4] > rl).any()):
+                        fails += 1
+                ev = [("structure", f"{n}-bar consolidation {width:.1f} ATR wide broken {'up' if side == 'buy' else 'down'} {j} bars ago"),
+                      ("momentum", f"breakout candle body {body / a[b]:.1f} ATR"),
+                      ("level", f"retest of broken level {lvl:.5g} held")]
+                vok, rv = _vol_ok(s, b)
+                if vok:
+                    ev.append(("volume", f"breakout tick volume {rv}× average"))
+                if aligned(bias, side):
+                    ev.append(("trend", f"aligned with 1h trend ({h1['trend']})"))
+                if fails >= 3:
+                    return self.none(ctx, f"{fails} recent false breakouts — level unreliable", **f)
+                stop = self.atr_stop(side, float(c[-1]), lvl - sg * 0.5 * atr, atr, 1.0, 2.5)
+                strength = 0.35 + 0.1 * len(ev) - 0.05 * fails
+                f.update(range_high=clean(hi), range_low=clean(lo), breakout_level=clean(lvl), false_breakouts=fails)
+                inval = [f"close back {'below' if side == 'buy' else 'above'} the breakout level {lvl:.5g}", f"price through stop {stop:.5g}"]
+                return self.make(ctx, side, float(c[-1]), stop, strength, ev, inval, f)
+        hi, lo = float(h[-n - 1:-1].max()), float(l[-n - 1:-1].min())
+        return self.none(ctx, f"no qualifying breakout (range {lo:.5g}–{hi:.5g}, {((hi - lo) / atr if atr else 0):.1f} ATR)", **f)
 
 
-class VWAPReversion(Strategy):
-    """Strategy D — long mean reversion after deep deviation below session VWAP, only outside strong downtrends."""
-
-    name = "vwap_reversion"
-    label = "VWAP Reversion"
-    default_params = {"z_entry": -2.0, "rsi_max": 35, "max_adx": 30, "stop_atr": 0.6}
-    param_grid = {"z_entry": [-1.75, -2.0, -2.5], "stop_atr": [0.5, 0.6, 0.8]}
+class LiquiditySweep(Strategy):
+    name = "liquidity_sweep"
+    label = "Liquidity Sweep · Reversal"
+    default_params = {"lookback": 3, "mss_bars": 12}
+    param_grid = {"lookback": [2, 3, 4], "mss_bars": [8, 12]}
 
     def evaluate(self, ctx: StrategyContext) -> Signal:
         s = ctx.primary
-        p = self.params
         if len(s) < self.min_bars:
             return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
-        c = s.c
-        vw, dev = ind.vwap(s.h, s.l, c, s.v, s.t)
-        r = ind.rsi(c, 14)
-        ax = ind.adx(s.h, s.l, c, 14)
-        k = _common(ctx)
+        c, o, h, l = s.c, s.o, s.h, s.l
+        k = _base(ctx)
         atr = k["atr_last"]
-        z = (c[-1] - vw[-1]) / dev[-1] if dev[-1] and dev[-1] > 0 else 0.0
-        zp = (c[-2] - vw[-2]) / dev[-2] if dev[-2] and dev[-2] > 0 else 0.0
-        htf = htf_trend(ctx.htf)
-        bars_in_session = int(((s.t // 86_400_000) == (s.t[-1] // 86_400_000)).sum())
-        f = {"vwap": clean(vw[-1]), "vwap_std": clean(dev[-1]), "z": clean(z, 3), "z_prev": clean(zp, 3), "rsi": clean(r[-1], 2),
-             "adx": clean(ax[-1], 2), "atr": clean(atr), "bars_in_session": bars_in_session, "htf": htf}
-        if c[-1] >= vw[-1]:
-            out = self.none(ctx, "price at/above VWAP — mean reversion complete", **f)
-            out.direction = "exit"
-            return out
-        if bars_in_session < 12:
-            return self.none(ctx, "too early in session for a reliable VWAP", **f)
-        if not (zp <= p["z_entry"] or z <= p["z_entry"]):
-            return self.none(ctx, f"deviation z={z:.2f} not beyond {p['z_entry']}", **f)
-        if not r[-1] <= p["rsi_max"] + 10 or not min(r[-3:]) <= p["rsi_max"]:
-            return self.none(ctx, f"RSI not oversold (≤{p['rsi_max']}) recently", **f)
-        if ax[-1] > p["max_adx"] and htf["trend"] == "down":
-            return self.none(ctx, f"strong downtrend (ADX {ax[-1]:.0f}, 1h down) — reversion too dangerous", **f)
-        reversal = c[-1] > s.o[-1] and c[-1] > c[-2] and z > zp
-        if not reversal:
-            return self.none(ctx, "waiting for a bullish reversal bar", **f)
-        stop = float(s.l[-5:].min()) - p["stop_atr"] * atr
-        stop = self.clamp_stop(c[-1], stop, atr, 0.7, 2.5)
-        risk = c[-1] - stop
-        room_r = (vw[-1] - c[-1]) / risk if risk > 0 else 0
-        f["room_to_vwap_r"] = clean(room_r, 3)
-        if room_r < 2.0:
-            return self.none(ctx, f"distance to VWAP only {room_r:.2f}R — below 2R minimum", **f)
-        strength = 0.45 + 0.15 * min(abs(zp) / 3, 1) + 0.15 * (htf["trend"] != "down") + 0.15 * (r[-1] < 40) + 0.1 * min(room_r / 4, 1)
-        reasons = [f"price deviated {zp:.2f}σ below session VWAP", f"RSI {min(r[-3:]):.1f} oversold, now turning", "bullish reversal bar",
-                   f"VWAP target {room_r:.2f}R away", f"ADX {ax[-1]:.0f}; 1h trend {htf['trend']}"]
-        sig = self.make_long(ctx, float(c[-1]), float(stop), strength, reasons, f)
-        sig.targets = [clean(c[-1] + 2 * risk, 10), clean(max(vw[-1], c[-1] + 2 * risk), 10)]
-        return sig
+        dl = an.day_levels(s.t, h, l, ctx.now)
+        sw = an.swings(h[:-4], l[:-4], 5, 3)  # older swings = resting liquidity
+        levels = {"prior-day high": dl["prev_day_high"], "prior-day low": dl["prev_day_low"], "Asian high": dl["asia_high"], "Asian low": dl["asia_low"]}
+        hs = [x for x in sw if x.kind == "high"][-1:]
+        ls = [x for x in sw if x.kind == "low"][-1:]
+        if hs:
+            levels["swing high"] = hs[0].price
+        if ls:
+            levels["swing low"] = ls[0].price
+        f = {"levels": {k2: clean(v) for k2, v in levels.items()}, "atr": clean(atr)}
+        sweep = an.detect_sweep(o, h, l, c, levels, self.params["lookback"], min_pen=0.05 * atr)
+        if not sweep:
+            return self.none(ctx, "no liquidity sweep of a key level in the last bars", **f)
+        side = "sell" if sweep.side == "buy_side" else "buy"
+        sg = 1 if side == "buy" else -1
+        # market structure shift: close beyond the most recent minor swing in the reversal direction
+        m = self.params["mss_bars"]
+        minor = an.swings(h[-m - 6:], l[-m - 6:], 2, 2)
+        ref = [x for x in minor if x.kind == ("high" if side == "buy" else "low")]
+        mss = bool(ref) and sg * (c[-1] - ref[-1].price) > 0
+        ev = [("liquidity", f"{'sell' if side == 'buy' else 'buy'}-side liquidity swept at {sweep.level_name} {sweep.level:.5g} (wick to {sweep.extreme:.5g})")]
+        if mss:
+            ev.append(("structure", f"market-structure shift: close {'above' if side == 'buy' else 'below'} minor swing {ref[-1].price:.5g}"))
+        body = abs(c[-1] - o[-1])
+        if sg * (c[-1] - o[-1]) > 0 and body >= 0.5 * (h[-1] - l[-1]):
+            ev.append(("momentum", "strong reversal candle (body ≥ 50% of range)"))
+        sess = active_sessions(datetime.fromtimestamp(ctx.now / 1000, timezone.utc))
+        if "London" in sess or "New York" in sess:
+            ev.append(("session", f"during {' + '.join(sess)} session (institutional participation)"))
+        bias, h1, _ = _bias(ctx)
+        if aligned(bias, side):
+            ev.append(("trend", f"sweep against the move, in direction of 1h trend ({h1['trend']})"))
+        if not mss:
+            return self.none(ctx, f"sweep at {sweep.level_name} detected; waiting for a market-structure shift", **f)
+        stop = self.atr_stop(side, float(c[-1]), sweep.extreme - sg * 0.2 * atr, atr, 0.8, 3.0)
+        f.update(sweep_level=clean(sweep.level), sweep_extreme=clean(sweep.extreme), swept=sweep.level_name)
+        inval = [f"price back beyond the sweep extreme {sweep.extreme:.5g}", "no follow-through within 6 bars (time stop)"]
+        return self.make(ctx, side, float(c[-1]), stop, 0.35 + 0.1 * len(ev), ev, inval, f)
 
 
-STRATEGIES: dict[str, type[Strategy]] = {cls.name: cls for cls in (TrendFollowing, Momentum, Breakout, VWAPReversion)}
+class SupplyDemand(Strategy):
+    name = "supply_demand"
+    label = "Supply & Demand · S/R"
+    default_params = {"impulse_mult": 2.0, "zone_lookback": 200}
+    param_grid = {"impulse_mult": [1.6, 2.0, 2.5]}
+
+    def evaluate(self, ctx: StrategyContext) -> Signal:
+        s = ctx.primary
+        if len(s) < self.min_bars:
+            return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
+        c, o, h, l = s.c, s.o, s.h, s.l
+        k = _base(ctx)
+        a, atr = k["atr"], k["atr_last"]
+        zones = an.supply_demand_zones(o, h, l, c, a, self.params["zone_lookback"], self.params["impulse_mult"])
+        sr = ind.support_resistance(h, l, c)
+        bias, h1, _ = _bias(ctx)
+        f = {"zones": [{"kind": z.kind, "top": clean(z.top), "bottom": clean(z.bottom), "fresh": z.fresh, "impulse_atr": clean(z.impulse_atr, 2)} for z in zones],
+             "support": sr["support"], "resistance": sr["resistance"], "atr": clean(atr)}
+        for z in zones:
+            if not z.fresh:
+                continue
+            # touch on either of the last two bars, confirmation close back outside the zone on the latest bar
+            if z.kind == "demand" and l[-2:].min() <= z.top and c[-1] > z.top and c[-1] > o[-1]:
+                side = "buy"
+                k2 = -1 if l[-1] <= z.top else -2
+                wick = (min(o[k2], c[k2]) - l[k2]) / (h[k2] - l[k2] + 1e-12)
+            elif z.kind == "supply" and h[-2:].max() >= z.bottom and c[-1] < z.bottom and c[-1] < o[-1]:
+                side = "sell"
+                k2 = -1 if h[-1] >= z.bottom else -2
+                wick = (h[k2] - max(o[k2], c[k2])) / (h[k2] - l[k2] + 1e-12)
+            else:
+                continue
+            sg = 1 if side == "buy" else -1
+            ev = [("level", f"first return to fresh {z.kind} zone {z.bottom:.5g}–{z.top:.5g} (impulse {z.impulse_atr:.1f} ATR)")]
+            if wick >= 0.4 or abs(c[-1] - o[-1]) >= 0.5 * atr:
+                ev.append(("momentum", f"rejection: {'wick ' + format(wick, '.0%') if wick >= 0.4 else 'strong confirmation candle'}"))
+            if aligned(bias, side):
+                ev.append(("trend", f"with the 1h trend ({h1['trend']})"))
+            opp = sr["resistance"] if side == "buy" else sr["support"]
+            stop = self.atr_stop(side, float(c[-1]), (z.bottom if side == "buy" else z.top) - sg * 0.2 * atr, atr, 0.8, 3.0)
+            r = sg * (c[-1] - stop)
+            room = sg * (opp["price"] - c[-1]) / r if opp and r > 0 else None
+            if room is None or room >= 2:
+                ev.append(("structure", "clear path to target" + (f" — opposing level {room:.1f}R away" if room else " — no opposing level in lookback")))
+            f.update(zone={"kind": z.kind, "top": clean(z.top), "bottom": clean(z.bottom)}, room_r=clean(room, 2))
+            inval = [f"close {'below' if side == 'buy' else 'above'} the zone ({z.bottom if side == 'buy' else z.top:.5g})"]
+            return self.make(ctx, side, float(c[-1]), stop, 0.35 + 0.1 * len(ev) + 0.05 * min(z.impulse_atr / 4, 1), ev, inval, f)
+        return self.none(ctx, f"price not reacting at a fresh supply/demand zone ({len(zones)} zones mapped)", **f)
+
+
+class GoldSession(Strategy):
+    """XAU/USD only: London/NY session model around the Asian range, filtered by USD strength and US yields."""
+
+    name = "gold_session"
+    label = "Gold · London/NY Session"
+    instruments = (GOLD,)
+    default_params = {"window_hours": 3.0, "min_asia_range_atr": 1.0}
+    param_grid = {"window_hours": [2.0, 3.0, 4.0]}
+
+    def evaluate(self, ctx: StrategyContext) -> Signal:
+        s = ctx.primary
+        if ctx.symbol != GOLD:
+            return self.none(ctx, "gold-only strategy")
+        if len(s) < self.min_bars:
+            return self.none(ctx, f"need {self.min_bars} closed bars, have {len(s)}")
+        c, o, h, l = s.c, s.o, s.h, s.l
+        k = _base(ctx)
+        atr = k["atr_last"]
+        now = datetime.fromtimestamp(ctx.now / 1000, timezone.utc)
+        dl = an.day_levels(s.t, h, l, ctx.now)
+        ah, al = dl["asia_high"], dl["asia_low"]
+        lon_open = now.astimezone(LDN).replace(hour=8, minute=0, second=0, microsecond=0)
+        ny_open = now.astimezone(NY).replace(hour=8, minute=0, second=0, microsecond=0)
+        wh = self.params["window_hours"] * 3600
+        in_lon = 0 <= (now - lon_open).total_seconds() <= wh
+        in_ny = 0 <= (now - ny_open).total_seconds() <= wh
+        f = {"asia_high": clean(ah), "asia_low": clean(al), "prev_day_high": clean(dl["prev_day_high"]), "prev_day_low": clean(dl["prev_day_low"]),
+             "usd_strength": clean(ctx.usd_strength, 3), "us10y_trend": ctx.us10y_trend, "atr": clean(atr),
+             "window": "London open" if in_lon else ("New York open" if in_ny else None)}
+        if not (in_lon or in_ny):
+            return self.none(ctx, "outside the London/New York opening windows for the gold session model", **f)
+        if ah is None or al is None:
+            return self.none(ctx, "Asian range not available yet", **f)
+        if (ah - al) < self.params["min_asia_range_atr"] * atr:
+            return self.none(ctx, f"Asian range too narrow ({(ah - al):.2f} vs ATR {atr:.2f})", **f)
+        ev = [("session", f"{f['window']} window; Asian range {al:.2f}–{ah:.2f}")]
+        side = None
+        sweep = an.detect_sweep(o, h, l, c, {"Asian high": ah, "Asian low": al, "prior-day high": dl["prev_day_high"],
+                                             "prior-day low": dl["prev_day_low"]}, 3, 0.05 * atr)
+        if sweep:
+            side = "sell" if sweep.side == "buy_side" else "buy"
+            ev.append(("liquidity", f"{sweep.level_name} {sweep.level:.2f} swept (wick to {sweep.extreme:.2f}) and reclaimed"))
+            structural = sweep.extreme
+        else:
+            for sd, lvl in (("buy", ah), ("sell", al)):
+                sg = 1 if sd == "buy" else -1
+                if sg * (c[-1] - lvl) > 0 and sg * (c[-2] - lvl) > 0 and sg * (c[-3] - lvl) <= 0 and abs(c[-2] - o[-2]) > 0.6 * atr:
+                    side = sd
+                    ev.append(("structure", f"accepted {'above' if sd == 'buy' else 'below'} the Asian {'high' if sd == 'buy' else 'low'} {lvl:.2f} (2 closes)"))
+                    structural = lvl - sg * 0.5 * atr
+                    break
+        if side is None:
+            return self.none(ctx, "no sweep or accepted breakout of the Asian range yet", **f)
+        sg = 1 if side == "buy" else -1
+        if sg * (c[-1] - o[-1]) > 0 and abs(c[-1] - o[-1]) > 0.4 * atr:
+            ev.append(("momentum", f"{'bullish' if side == 'buy' else 'bearish'} confirmation candle"))
+        macro = []
+        if ctx.usd_strength is not None and -sg * ctx.usd_strength > 0:
+            macro.append(f"USD {'weakening' if side == 'buy' else 'strengthening'} (derived strength {ctx.usd_strength:+.2f}%)")
+        if ctx.us10y_trend in ("falling", "rising") and ((side == "buy") == (ctx.us10y_trend == "falling")):
+            macro.append(f"US 10Y yields {ctx.us10y_trend}")
+        if macro:
+            ev.append(("macro", "; ".join(macro)))
+        elif ctx.usd_strength is not None and sg * ctx.usd_strength > 0.15:
+            return self.none(ctx, f"USD strength ({ctx.usd_strength:+.2f}%) contradicts a gold {side}", **f)
+        bias, h1, _ = _bias(ctx)
+        if aligned(bias, side):
+            ev.append(("trend", f"with the 1h trend ({h1['trend']})"))
+        stop = self.atr_stop(side, float(c[-1]), structural - sg * 0.2 * atr, atr, 1.0, 3.0)
+        rl, rh = an.round_level(float(c[-1]), 10.0)
+        f.update(round_levels=[rl, rh])
+        inval = [f"price back {'below' if side == 'buy' else 'above'} {stop:.2f}",
+                 "high-impact USD release within the news blackout window", "USD strength turns sharply against the trade"]
+        return self.make(ctx, side, float(c[-1]), stop, 0.35 + 0.1 * len(ev), ev, inval, f)
+
+
+STRATEGIES: dict[str, type[Strategy]] = {cls.name: cls for cls in (TrendPullback, BreakoutRetest, LiquiditySweep, SupplyDemand, GoldSession)}
 
 
 def build(name: str, params: dict | None = None) -> Strategy:
     return STRATEGIES[name](params)
+
+
+def for_symbol(names: list[str], symbol: str, params: dict | None = None) -> list[Strategy]:
+    params = params or {}
+    out = []
+    for n in names:
+        st = build(n, params.get(n))
+        if st.applies_to(symbol) and symbol in INSTRUMENTS:
+            out.append(st)
+    return out

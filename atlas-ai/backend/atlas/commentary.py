@@ -2,7 +2,7 @@
 
 Commentary is advisory text only. It is generated AFTER the deterministic
 decision and risk checks, is never fed back into execution, and is only given
-the structured facts the engine computed. It never receives keys, wallet data
+the structured facts the engine computed. It never receives API keys, broker credentials
 or account credentials.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .logging import get_logger
 log = get_logger("atlas.commentary")
 
 SYSTEM = (
-    "You are the analysis narrator for an automated crypto trading system. You receive a JSON object with facts "
+    "You are the analysis narrator for an automated gold (XAU/USD) and forex trading system. You receive a JSON object with facts "
     "computed by deterministic code: strategy signal, indicator values, risk checks and the final decision. "
     "Write 2-4 plain sentences explaining the decision for a trader. Rules: use ONLY numbers and facts present in "
     "the JSON; never invent prices, indicators, news or outcomes; do not predict profit; do not recommend overriding "

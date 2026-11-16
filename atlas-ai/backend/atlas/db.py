@@ -61,14 +61,11 @@ def get_db() -> Iterator[Session]:
 def init_db() -> None:
     """Apply Alembic migrations (``alembic upgrade head``).
 
-    A database created by an older build with ``create_all`` (tables present, no
-    ``alembic_version``) is stamped at the initial revision first.
     """
     import os
 
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import inspect
 
     from . import models  # noqa: F401
 
@@ -79,7 +76,4 @@ def init_db() -> None:
     eng = engine()
     with eng.begin() as conn:
         cfg.attributes["connection"] = conn
-        tables = set(inspect(conn).get_table_names())
-        if "users" in tables and "alembic_version" not in tables:
-            command.stamp(cfg, "2d0d3370138e")
         command.upgrade(cfg, "head")

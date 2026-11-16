@@ -12,7 +12,6 @@ const KIND: Record<string, { label: string; cls: string }> = {
   execution: { label: "EXECUTION", cls: "text-up border-up/30" },
   stop_adjust: { label: "STOP", cls: "text-warn border-warn/30" },
   monitor: { label: "MONITOR", cls: "text-ink-2 border-line-2" },
-  token_scan: { label: "SOLANA", cls: "text-[#a970ff] border-[#a970ff]/30" },
   ai: { label: "AI", cls: "text-[#2dd4bf] border-[#2dd4bf]/30" },
   system: { label: "SYSTEM", cls: "text-ink-2 border-line-2" },
 };

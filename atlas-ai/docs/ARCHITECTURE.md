@@ -1,43 +1,37 @@
 # Architecture
 
 ## Processes
-* **api** (`uvicorn atlas.api.app:app`): REST, WebSocket fan-out, auth, backtest jobs, static UI.
-* **worker** (`python -m atlas.worker`): the only process that places orders. With `ATLAS_EMBEDDED_WORKER=true` it runs inside the API process (single-process mode).
-* **PostgreSQL**: the source of truth for config, signals, decisions, orders, fills, positions, snapshots, risk events, activity, backtests and audit.
-* **Redis**: pub/sub for real-time events (activity, quotes, scanner, positions) from worker to API to browsers.
+* **api**: REST, WebSocket fan-out, auth, backtest jobs, static UI. It never places orders.
+* **worker** (`python -m atlas.worker`, or embedded in the API in dev): the only process that trades.
+* **PostgreSQL**: config, candles, signals, proposals (decisions), orders, fills, positions, snapshots, risk events,
+  activity, backtests, audit. **Redis**: real-time event pub/sub.
+* **MT5 bridge** (optional, Windows): wraps the MetaTrader5 API beside the terminal.
 
-The API never executes trades. Operator actions such as closing a position or flattening are queued in the `commands`
-table and processed by the worker on its next fast tick (≤ 3 s). Configuration changes (kill switch, limits) are read by the worker every tick.
+Operator actions (close, flatten, reset, calendar refresh) are queued in `commands` and executed by the worker within one fast tick.
 
 ## Module map (`backend/atlas`)
 | Module | Responsibility |
 |---|---|
-| `marketdata/http.py` | Rate-limited, retrying HTTP client |
-| `marketdata/providers.py` | Binance / Coinbase / Kraken adapters |
-| `marketdata/ws.py` | Reconnecting Coinbase/Kraken ticker feeds |
-| `marketdata/validation.py` | Candle validation, gaps, duplicates, staleness |
-| `marketdata/service.py` | Per-symbol state, refresh cadence, readiness checks, persistence |
-| `indicators.py` | Causal EMA/SMA/RSI/MACD/ATR/ADX/VWAP/pivots/S&R |
-| `strategies/library.py` | Strategies A–D, structured `Signal` output |
-| `strategies/token_scanner.py` | Strategy E — Solana token safety scanner |
-| `decision.py` | Scoring, classification, calibration, track-record penalty |
-| `commentary.py` | Optional Claude narrative (post-decision, advisory) |
-| `risk.py` | Portfolio gates, trade checks, position sizing |
-| `execution/costs.py` | Fee and slippage model |
-| `execution/rules.py` | Stop/target/breakeven/time-stop rules (pure) |
-| `execution/paper.py` | Paper broker (fills, partials, protective orders, accounting) |
-| `execution/live.py` | Jupiter live executor (gated) |
-| `portfolio.py` | Accounts, mark-to-market, metrics, analytics |
-| `backtest.py` | Backtester, OOS split, walk-forward |
-| `agent.py` | Orchestrator loops and activity narration |
-| `api/` | FastAPI routes, backtest jobs, WebSocket |
-| `security.py` | Passwords, sessions, RBAC, CSRF, rate limiting, audit |
+| `instruments.py` | the 11 instruments, contract specs, pip values, notional, margin, lot rounding |
+| `sessions.py` | DST-aware sessions, market hours (FX 24/5, gold daily break), rollover |
+| `econ.py` | economic calendar parsing, central-bank detection, news blackout, US10Y (FRED), currency strength |
+| `brokers/public.py` | Swissquote quotes (median spread profile) + 1-minute bar builder |
+| `brokers/oanda.py` | OANDA v20 data + execution |
+| `brokers/mt5.py` | MT5 bridge client |
+| `marketdata/` | rate-limited HTTP, candle validation (market-hours-aware gaps/staleness), market data service |
+| `indicators.py`, `analysis.py` | causal indicators; swings, structure/BOS, liquidity sweeps, supply/demand zones, session ranges |
+| `strategies/` | five confluence strategies (≥ 3 evidence categories), two-sided |
+| `decision.py` | AI analyst: factor scoring, classification, calibration |
+| `risk.py` | gates, lot sizing, margin/leverage, currency exposure |
+| `execution/` | costs, position rules, paper broker, broker executor + reconciliation |
+| `portfolio.py` | USD accounting, mark-to-market, analytics |
+| `backtest.py` | long/short backtester, OOS, walk-forward |
+| `agent.py` | orchestration loops and narration |
 
-## Decision pipeline for one symbol (every closed 5 m bar)
-1. Refresh candles (1m, 5m, 1h, 4h), validate them, and compute readiness (fresh, complete, venues agree).
-2. Each enabled strategy returns a `Signal` (`long` / `exit` / `none` + reasons + features).
-3. `decision.evaluate` scores long signals across nine factors, applies an exposure penalty and a track-record penalty, adds risk flags, and classifies the result.
-4. The best long candidate is persisted (`signals`, `decisions`) and narrated.
-5. If it is actionable, above the threshold, and auto paper trading is on: `risk.evaluate_trade` checks every rule and sizes the order.
-6. If approved: the paper broker places the entry, then protective stop, TP1 and TP2. Otherwise the decision records the blocking reasons.
-7. The fast loop marks positions to market and applies the position rules on every quote.
+## Decision pipeline (each closed entry-timeframe bar, per instrument)
+1. Refresh candles (1m/5m/15m/1h/4h), validate them, and check readiness (market open, fresh quote, enough bars, reference agreement).
+2. Compute currency strength; load calendar and US10Y context.
+3. Each enabled strategy returns a Signal with evidence and invalidation, or a reason why not.
+4. The AI analyst scores and classifies the signal; the best proposal is stored.
+5. The risk engine checks every rule and sizes in lots, then the proposal is executed (paper or broker) or rejected with reasons.
+6. The fast loop applies the position rules on every quote, with broker-held stops in demo/live.

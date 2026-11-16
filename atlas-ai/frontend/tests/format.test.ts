@@ -3,8 +3,10 @@ import { compact, duration, pair, pct, price, signedUsd, tone, usd } from "@/lib
 
 describe("format", () => {
   it("formats prices by magnitude", () => {
-    expect(price(64727.761)).toBe("64,727.76");
-    expect(price(0.00000232)).toBe("0.00000232");
+    expect(price(3857.656, 2)).toBe("3,857.66");
+    expect(price(1.100045, 5)).toBe("1.10005");
+    expect(price(159.4371, 3)).toBe("159.437");
+
     expect(price(null)).toBe("—");
     expect(price(Number.NaN)).toBe("—");
   });
@@ -23,6 +25,7 @@ describe("format", () => {
   it("formats durations and pairs", () => {
     expect(duration(59)).toBe("59s");
     expect(duration(3700)).toBe("1h 1m");
-    expect(pair("SOLUSDC")).toBe("SOL/USDC");
+    expect(pair("XAUUSD")).toBe("XAU/USD");
+    expect(pair("EURUSD")).toBe("EUR/USD");
   });
 });

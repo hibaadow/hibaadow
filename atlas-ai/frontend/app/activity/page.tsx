@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useLive } from "@/lib/live";
 import type { Activity } from "@/lib/types";
 
-const KINDS = ["all", "signal", "decision", "risk", "execution", "stop_adjust", "analysis", "scan", "token_scan", "ai", "system"];
+const KINDS = ["all", "signal", "decision", "risk", "execution", "stop_adjust", "analysis", "scan", "ai", "system"];
 
 export default function ActivityPage() {
   const [rows, setRows] = useState<Activity[]>([]);
@@ -25,7 +25,7 @@ export default function ActivityPage() {
   const more = async () => { const last = rows[rows.length - 1]; if (!last) return; const older = await api<Activity[]>(`${qs()}&before_id=${last.id}`); setRows((r) => [...r, ...older]); };
   return (
     <div className="max-w-[1200px] mx-auto">
-      <PageHeader title="AI Activity Feed" subtitle={<>Every scan, decision, rejection, order and stop adjustment — with its explanation. {connected ? <span className="text-up">● streaming</span> : <span className="text-down">● reconnecting</span>}</>}
+      <PageHeader title="AI Activity Feed" subtitle={<>Every gold & forex analysis, proposal, rejection, order and stop adjustment — with its explanation. {connected ? <span className="text-up">● streaming</span> : <span className="text-down">● reconnecting</span>}</>}
         right={<>
           <select className="input" value={kind} onChange={(e) => setKind(e.target.value)}>{KINDS.map((k) => <option key={k} value={k}>{k === "all" ? "All events" : k.replace("_", " ")}</option>)}</select>
           <input className="input w-[120px]" placeholder="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} />

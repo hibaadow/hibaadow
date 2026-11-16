@@ -15,8 +15,9 @@ class Candle:
     high: float
     low: float
     close: float
-    volume: float
+    volume: float  # tick volume / sample count (FX has no centralised volume)
     quote_volume: float = 0.0
+    spread: float = 0.0  # average bid/ask spread in price units during the bar (0 = unknown)
 
 
 @dataclass
@@ -34,6 +35,7 @@ class CandleSeries:
     v: np.ndarray
     qv: np.ndarray
     quality: dict = field(default_factory=dict)
+    sp: np.ndarray | None = None
 
     @classmethod
     def from_candles(cls, symbol: str, timeframe: str, venue: str, candles: list[Candle], quality: dict | None = None):
@@ -49,6 +51,7 @@ class CandleSeries:
             np.array([x.volume for x in candles], dtype=float),
             np.array([x.quote_volume for x in candles], dtype=float),
             quality or {},
+            np.array([x.spread for x in candles], dtype=float),
         )
 
     def __len__(self) -> int:
@@ -56,8 +59,9 @@ class CandleSeries:
 
     def slice(self, end: int, start: int = 0) -> "CandleSeries":
         """Bars [start, end) — used by the backtester to hide the future."""
+        sp = self.sp[start:end] if self.sp is not None else None
         return CandleSeries(self.symbol, self.timeframe, self.venue, self.t[start:end], self.o[start:end], self.h[start:end],
-                            self.l[start:end], self.c[start:end], self.v[start:end], self.qv[start:end], self.quality)
+                            self.l[start:end], self.c[start:end], self.v[start:end], self.qv[start:end], self.quality, sp)
 
     @property
     def last_close_time(self) -> int | None:
@@ -88,25 +92,31 @@ class Quote:
         return (now or time.time()) - self.ts
 
 
-@dataclass
-class MarketStats:
-    symbol: str
-    venue: str
-    price_change_pct_24h: float
-    volume_base_24h: float
-    volume_quote_24h: float
-    high_24h: float
-    low_24h: float
-    ts: float = field(default_factory=time.time)
 
 
-@dataclass
-class Depth:
-    symbol: str
-    bid_depth_1pct_usd: float
-    ask_depth_1pct_usd: float
-    ts: float = field(default_factory=time.time)
+def resample_candles(candles: list[Candle], tf: str) -> list[Candle]:
+    """Aggregate lower-timeframe candles into ``tf`` buckets (UTC-aligned). The last bucket may be partial."""
+    step = TF_MS[tf]
+    out: list[Candle] = []
+    for c in candles:
+        b = c.open_time // step * step
+        if out and out[-1].open_time == b:
+            o = out[-1]
+            n = o.quote_volume + 1  # count of sub-bars, used for the running spread mean
+            o.high = max(o.high, c.high)
+            o.low = min(o.low, c.low)
+            o.close = c.close
+            o.volume += c.volume
+            o.spread = (o.spread * (n - 1) + c.spread) / n
+            o.quote_volume = n
+        else:
+            out.append(Candle(b, c.open, c.high, c.low, c.close, c.volume, 1, c.spread))
+    for o in out:
+        o.quote_volume = 0.0
+    return out
 
-    @property
-    def liquidity_usd(self) -> float:
-        return min(self.bid_depth_1pct_usd, self.ask_depth_1pct_usd)
+
+def complete_buckets(candles: list[Candle], tf: str, sub_tf: str, now_ms: int) -> list[Candle]:
+    """Resample and keep only buckets that have fully closed."""
+    step = TF_MS[tf]
+    return [c for c in resample_candles(candles, tf) if c.open_time + step <= now_ms]

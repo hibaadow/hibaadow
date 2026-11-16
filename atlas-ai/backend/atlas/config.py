@@ -31,26 +31,34 @@ class Settings(BaseSettings):
     # process dev mode) or as a separate worker (``python -m atlas.worker``).
     embedded_worker: bool = True
 
-    # Market data providers
-    binance_rest_url: str = "https://data-api.binance.vision"
-    coinbase_rest_url: str = "https://api.exchange.coinbase.com"
-    coinbase_ws_url: str = "wss://ws-feed.exchange.coinbase.com"
-    kraken_rest_url: str = "https://api.kraken.com"
-    kraken_ws_url: str = "wss://ws.kraken.com/v2"
-    dexscreener_url: str = "https://api.dexscreener.com"
-    jupiter_url: str = "https://lite-api.jup.ag"
-    solana_rpc_url: str = "https://api.mainnet-beta.solana.com"
-    enable_websockets: bool = True
+    # Market data / broker selection: "public" (Swissquote public quotes, no credentials),
+    # "oanda" (OANDA v20 REST) or "mt5" (MetaTrader 5 via the ATLAS MT5 bridge or native package).
+    data_source: Literal["public", "oanda", "mt5"] = "public"
+    broker: Literal["none", "oanda", "mt5"] = "none"
+    public_quotes_url: str = "https://forex-data-feed.swissquote.com"
+    public_quote_interval_seconds: float = 10.0
+    calendar_url: str = "https://nfs.faireconomy.media"
     http_timeout_seconds: float = 10.0
+
+    # OANDA v20 — practice (demo) environment by default. Token/account come from the environment ONLY.
+    oanda_environment: Literal["practice", "live"] = "practice"
+    oanda_token: SecretStr | None = None
+    oanda_account_id: str | None = None
+
+    # MetaTrader 5 — via the bridge service running next to the terminal (Windows), or the native
+    # MetaTrader5 package when ATLAS itself runs on Windows. MT5 login/password stay in the terminal/bridge.
+    mt5_bridge_url: str | None = None
+    mt5_bridge_token: SecretStr | None = None
+    mt5_symbol_suffix: str = ""  # e.g. ".a" or "m" depending on the broker
+    mt5_magic: int = 770077
 
     # Optional AI commentary (Claude). Commentary never changes execution.
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     ai_commentary_model: str = "claude-opus-5-5"
     ai_commentary_enabled: bool = True
 
-    # Live trading — hard env-level gate on top of the in-app switches.
+    # Live (real-money) broker accounts — hard env-level gate on top of the in-app switches.
     live_trading_allowed: bool = False
-    solana_keypair_path: str | None = None  # path to a keypair file mounted as a secret
 
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     frontend_dist: str | None = None  # path to the static Next.js export
@@ -61,6 +69,14 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [s.strip() for s in v.split(",") if s.strip()]
         return v
+
+    @property
+    def oanda_configured(self) -> bool:
+        return bool(self.oanda_token and self.oanda_account_id)
+
+    @property
+    def mt5_configured(self) -> bool:
+        return bool(self.mt5_bridge_url)
 
     @property
     def is_production(self) -> bool:

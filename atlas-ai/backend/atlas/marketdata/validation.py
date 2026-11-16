@@ -8,9 +8,9 @@ from __future__ import annotations
 import math
 import time
 
+from ..sessions import expected_closed, is_market_open
 from .types import TF_MS, Candle
 
-MAX_BAR_RANGE_PCT = 60.0  # a single bar moving >60% high-low is treated as corrupt for majors
 
 
 def _finite(*xs: float) -> bool:
@@ -18,7 +18,7 @@ def _finite(*xs: float) -> bool:
 
 
 def validate_candles(candles: list[Candle], timeframe: str, now_ms: int | None = None,
-                     drop_open: bool = True) -> tuple[list[Candle], dict]:
+                     drop_open: bool = True, asset_class: str = "forex", max_range_pct: float = 8.0) -> tuple[list[Candle], dict]:
     """Return (clean_closed_candles, quality_report)."""
     step = TF_MS[timeframe]
     now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
@@ -35,7 +35,7 @@ def validate_candles(candles: list[Candle], timeframe: str, now_ms: int | None =
         if c.high < max(c.open, c.close) or c.low > min(c.open, c.close) or c.high < c.low:
             report["invalid"] += 1
             continue
-        if (c.high - c.low) / c.low * 100 > MAX_BAR_RANGE_PCT:
+        if (c.high - c.low) / c.low * 100 > max_range_pct:  # FX/gold bars never move this much in one bar
             report["invalid"] += 1
             continue
         if c.open_time % step != 0:
@@ -55,14 +55,21 @@ def validate_candles(candles: list[Candle], timeframe: str, now_ms: int | None =
     for a, b in zip(out, out[1:]):
         diff = b.open_time - a.open_time
         if diff > step:
-            report["gaps"] += 1
-            report["missing_bars"] += diff // step - 1
+            missing = [t for t in range(a.open_time + step, b.open_time, step) if not expected_closed(t, step, asset_class)]
+            if missing:
+                report["gaps"] += 1
+                report["missing_bars"] += len(missing)
     if out:
         last_close = out[-1].open_time + step
-        # stale if the most recent closed bar is more than 2 intervals old
-        if now_ms - last_close > 2 * step + 5_000:
-            report["stale"] = True
-            report["issues"].append(f"latest closed {timeframe} bar ended {(now_ms - last_close) / 1000:.0f}s ago")
+        from datetime import datetime, timezone
+        market_open_now = is_market_open(datetime.fromtimestamp(now_ms / 1000, timezone.utc), asset_class)
+        # stale only matters while the market is open (weekend closure is expected)
+        if market_open_now and now_ms - last_close > 2 * step + 5_000:
+            # bars that SHOULD have closed since the last one (ignoring weekend / daily breaks)
+            due = sum(1 for t in range(last_close, now_ms - step - 5_000, step) if not expected_closed(t, step, asset_class))
+            if due >= 2:
+                report["stale"] = True
+                report["issues"].append(f"latest closed {timeframe} bar ended {(now_ms - last_close) / 1000:.0f}s ago")
     else:
         report["issues"].append("no valid candles")
     if report["invalid"]:
