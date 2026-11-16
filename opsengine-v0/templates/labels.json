@@ -41,6 +41,8 @@
                      "no_show": "no-show", "cancelled": "cancelled"},
   "booking_kind": {"training": "Training", "inspection": "Inspection", "service": "Service"},
   "delivery": {"internal": "internal note", "sent": "sent", "received": "received", "queued": "not sent yet (waiting in the outbox)",
-               "failed": "could not be sent"},
+               "failed": "could not be sent (the ops team has been told)", "retrying": "could not be sent yet (trying again)",
+               "not": "not sent (the ops team has been told)", "notified": "notified on WhatsApp; the full message goes when they reply",
+               "delivered": "delivered", "bounced": "bounced (the ops team has been told)"},
   "hidden_document_fields": ["id", "type", "holder", "context", "file", "received_via", "extraction", "evidence", "defects", "action", "defect"]
 }

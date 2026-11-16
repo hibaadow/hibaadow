@@ -589,6 +589,48 @@ def cmd_demo(args):
     print(f"  Metrics: {json.dumps(metrics(e))}")
 
 
+# ---------------- Phase 3: inbound email, deliveries ----------------
+def _customer_map(args):
+    folders = [Path(c) for c in args.customer] if getattr(args, "customer", None) else scheduler.customer_folders(args.root)
+    return {json.loads((f / "company.json").read_text(encoding="utf-8"))["id"]: f for f in folders}
+
+
+def cmd_inbound_email(args):
+    from . import inbound
+    customers = _customer_map(args)
+    state = args.state or ROOT / "state"
+    today = date.fromisoformat(args.today) if args.today else None
+    if args.imap:
+        import os
+        if not os.environ.get("IMAP_HOST"):
+            print("Inbound email isn't set up (IMAP_HOST is empty); nothing to collect.")
+            return
+        results = inbound.poll_imap(customers, state, today)
+    elif args.dir:
+        results = inbound.process_maildrop(customers, state, args.dir, today)
+    else:
+        raise SystemExit("Give --dir FOLDER (a folder of .eml files) or --imap (settings in .env).")
+    for r in results:
+        print(f"  {r.get('file', 'email')}: {r['status']}" + (f" ({r['why']})" if r.get("why") else "") +
+              "".join(f"\n    {x.get('file', '')} {x['status']}" for x in r.get("results", [])))
+    print(f"{len(results)} email(s) processed.")
+
+
+def cmd_deliveries(args):
+    from . import delivery
+    failed = 0
+    for cid, folder in _customer_map(args).items():
+        e = Engine(folder, state_dir=args.state, today=date.fromisoformat(args.today) if args.today else None)
+        if args.retry:
+            for ref, what in delivery.retry_due(e.store, e.customer):
+                print(f"  {cid} {ref}: {what}")
+        summary = delivery.summary(e.store)
+        failed += sum(v for k, v in summary.items() if k in ("failed", "bounced", "complained"))
+        print(f"  {cid:<28} " + (", ".join(f"{k} {v}" for k, v in sorted(summary.items())) or "nothing sent yet"))
+    if failed:
+        print(f"{failed} message(s) could not be delivered; their issues are escalated for the ops team.")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="opsengine", description="Compliance operations engine v0")
     p.add_argument("--today", help="override today's date (YYYY-MM-DD)")
@@ -659,6 +701,10 @@ def main(argv=None):
     sp = add("nightly", cmd_nightly, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--backup-to")
     sp.add_argument("--checkpoint-file"); sp.add_argument("--keep", type=int, default=14)
+    sp = add("inbound-email", cmd_inbound_email, customer=False); sp.add_argument("--dir"); sp.add_argument("--imap", action="store_true")
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
+    sp = add("deliveries", cmd_deliveries, customer=False); sp.add_argument("--retry", action="store_true")
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

@@ -150,7 +150,12 @@ python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --
 `nightly` does, in order: refuse unsigned rules (in production), the daily run, the retention
 schedule (only once a solicitor has confirmed it), a signed audit checkpoint and its check, then a
 backup that is verified before old ones are pruned. It exits non-zero if any step fails.
-Admins manage users at `/admin/users`. Deployment (Docker, HTTPS, the nightly timer, backups,
+Admins manage users at `/admin/users`.
+
+Messages: `deliveries --retry` resends failed messages and `inbound-email --dir FOLDER` (or `--imap`)
+reads documents people email in. Customer approvals are emailed once a day with one-time links once
+`EMAIL_MODE=smtp` and `OPSENGINE_PUBLIC_URL` are set. WhatsApp needs a Meta Business account (see
+`deploy/README.md`). Deployment (Docker, HTTPS, the nightly timer, backups,
 restore drills) is in `deploy/README.md`.
 
 ## Settings and the Claude API key

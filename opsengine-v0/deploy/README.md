@@ -43,7 +43,7 @@ anything failed and writes `state/nightly-last.json`.
 
 ```bash
 sudo cp deploy/systemd/*.service deploy/systemd/*.timer /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now opsengine-nightly.timer
+sudo systemctl daemon-reload && sudo systemctl enable --now opsengine-nightly.timer opsengine-messages.timer
 ```
 
 Replace the command in `opsengine-alert@.service` with real alerting (email or chat).
@@ -67,3 +67,28 @@ python -m opsengine backup restore /backups/<folder> --to /tmp/restore-test
 - Retention periods and the data inventory confirmed by a solicitor (`rules/retention.json`, `docs/data-inventory.json`).
 - `OPSENGINE_SECURE_COOKIES=1` and HTTPS only (Caddy does this).
 - An admin account with a strong password; demo mode (`--demo`) never used on this server.
+
+## Email and WhatsApp (Phase 3)
+
+`opsengine-messages.timer` runs every 15 minutes: it retries messages that failed to send (after 15
+minutes, 1 hour, 4 hours and 12 hours, then escalates the issue) and collects inbound email.
+
+**Sending email**
+1. Pick an EU transactional email provider. Set `EMAIL_MODE=smtp` and the `SMTP_*` settings.
+2. Authenticate your domain with the provider: SPF, DKIM and a DMARC record. Without these, mail lands in spam.
+3. Set `OPSENGINE_PUBLIC_URL`. Customer approvals are then emailed once a day with a one-time link per
+   item (expires in 3 days, works once, opening it changes nothing). Safety and ops sign-off stay in the portal.
+4. Delivery reports: point the provider's webhook at `https://<portal>/hooks/email`. It expects a JSON
+   list of `{"message_id", "event": "delivered|bounced|complained|failed", "detail"}` signed with
+   `OPSENGINE_WEBHOOK_SECRET` (HMAC-SHA256 of the body, hex, in `X-OpsEngine-Signature`). Most providers
+   use their own format, so a small adapter for the chosen provider is still to be written.
+
+**Receiving email**: route `docs+<customer id>@<your domain>` (or one shared address) to an IMAP mailbox
+and set `IMAP_*`, or have the mail server drop `.eml` files in a folder and run
+`python -m opsengine inbound-email --dir <folder>`. Only senders on file are accepted; mail without a
+passing DMARC (or SPF and DKIM) result always goes to a person.
+
+**WhatsApp**: needs a Meta WhatsApp Business account and an approved message template. Set the
+`WHATSAPP_*` settings, `WHATSAPP_MODE=cloud`, and in Meta's settings point the webhook at
+`https://<portal>/hooks/whatsapp` with your `WHATSAPP_VERIFY_TOKEN`. Record each worker's opt-in date as
+`"whatsapp_opt_in"` in workers.json; workers without one aren't messaged and the ops team is told.

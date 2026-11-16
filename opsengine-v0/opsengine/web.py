@@ -13,7 +13,9 @@ Every form carries a per-session token (CSRF). Every approval is recorded agains
 person's name and email. The demo clock and Reset exist only in --demo mode.
 """
 import email.parser
+import hashlib
 import hmac
+import os
 import re
 import email.policy
 import html
@@ -24,7 +26,7 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import auth, config, llm, scheduler
+from . import approval_links, auth, config, delivery, inbound, llm, scheduler, whatsapp
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
@@ -274,6 +276,21 @@ def bare_page(title, body, portal=None):
 <title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
 <div class="top"><span class="brand"><i></i>OpsEngine{' <span class="small" style="color:var(--hivis)">SAMPLE DEMO</span>' if portal and portal.demo else ''}</span></div>
 <main style="max-width:460px">{body}</main></body></html>"""
+
+
+def view_link(portal, token, summary=None, approver="", error=None, done=None):
+    """Approve-by-link page. Opening it changes nothing; only the buttons do."""
+    if error or done:
+        msg = f'<div class="flash{" err" if error else ""}">{e_(error or done)}</div>'
+        return bare_page("Approval", f"<section><h1>Approval</h1>{msg}</section>", portal)
+    return bare_page("Approval", f"""<section><h1>Your approval is needed</h1>
+<p class="note">For {e_(approver)}. Nothing has happened yet: choose below. This link works once.</p>
+<div class="card"><p>{e_(summary)}</p></div>
+<form method="post" action="/a/{e_(token)}" style="display:grid;gap:10px;margin-top:12px">
+<button name="decision" value="approved">Approve</button></form>
+<form method="post" action="/a/{e_(token)}" style="display:grid;gap:10px;margin-top:18px">
+<label for="reason">Or decline, and tell us why<input id="reason" name="reason" maxlength="300" required></label>
+<button class="ghost" name="decision" value="declined">Decline</button></form></section>""", portal)
 
 
 def view_password(portal, csrf, forced=False, error=None):
@@ -863,6 +880,55 @@ class Handler(BaseHTTPRequestHandler):
     def allowed_customer(self, user, cid):
         return cid in self.portal.customers and (user["role"] != "customer" or user["customer_id"] == cid)
 
+    def send_text(self, text, status=200):
+        data = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(data)
+
+    def link_engine(self, secret):
+        if not re.fullmatch(r"[0-9a-f]{64}", secret or ""):
+            return None, None
+        for cid in self.portal.customers:
+            eng = self.portal.engine(cid)
+            if approval_links.owns(eng, secret):
+                return eng, secret
+        return None, None
+
+    def webhook(self, parts):
+        """Machine-to-machine: delivery reports and inbound WhatsApp. Signed, never signed in."""
+        raw = self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024 * 1024))
+        p = self.portal
+        if parts == ["hooks", "email"]:
+            secret = os.environ.get("OPSENGINE_WEBHOOK_SECRET", "")
+            sig = self.headers.get("X-OpsEngine-Signature", "")
+            if len(secret) < 32 or not hmac.compare_digest(hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest(), sig):
+                return self.send_text("bad signature", 403)
+            try:
+                events = json.loads(raw)
+            except json.JSONDecodeError:
+                return self.send_text("bad body", 400)
+            matched = 0
+            for ev in events if isinstance(events, list) else [events]:
+                for cid in p.customers:
+                    if delivery.report(p.engine(cid).store, str(ev.get("message_id", "")), str(ev.get("event", "")), str(ev.get("detail", ""))[:200]):
+                        matched += 1
+                        break
+            return self.send_text(f"ok {matched}")
+        if parts == ["hooks", "whatsapp"]:
+            if not whatsapp.verify_signature(raw, self.headers.get("X-Hub-Signature-256", "")):
+                return self.send_text("bad signature", 403)
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                return self.send_text("bad body", 400)
+            inbound.handle_whatsapp(p.customers, p.state, payload, today=p.today)
+            return self.send_text("ok")
+        return self.send_text("not found", 404)
+
     # ---- GET ----
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
@@ -880,6 +946,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_html(view_code(p, setup, pending["user"]["email"]))
             if parts == ["healthz"]:  # for the host's monitoring: no data, no sign-in
                 return self.send_html("ok")
+            if len(parts) == 2 and parts[0] == "a":  # approve by link: the link itself is the credential
+                eng, secret = self.link_engine(parts[1])
+                if not eng:
+                    return self.send_html(view_link(p, "", error="This link isn't valid. Use the portal, or ask the ops team for a new link."), 404)
+                try:
+                    link, step = approval_links.check(eng, secret)
+                except ValueError as exc:
+                    return self.send_html(view_link(p, "", error=str(exc)), 410)
+                prior = {x["action"]: x["result"] for x in eng.store.steps(step["issue_id"]) if x["state"] in DONE and x["result"]}
+                return self.send_html(view_link(p, secret, eng.approval_summary(step, prior), link["approver"]))
+            if parts == ["hooks", "whatsapp"]:  # Meta's subscription check
+                ok = q.get("hub.mode", [""])[0] == "subscribe" and os.environ.get("WHATSAPP_VERIFY_TOKEN") and \
+                    hmac.compare_digest(q.get("hub.verify_token", [""])[0], os.environ.get("WHATSAPP_VERIFY_TOKEN", ""))
+                return self.send_text(q.get("hub.challenge", [""])[0] if ok else "forbidden", 200 if ok else 403)
             s = self.session()
             if not s:
                 return self.redirect("/login")
@@ -971,7 +1051,19 @@ class Handler(BaseHTTPRequestHandler):
         url = urllib.parse.urlparse(self.path)
         parts = [p for p in url.path.split("/") if p]
         p = self.portal
+        if parts[:1] == ["hooks"]:
+            return self.webhook(parts)
         f, files = self.form()
+        if len(parts) == 2 and parts[0] == "a":
+            eng, secret = self.link_engine(parts[1])
+            if not eng:
+                return self.send_html(view_link(p, "", error="This link isn't valid. Use the portal, or ask the ops team for a new link."), 404)
+            try:
+                approval_links.use(eng, secret, f.get("decision", ""), f.get("reason", "").strip(), ip=self.ip())
+            except ValueError as exc:
+                return self.send_html(view_link(p, "", error=str(exc)), 410)
+            return self.send_html(view_link(p, "", done="Thank you. Your decision has been recorded."
+                                            if f.get("decision") == "approved" else "Declined. The ops team will be in touch."))
         try:
             if parts == ["login"]:
                 try:

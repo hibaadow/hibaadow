@@ -16,6 +16,7 @@ import traceback
 from datetime import date
 from pathlib import Path
 
+from . import approval_links, delivery
 from .actions import ActionContext
 from .engine import DONE, Engine
 from .knowledge import ROOT
@@ -60,12 +61,18 @@ def _context(engine, issue, step):
 def _chase(engine, issue, step, days):
     ctx = _context(engine, issue, step)
     who_name = engine.customer.holder_name(issue["holder"])
-    if step["state"] == "awaiting_approval":
+    if step["state"] == "awaiting_approval" and step["approval_role"] == approval_links.ROLE:
+        to = _approver(engine, step["approval_role"])
+        footer = (f"Approve or decline here: {approval_links.issue_link(engine, step['id'])}\n\n{approval_links.LINK_FOOTER}"
+                  if approval_links.can_email_links() else approval_links.PORTAL_FOOTER)
+        subject, body = ctx.render("approval_reminder", days_waiting=days, approval_summary=engine.approval_summary(step, ctx.prior),
+                                   approval_footer=footer)
+    elif step["state"] == "awaiting_approval":  # safety and ops sign-off: in the portal only, never by link
         to = _approver(engine, step["approval_role"])
         summary = engine.approval_summary(step, ctx.prior)
-        subject = f"Reminder: your approval is needed ({step['id']})"
-        body = (f"This has been waiting for your approval for {days} days:\n\n{summary}\n\n"
-                "Nothing will happen until you approve or reject it. Reply APPROVE or REJECT with a reason.")
+        subject = f"Reminder: sign-off needed in the portal ({step['id']})"
+        body = (f"This has been waiting for sign-off for {days} days:\n\n{summary}\n\n"
+                "Nothing will happen until it is approved or declined in the portal.")
     else:
         to = ctx.recipient(step["spec"].get("from", "customer"))
         subject = f"Reminder: {ctx.req['name']} still needed"
@@ -176,6 +183,34 @@ def follow_up_appointments(engine):
     return events
 
 
+def send_approval_requests(engine):
+    """Email the customer, once a day at most, the approvals that are new since the last email, each
+    with its own one-time link when email is switched on (Phase 3)."""
+    new = [s for s in engine.store.steps(state="awaiting_approval")
+           if s["approval_role"] == approval_links.ROLE and not (s["result"] or {}).get("link_sent_on")]
+    if not new:
+        return []
+    links = approval_links.can_email_links()
+    items = []
+    for n, step in enumerate(new, start=1):
+        prior = {p["action"]: p["result"] for p in engine.store.steps(step["issue_id"]) if p["state"] in DONE and p["result"]}
+        line = f"{n}. {engine.approval_summary(step, prior)}"
+        if links:
+            line += f"\n   Approve or decline: {approval_links.issue_link(engine, step['id'])}"
+        items.append(line)
+    count = f"{len(new)} item{'s' if len(new) > 1 else ''} {'need' if len(new) > 1 else 'needs'} your approval"
+    first = new[0]
+    ctx = _context(engine, engine.store.issue(first["issue_id"]), first)
+    subject, body = ctx.render("approval_request", approval_count_phrase=count[0].upper() + count[1:],
+                               approval_count_phrase_lower=count, approval_items="\n\n".join(items),
+                               approval_footer=approval_links.LINK_FOOTER if links else approval_links.PORTAL_FOOTER)
+    ctx.write_outbox(f"approval-request-{engine.today.isoformat()}", _approver(engine, "customer"), subject, body,
+                     {"Items": ", ".join(s["id"] for s in new)})
+    for step in new:
+        engine.store.update_step(step["id"], result=json.dumps({**(step["result"] or {}), "link_sent_on": engine.today.isoformat()}))
+    return [(s["id"], "approval request sent") for s in new]
+
+
 def run_customer(folder, state_dir=None, today=None):
     from .rules_versions import check_allowed
     rules = check_allowed()  # refuses unsigned rules when OPSENGINE_REQUIRE_SIGNED_RULES is on
@@ -188,6 +223,8 @@ def run_customer(folder, state_dir=None, today=None):
                        {"date": engine.today.isoformat()})
     scan = engine.scan()
     advanced = engine.advance()
+    retried = delivery.retry_due(engine.store, engine.customer)
+    requests = send_approval_requests(engine)
     chased = chase_stalled(engine)
     overdue = chase_overdue_actions(engine)
     followed = follow_up_appointments(engine)
@@ -198,6 +235,7 @@ def run_customer(folder, state_dir=None, today=None):
                "escalated": [ref for ref, what in chased if what.startswith("escalated")],
                "overdue_actions": [ref for ref, _ in overdue],
                "appointments_followed_up": [ref for ref, _ in followed],
+               "approval_requests_sent": len(requests), "messages_retried": len(retried),
                "approvals_waiting": len(engine.approval_queue()),
                "reviews_waiting": len(engine.review_queue())}
     engine.store.audit("scheduler", "daily_run_finished", summary["customer"], summary)

@@ -302,13 +302,15 @@ class Engine:
         return events
 
     # ---------------- inbound photos (Claude vision) ----------------
-    def ingest_photo(self, path, holder, context=None, expected_type=None, received_via="whatsapp", call=None):
+    def ingest_photo(self, path, holder, context=None, expected_type=None, received_via="whatsapp", call=None,
+                     hold_reasons=()):
         """Read a card/certificate photo. Confident, consistent reads go straight into ingest();
         everything else waits in the human review queue. Nothing is ever guessed."""
         if holder != "company" and holder not in self.customer.workers:
             raise ValueError(f"unknown holder {holder}")
         ex = vision.read_photo(path, self.kb, expected_type=expected_type, call=call)
         confidence, reasons, values = vision.assess(ex, self.kb, self.customer, holder, expected_type)
+        reasons = list(reasons) + list(hold_reasons)  # e.g. an email whose sender couldn't be verified
         self.store.audit("engine", "photo_read", str(Path(path).name),
                          {"holder": holder, "source": ex["source"], "model": ex.get("model"),
                           "document_type": ex.get("document_type"), "confidence": confidence, "reasons": reasons})

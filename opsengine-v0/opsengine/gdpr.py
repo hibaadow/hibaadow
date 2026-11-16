@@ -12,6 +12,8 @@ import shutil
 from datetime import date, timedelta
 from pathlib import Path
 
+from .whatsapp import digits
+
 ROOT = Path(__file__).resolve().parent.parent
 KEEP_ON_REDACT = {"id", "type", "holder", "context", "expires", "issued"}  # enough to show a record existed, nothing personal
 
@@ -51,6 +53,8 @@ def purge(engine, apply=False, by="gdpr-purge"):
             if ev and (engine.evidence_dir / ev).is_file():
                 plan["leaver_evidence_files"].append(str(engine.evidence_dir / ev))
     plan["workers_to_remove_from_workers_json"] = sorted(leavers)
+    phones = {digits(engine.customer.workers[w].get("phone")) for w in leavers} - {""}
+    plan["leaver_contact_prefs"] = sorted(p for p in phones if engine.store.contact_pref(p))
     # 3. message files for issues resolved more than resolved_message_files_years ago
     cutoff = _years_ago(today, r["resolved_message_files_years"]).isoformat()
     old_issues = {i["id"] for i in engine.store.issues("resolved")
@@ -62,6 +66,9 @@ def purge(engine, apply=False, by="gdpr-purge"):
     if apply:
         for f in plan["review_uploads"] + plan["leaver_evidence_files"] + plan["message_files"]:
             Path(f).unlink(missing_ok=True)
+        for phone in plan["leaver_contact_prefs"]:
+            engine.store.db.execute("DELETE FROM contact_prefs WHERE address=?", (phone,))
+        engine.store.db.commit()
         for doc_id in plan["leaver_documents"]:
             engine.store.redact_document(doc_id, KEEP_ON_REDACT, by, "leaver retention period passed")
         engine.store.audit(by, "personal_data_purged", engine.customer.company["id"],
@@ -100,7 +107,9 @@ def export_person(engine, holder, out_dir, by="subject-access"):
     data = {"person": person, "kind": kind, "customer": c.company["name"], "documents": docs,
             "issues": [{**i, "steps": engine.store.steps(i["id"])} for i in issues], "messages": comms,
             "appointments": [a for a in engine.store.appointments() if a["holder"] == holder],
-            "reviews": [r for r in engine.store.reviews() if r["holder"] == holder], "audit_entries": audit}
+            "reviews": [r for r in engine.store.reviews() if r["holder"] == holder],
+            "whatsapp_preferences": engine.store.contact_pref(digits(person.get("phone"))) if person else {},
+            "audit_entries": audit}
     (out / "data.json").write_text(json.dumps(data, indent=2, default=str, ensure_ascii=False), encoding="utf-8")
     (out / "README.txt").write_text(
         f"Personal data held by OpsEngine about {name}, on behalf of {c.company['name']}, exported {engine.today.isoformat()}.\n"

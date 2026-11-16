@@ -42,6 +42,18 @@ CREATE TRIGGER IF NOT EXISTS comms_append_only_u BEFORE UPDATE ON comms BEGIN SE
 CREATE TRIGGER IF NOT EXISTS comms_append_only_d BEFORE DELETE ON comms BEGIN SELECT RAISE(ABORT, 'communication log is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS quotes_append_only_u BEFORE UPDATE ON quotes BEGIN SELECT RAISE(ABORT, 'quotes are append-only'); END;
 CREATE TRIGGER IF NOT EXISTS quotes_append_only_d BEFORE DELETE ON quotes BEGIN SELECT RAISE(ABORT, 'quotes are append-only'); END;
+CREATE TABLE IF NOT EXISTS approval_links (
+    token_hash TEXT PRIMARY KEY, step_id TEXT, approver TEXT, address TEXT, issued_at TEXT, expires_at TEXT,
+    used_at TEXT, outcome TEXT
+);
+CREATE TABLE IF NOT EXISTS deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, channel TEXT, to_name TEXT, address TEXT, subject TEXT, body TEXT,
+    issue_id TEXT, step_id TEXT, outbox TEXT, message_id TEXT, status TEXT, attempts INTEGER DEFAULT 0,
+    next_try TEXT, last_error TEXT, created_at TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS contact_prefs (
+    address TEXT PRIMARY KEY, channel TEXT, opted_out_at TEXT, last_inbound_at TEXT
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
@@ -282,6 +294,37 @@ class Store:
             closed = s["completed"] + s["no_show"] + s["cancelled"]
             s["reliability"] = round(s["completed"] / closed, 2) if closed else None
         return stats
+
+    # ---------- deliveries (retries, delivery reports, WhatsApp messages waiting for a reply window) ----------
+    def add_delivery(self, **d):
+        d = {"created_at": now_iso(), "updated_at": now_iso(), **d}
+        cur = self.db.execute(f"INSERT INTO deliveries ({', '.join(d)}) VALUES ({', '.join('?' * len(d))})", list(d.values()))
+        self.db.commit()
+        return cur.lastrowid
+
+    def update_delivery(self, delivery_id, **fields):
+        fields["updated_at"] = now_iso()
+        self.db.execute(f"UPDATE deliveries SET {', '.join(k + '=?' for k in fields)} WHERE id=?", [*fields.values(), delivery_id])
+        self.db.commit()
+
+    def deliveries(self, status=None, message_id=None):
+        sql, args = "SELECT * FROM deliveries WHERE 1=1", []
+        if status:
+            sql, args = sql + " AND status=?", args + [status]
+        if message_id:
+            sql, args = sql + " AND message_id=?", args + [message_id]
+        return [dict(r) for r in self.db.execute(sql + " ORDER BY id", args)]
+
+    # ---------- contact preferences (WhatsApp opt-out, last message from them) ----------
+    def contact_pref(self, address):
+        row = self.db.execute("SELECT * FROM contact_prefs WHERE address=?", (address,)).fetchone()
+        return dict(row) if row else {}
+
+    def set_contact_pref(self, address, channel, **fields):
+        self.db.execute("INSERT INTO contact_prefs (address, channel) VALUES (?, ?) ON CONFLICT(address) DO NOTHING", (address, channel))
+        if fields:
+            self.db.execute(f"UPDATE contact_prefs SET {', '.join(k + '=?' for k in fields)} WHERE address=?", [*fields.values(), address])
+        self.db.commit()
 
     # ---------- GDPR: redaction (the audit log keeps the fact, not the personal data) ----------
     def redact_document(self, doc_id, keep, by, reason):

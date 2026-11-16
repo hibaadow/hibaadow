@@ -220,7 +220,9 @@ class Gdpr(Tmp):
 
     def test_purge_redacts_leavers_and_audits_counts_not_content(self):
         e = self.customer_with_leaver()
+        e.store.set_contact_pref("353870000207", "whatsapp", last_inbound_at="2024-01-01T00:00:00+00:00")
         gdpr.purge(e, apply=True)
+        self.assertEqual(e.store.contact_pref("353870000207"), {})
         sp = next(d for d in e.store.documents() if d["holder"] == "w07" and d["type"] == "safe_pass")
         self.assertEqual(sp["number"], "[deleted]")
         self.assertEqual(sp["expires"], "2026-10-02")  # the fact a record existed is kept

@@ -61,6 +61,27 @@ security review.
 
 **Tests:** `tests/test_ops.py` adds 25 tests, for 187 in total.
 
+## Update: Phase 3 (communications and approvals) built, not yet live (16 November 2026)
+
+Everything below runs in tests with fake mail servers and a fake WhatsApp API. None of it has
+talked to a real provider: that needs an email provider account and a Meta WhatsApp Business
+account. Mock mode and the approval rules are unchanged.
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| D9 (failed email treated as sent) | **Fixed** | `delivery.py`: a temporary failure is retried after 15 minutes, 1 hour, 4 hours and 12 hours; after the fifth failure, or at once for a permanent one (no address, address refused), the issue is escalated to the ops team. The message history shows "could not be sent yet (trying again)". |
+| Delivery reports | **Added** | Each email has a Message-ID. A signed webhook (`/hooks/email`) records delivered, bounced and complained; a bounce escalates the issue. Provider-specific adapters are still to write once a provider is chosen. |
+| Approve by link | **Added** | Customer approvals (money and commitments) are emailed once a day with a one-time link per item: secret, 3-day expiry, works once, opening it changes nothing, recorded as "Name <email> (email link)". Safety reviewer and ops sign-off are never by link. Links aren't stored in the saved message copies that staff can read. Reminders no longer say "Reply APPROVE", which nothing read. |
+| Inbound email | **Added** | `.eml` folder or IMAP. Routed by `docs+<customer>@` address or the sender; the issue reference in the subject tells whose document it is. Unknown senders are set aside, unverified senders (no DMARC pass) always go to review, and every attachment goes through the photo reader as before. IMAP is untested against a live server. |
+| WhatsApp | **Added, untested live** | Meta Cloud API: opt-in required (`whatsapp_opt_in` in workers.json), STOP/START honoured, template message outside the 24-hour window and the full message when they reply, signed webhooks, photos and PDFs from a known worker read by the photo reader. |
+| Scheduling | **Added** | `opsengine-messages.timer` runs retries and inbound email every 15 minutes. |
+
+**Still to do for Phase 3:** choose and set up the email provider (SPF, DKIM, DMARC; its webhook
+adapter), set up the WhatsApp Business account and template, and do a real round trip with a test
+customer (the Phase 3 exit test).
+
+**Tests:** `tests/test_comms.py` adds 19 tests, for 206 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

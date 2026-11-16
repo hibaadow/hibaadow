@@ -103,5 +103,13 @@
   "corrective_isolate": {
     "subject": "Stop using {isolate_target} now ({issue_id})",
     "body": "Hi {owner_name}, do not use {isolate_target} until this is repaired: {action_defect}. Take it out of use now and tell everyone who uses it. The repair must be done by a competent person by {due_date}. When it is done, send us {evidence_required}. It shows as Out of use on your register until we have checked the evidence."
+  },
+  "approval_request": {
+    "subject": "{approval_count_phrase}",
+    "body": "Hi {owner_first_name}, {approval_count_phrase_lower}:\n\n{approval_items}\n\n{approval_footer}"
+  },
+  "approval_reminder": {
+    "subject": "Reminder: your approval is needed: {requirement_name} for {holder_name}",
+    "body": "Hi {owner_first_name}, this has been waiting for your approval for {days_waiting} days:\n\n{approval_summary}\n\n{approval_footer}"
   }
 }
