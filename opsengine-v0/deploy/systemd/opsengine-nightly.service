@@ -1,0 +1,9 @@
+[Unit]
+Description=OpsEngine nightly run (daily run, retention, signed checkpoint, verified backup)
+OnFailure=opsengine-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/opsengine/opsengine-v0
+ExecStart=/usr/bin/docker compose -f deploy/docker-compose.yml --env-file deploy/production.env run --rm opsengine \
+  python -m opsengine nightly --backup-to /backups --checkpoint-file /checkpoints/audit-checkpoints.jsonl

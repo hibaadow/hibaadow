@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .labels import Wording
+from .rules_versions import current_version
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -25,6 +26,7 @@ class Knowledge:
     templates: dict
     providers: list
     wording: "Wording" = None
+    rules_version: str = ""
 
     @classmethod
     def load(cls, root=ROOT):
@@ -41,6 +43,7 @@ class Knowledge:
             templates=_load(root / "templates" / "messages.json"),
             providers=_load(root / "data" / "providers.json")["providers"],
             wording=Wording.load(root),
+            rules_version=current_version(root),
         )
 
     def playbook_for(self, requirement_id, category):

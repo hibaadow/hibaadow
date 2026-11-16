@@ -137,6 +137,22 @@ Scans and advances every customer, sends a reminder to whoever a step is waiting
 team after 5 days. Every action goes into that customer's audit trail. Schedule it with cron:
 `5 7 * * * cd /path/to/opsengine-v0 && python -m opsengine daily`.
 
+## Running it for real (operations)
+
+```bash
+python -m opsengine nightly --backup-to /backups --checkpoint-file /checkpoints/audit.jsonl
+python -m opsengine backup make --to /backups      # verify PATH, restore PATH --to NEW_DIR
+python -m opsengine checkpoint write|verify --file /checkpoints/audit.jsonl
+python -m opsengine rules status                   # register --note "...", sign-off --version r-... --by "Name" --qualification "..."
+python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
+```
+
+`nightly` does, in order: refuse unsigned rules (in production), the daily run, the retention
+schedule (only once a solicitor has confirmed it), a signed audit checkpoint and its check, then a
+backup that is verified before old ones are pruned. It exits non-zero if any step fails.
+Admins manage users at `/admin/users`. Deployment (Docker, HTTPS, the nightly timer, backups,
+restore drills) is in `deploy/README.md`.
+
 ## Settings and the Claude API key
 
 Settings live in a `.env` file in this folder (git-ignored). Start from the example:

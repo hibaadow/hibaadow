@@ -327,7 +327,7 @@ def cmd_web(args):
 
 def _accounts(args):
     from .auth import Accounts
-    folder = Path(args.state) if args.state else ROOT / "state" / "web"
+    folder = Path(args.state) if args.state else ROOT / "state"
     folder.mkdir(parents=True, exist_ok=True)
     return Accounts(folder / "accounts.db")
 
@@ -379,6 +379,147 @@ def _user(args):
     elif args.action == "reset-code":
         a.reset_mfa(u["id"], by=by)
     print(f"Done: {args.action} {args.email}.")
+
+
+# ---------------- operations: rules versions, backups, checkpoints, GDPR, nightly ----------------
+def cmd_rules(args):
+    from . import rules_versions as rv
+    if args.action == "status":
+        st = rv.status()
+        print(f"Rules version in use: {st['current']}")
+        print(f"  Registered: {'yes' if st['registered'] else 'NO - run `opsengine rules register --note ...`'}")
+        so = st["sign_off"]
+        print(f"  Signed off: {so['by']} ({so['qualification']}) on {so['on']}" if so else
+              "  Signed off: NO - a competent person must check these rules before real customers rely on them")
+        for v in rv.load()["versions"]:
+            mark = "*" if v["id"] == st["current"] else " "
+            print(f"  {mark} {v['id']}  registered {v['registered_on']}  "
+                  f"{'signed off by ' + v['sign_off']['by'] if v.get('sign_off') else 'not signed off'}  - {v['note']}")
+    elif args.action == "register":
+        vid, new = rv.register(args.note or "")
+        print(f"{'Registered' if new else 'Already registered'}: {vid}. Commit rules/versions.json.")
+    elif args.action == "sign-off":
+        v = rv.sign_off(args.version or rv.current_version(), args.by or "", args.qualification or "")
+        print(f"{v['id']} signed off by {v['sign_off']['by']} ({v['sign_off']['qualification']}). Commit rules/versions.json.")
+
+
+def _state(args):
+    return Path(args.state) if args.state else ROOT / "state"
+
+
+def cmd_backup(args):
+    from . import backup as b
+    if args.action == "make":
+        target = b.backup(_state(args), args.to)
+        problems = b.verify(target)
+        print(f"Backup written to {target}: {'verified' if not problems else 'FAILED VERIFICATION'}")
+        for x in problems:
+            print("  - " + x)
+        if args.keep:
+            for old in b.prune(args.to, args.keep):
+                print(f"  removed old backup {old.name}")
+        sys.exit(1 if problems else 0)
+    if args.action == "verify":
+        problems = b.verify(args.path)
+        print("Backup verified: complete and restorable." if not problems else "Backup FAILED verification:")
+        for x in problems:
+            print("  - " + x)
+        sys.exit(1 if problems else 0)
+    if args.action == "restore":
+        print(f"Restored into {b.restore(args.path, args.to)}. Check it, then point OpsEngine at it.")
+
+
+def cmd_checkpoint(args):
+    from . import checkpoints as cp
+    if args.action == "write":
+        rec = cp.write_checkpoint(_state(args), args.file)
+        print(f"Checkpoint written for {len(rec['logs'])} audit log(s) at {rec['at']}.")
+    else:
+        problems = cp.verify(_state(args), args.file)
+        print("All checkpoints hold: no audit history has been rewritten." if not problems else "Checkpoint verification FAILED:")
+        for x in problems:
+            print("  - " + x)
+        sys.exit(1 if problems else 0)
+
+
+def cmd_gdpr(args):
+    from . import gdpr
+    if args.action == "inventory":
+        inv = gdpr.inventory()
+        for item in inv["items"]:
+            print(f"- {item['who']}: {item['data']}\n    where: {item['where']}\n    why: {item['why']}\n"
+                  f"    lawful basis: {item['lawful_basis']}\n    kept: {item['retention']}")
+        print("Processors: " + "; ".join(f"{x['who']} ({x['dpa']})" for x in inv["processors"]))
+        return
+    e = _engine(args)
+    if args.action == "purge":
+        plan = gdpr.purge(e, apply=args.apply, by="cli")
+        print(("Deleted" if args.apply else "Would delete (dry run; add --apply)") + ":")
+        for k, v in plan.items():
+            print(f"  {k.replace('_', ' ')}: {len(v)}" + (f" ({', '.join(v)})" if k.startswith("workers") and v else ""))
+        if not gdpr.retention().get("solicitor_confirmed"):
+            print("Note: retention periods in rules/retention.json are not yet confirmed by a solicitor.")
+    elif args.action == "export":
+        if not args.person or not args.out:
+            raise SystemExit("--person and --out are required")
+        print(f"Subject access export written to {gdpr.export_person(e, args.person, args.out, by='cli')}")
+
+
+def cmd_nightly(args):
+    """Everything a production night needs, in order; exits non-zero if anything failed (for alerting)."""
+    import json as _json
+    import traceback
+    from . import backup as b, checkpoints as cp, gdpr, rules_versions as rv
+    state = _state(args)
+    report = {"started": date.today().isoformat(), "steps": {}, "ok": True}
+
+    def step(name, fn):
+        try:
+            report["steps"][name] = {"ok": True, "result": fn()}
+        except Exception as exc:  # noqa: BLE001 - record, carry on, fail the run at the end
+            report["steps"][name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}",
+                                     "trace": traceback.format_exc(limit=3)}
+            report["ok"] = False
+
+    step("rules", rv.check_allowed)
+    folders = scheduler.customer_folders(args.root)
+    if report["steps"]["rules"]["ok"]:
+        def run():
+            results = scheduler.daily_run(folders, state_dir=state)
+            if any(r["status"] != "ok" for r in results):
+                raise RuntimeError("; ".join(f"{r['customer']}: {r.get('error')}" for r in results if r["status"] != "ok"))
+            return [{k: r[k] for k in ("customer", "actions", "approvals_waiting")} for r in results]
+        step("daily_run", run)
+
+    def purge():
+        confirmed = gdpr.retention().get("solicitor_confirmed", False)
+        out = {}
+        for f in folders:
+            plan = gdpr.purge(Engine(f, state_dir=state), apply=confirmed, by="nightly")
+            out[f.name] = {k: len(v) for k, v in plan.items()}
+        return {"applied": confirmed, "counts": out}
+    step("retention", purge)
+    if args.checkpoint_file:
+        step("checkpoint", lambda: cp.write_checkpoint(state, args.checkpoint_file)["at"])
+        def verify_checkpoints():
+            problems = cp.verify(state, args.checkpoint_file)
+            if problems:
+                raise RuntimeError("; ".join(problems[:3]))
+            return "all checkpoints hold"
+        step("checkpoint_verify", verify_checkpoints)
+    if args.backup_to:
+        def do_backup():
+            target = b.backup(state, args.backup_to)
+            problems = b.verify(target)
+            if problems:
+                raise RuntimeError("backup failed verification: " + "; ".join(problems[:3]))
+            b.prune(args.backup_to, args.keep)
+            return str(target)
+        step("backup", do_backup)
+    (state / "nightly-last.json").write_text(_json.dumps(report, indent=2, default=str), encoding="utf-8")
+    for name, r in report["steps"].items():
+        print(f"  {name:<18} {'ok' if r['ok'] else 'FAILED: ' + r['error']}")
+    sys.exit(0 if report["ok"] else 1)
 
 
 def cmd_demo(args):
@@ -507,6 +648,17 @@ def main(argv=None):
     sp.add_argument("action", choices=["add", "list", "disable", "enable", "reset-password", "reset-code"])
     sp.add_argument("--email"); sp.add_argument("--name"); sp.add_argument("--role", choices=["customer", "ops", "reviewer", "admin"])
     sp.add_argument("--customer", help="customer id, for customer users"); sp.add_argument("--password-stdin", action="store_true")
+    sp = add("rules", cmd_rules, customer=False); sp.add_argument("action", choices=["status", "register", "sign-off"])
+    sp.add_argument("--note"); sp.add_argument("--version"); sp.add_argument("--by"); sp.add_argument("--qualification")
+    sp = add("backup", cmd_backup, customer=False); sp.add_argument("action", choices=["make", "verify", "restore"])
+    sp.add_argument("path", nargs="?"); sp.add_argument("--to"); sp.add_argument("--keep", type=int, default=14)
+    sp = add("checkpoint", cmd_checkpoint, customer=False); sp.add_argument("action", choices=["write", "verify"])
+    sp.add_argument("--file", required=True)
+    sp = add("gdpr", cmd_gdpr); sp.add_argument("action", choices=["inventory", "purge", "export"])
+    sp.add_argument("--apply", action="store_true"); sp.add_argument("--person"); sp.add_argument("--out")
+    sp = add("nightly", cmd_nightly, customer=False)
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--backup-to")
+    sp.add_argument("--checkpoint-file"); sp.add_argument("--keep", type=int, default=14)
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

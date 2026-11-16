@@ -115,6 +115,10 @@ class Accounts:
         self.store = Store(path)  # gives us the append-only, hash-chained audit log
         self.db = self.store.db
         self.db.executescript(SCHEMA)
+        cols = {r["name"] for r in self.db.execute("PRAGMA table_info(users)")}
+        if "must_change" not in cols:  # upgrade older account databases in place
+            self.db.execute("ALTER TABLE users ADD COLUMN must_change INTEGER DEFAULT 0")
+            self.db.commit()
 
     def audit(self, actor, event, ref="", payload=None):
         self.store.audit(actor, event, ref, payload or {})
@@ -130,7 +134,8 @@ class Accounts:
             row = self.db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         return dict(row) if row else None
 
-    def add_user(self, email, name, role, password, customer_id=None, by="admin", demo=False, check_strength=True):
+    def add_user(self, email, name, role, password, customer_id=None, by="admin", demo=False, check_strength=True,
+                 must_change=False):
         email = email.strip().lower()
         if role not in ROLES:
             raise ValueError(f"role must be one of {', '.join(ROLES)}")
@@ -145,9 +150,9 @@ class Accounts:
         if check_strength and password_problems(password, email):
             raise ValueError("password: " + "; ".join(password_problems(password, email)))
         uid = "u-" + secrets.token_hex(4)
-        self.db.execute("INSERT INTO users (id, email, name, role, customer_id, password_hash, demo, created_at)"
-                        " VALUES (?,?,?,?,?,?,?,?)",
-                        (uid, email, name, role, customer_id, hash_password(password), int(demo), now_iso()))
+        self.db.execute("INSERT INTO users (id, email, name, role, customer_id, password_hash, demo, created_at, must_change)"
+                        " VALUES (?,?,?,?,?,?,?,?,?)",
+                        (uid, email, name, role, customer_id, hash_password(password), int(demo), now_iso(), int(must_change)))
         self.db.commit()
         self.audit(f"admin:{by}", "user_created", uid, {"email": email, "name": name, "role": role,
                                                          "customer": customer_id, "demo": demo})
@@ -159,15 +164,33 @@ class Accounts:
         self.db.commit()
         self.audit(f"admin:{by}", "user_disabled" if disabled else "user_enabled", user_id, {})
 
-    def set_password(self, user_id, password, by="admin"):
+    def set_password(self, user_id, password, by="admin", must_change=False, keep_session=None):
         u = self.user(user_id)
         if password_problems(password, u["email"]):
             raise ValueError("password: " + "; ".join(password_problems(password, u["email"])))
-        self.db.execute("UPDATE users SET password_hash=?, failures=0, locked_until=NULL WHERE id=?",
-                        (hash_password(password), user_id))
-        self.db.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        self.db.execute("UPDATE users SET password_hash=?, failures=0, locked_until=NULL, must_change=? WHERE id=?",
+                        (hash_password(password), int(must_change), user_id))
+        self.db.execute("DELETE FROM sessions WHERE user_id=? AND token_hash IS NOT ?", (user_id, keep_session))
         self.db.commit()
-        self.audit(f"admin:{by}", "password_reset", user_id, {})
+        self.audit(f"admin:{by}" if by != "self" else f"user:{user_id}",
+                   "password_changed" if by == "self" else "password_reset", user_id, {"must_change": bool(must_change)})
+
+    def temporary_password(self):
+        return secrets.token_urlsafe(12)  # 16 characters; shown once, must be changed at first sign-in
+
+    def change_own_password(self, token, current, new):
+        s = self.session(token)
+        if not s or not check_password(current or "", s["user"]["password_hash"]):
+            raise AuthError("Your current password is wrong.")
+        if new == current:
+            raise AuthError("Choose a new password, not the current one.")
+        try:
+            self.set_password(s["user_id"], new, by="self", keep_session=_token_hash(token))
+        except ValueError as exc:
+            raise AuthError(str(exc).replace("password: ", "Password: ").capitalize())
+
+    def active_admins(self):
+        return [u for u in self.users() if u["role"] == "admin" and not u["disabled"]]
 
     def reset_mfa(self, user_id, by="admin"):
         self.db.execute("UPDATE users SET mfa_secret=NULL WHERE id=?", (user_id,))

@@ -42,6 +42,25 @@ Phase 3.
 
 **Tests:** `tests/test_auth.py` adds 21 tests, for 162 in total.
 
+## Update: Phase 2, part 2 (operations and GDPR basics) complete (16 November 2026)
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| Backups with a restore check | **Added** | `backup make` copies every database with SQLite's online backup and every evidence/message file, with a SHA-256 manifest and each audit log's head. `backup verify` re-hashes, runs SQLite's integrity check and re-verifies every audit chain. `backup restore` verifies first and only restores into an empty folder. Old backups are pruned (14 kept). |
+| Signed audit checkpoints | **Added** | `checkpoint write` records each audit log's entry count and last hash, signed with HMAC-SHA256 (`OPSENGINE_CHECKPOINT_KEY`) and chained to the previous checkpoint. Kept outside the data folder. `checkpoint verify` catches a rewritten history even when the attacker rebuilt the whole hash chain, and catches removed or edited checkpoints. |
+| Rule versioning with sign-off | **Added** | The rules library has a version (a hash of every rule and playbook file). Every finding, corrective action and scan records it. `rules register` and `rules sign-off --by --qualification` record a competent person's approval in `rules/versions.json`. With `OPSENGINE_REQUIRE_SIGNED_RULES=true` (production) the daily run refuses unsigned rules. **The SAMPLE library is not signed off.** |
+| GDPR basics | **Added** | Data inventory (`docs/data-inventory.json`). Retention schedule (`rules/retention.json`). `gdpr purge` is a dry run unless `--apply`: it deletes rejected review photos, redacts leavers' records and evidence, and deletes old message files, auditing counts only. `gdpr export` produces a subject access pack. Leavers (`left_on` in workers.json) are no longer chased. **Periods, lawful bases and processors are placeholders until a solicitor confirms them**; the nightly run only applies retention once `solicitor_confirmed` is true. |
+| User admin page | **Added** | `/admin/users` (admins only): add users with a one-time temporary password, disable or enable, reset passwords and sign-in codes. Temporary passwords must be changed at first sign-in. You can't disable yourself or the last admin. Everyone can change their password at `/account/password`. All audited. |
+| Ready-to-deploy package | **Added, untested as a container** | `deploy/`: Dockerfile (non-root, health check), docker-compose with Caddy for automatic HTTPS, production settings template, and a systemd timer for the `nightly` run (rules check, daily run, retention, checkpoint, verify, backup) at 02:30 Irish time with a failure alert hook. `/healthz` for monitoring. Forwarded headers are only trusted with `OPSENGINE_TRUST_PROXY`; cookies are Secure behind HTTPS. **The Docker image was not built in this session (no Docker available).** |
+| Encryption at rest | **Host's job** | Stdlib Python has no encryption library. Use an encrypted disk/volume for the data, backups and checkpoints (deploy/README.md). |
+
+**Still to do before real customer data:** pick an EU host and deploy; a solicitor to confirm the
+retention schedule, data inventory, privacy notice and data processing agreements; a competent
+person to check and sign off the rules; off-site encrypted backup copies and a restore drill; a
+security review.
+
+**Tests:** `tests/test_ops.py` adds 25 tests, for 187 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.
@@ -382,8 +401,8 @@ only for reading photos, translating and drafting, and none of these has run liv
 | Web portal (customer, ops, reviewer) | 2 | Real engine behind it; 6 tests; no authentication (D6); local only |
 | Shareable clickable preview | 4 | Snapshot of engine output; buttons simulated in the browser |
 | Multi-customer support | 3 | Folder and database per customer; no tenancy, projects or shared people |
-| Security (authentication, authorisation, encryption) | 5 | None |
-| Data protection (GDPR) | 3 | Real data kept out of git; SAMPLE separation enforced. No retention, deletion, subject access, data processing agreements or encryption |
+| Security (authentication, authorisation, encryption) | 2 | Sign-in, MFA, CSRF, tenancy (Phase 2). Encryption at rest is left to the host. Not yet security reviewed |
+| Data protection (GDPR) | 3 | Real data kept out of git; SAMPLE separation enforced. Inventory, retention purge and subject access export built (Phase 2); periods, legal bases and processor agreements await a solicitor |
 | Translation | 6 | Correctly flags; live translation never run |
 | Mock AI mode | 1 | Tested; cannot fake reads of real photos or translations |
 | Customer onboarding checks | 1 | `new-customer` and `check`; tested |

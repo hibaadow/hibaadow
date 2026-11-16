@@ -1,0 +1,18 @@
+{
+  "_about": "What personal data OpsEngine holds, why, where and for how long. Lawful bases are PLACEHOLDERS for the solicitor to confirm. Used by `python -m opsengine gdpr inventory` and the record of processing activities.",
+  "items": [
+    {"who": "Workers (customer's employees)", "data": "name, role, phone, preferred language, trades, sites worked on", "where": "data/customers/<id>/workers.json", "why": "check site-access compliance and contact them about renewals", "lawful_basis": "[SOLICITOR] legitimate interests / customer's legal obligation", "retention": "while employed, then leaver_records_years"},
+    {"who": "Workers", "data": "card and certificate details (Safe Pass, CSCS, training), photos of cards, site inductions, signed terms", "where": "state/<id>/state.db documents; state/<id>/evidence/ files", "why": "prove compliance to main contractors", "lawful_basis": "[SOLICITOR] customer's legal obligation (Construction Regulations 2013)", "retention": "leaver_records_years after leaving; review uploads review_uploads_days"},
+    {"who": "Workers, subcontractor contacts, customer owners", "data": "messages sent and received, delivery status", "where": "state/<id>/state.db comms; state/<id>/outbox/ files", "why": "chase documents, record what was asked and when", "lawful_basis": "[SOLICITOR] legitimate interests", "retention": "message files resolved_message_files_years; log entries kept as audit records"},
+    {"who": "Customer owners and directors", "data": "name, email, phone; approvals given", "where": "data/customers/<id>/company.json; audit log", "why": "approvals for spending and commitments", "lawful_basis": "[SOLICITOR] contract", "retention": "contract term plus [SOLICITOR] years"},
+    {"who": "Subcontractors' contacts", "data": "name, email, phone; their insurance and tax documents", "where": "company.json; state/<id>/state.db", "why": "subcontractor compliance", "lawful_basis": "[SOLICITOR] legitimate interests", "retention": "while engaged, then [SOLICITOR] years"},
+    {"who": "Portal users (customers and staff)", "data": "name, email, role, password hash, sign-in code secret (staff), sign-in history with IP address", "where": "state/<portal>/accounts.db", "why": "secure access and an audit trail of who did what", "lawful_basis": "[SOLICITOR] contract / legitimate interests (security)", "retention": "account life; sign-in log [SOLICITOR] years"},
+    {"who": "Everyone above", "data": "audit log entries (who did what, when; may include names)", "where": "audit table in every database", "why": "tamper-evident record for audits and disputes", "lawful_basis": "[SOLICITOR] legal obligation / legitimate interests", "retention": "[SOLICITOR] - append-only; personal content is kept out of new entries where possible"}
+  ],
+  "processors": [
+    {"who": "Anthropic (Claude API) - when enabled", "what": "card and certificate images, message text for translation and drafting", "dpa": "[SOLICITOR] needed before use"},
+    {"who": "Email provider - when enabled", "what": "message content and addresses", "dpa": "[SOLICITOR] needed before use"},
+    {"who": "WhatsApp (Meta) - when enabled", "what": "message content and phone numbers", "dpa": "[SOLICITOR] needed before use"},
+    {"who": "Hosting provider", "what": "all of the above, at rest", "dpa": "[SOLICITOR] needed before use; EU region"}
+  ]
+}

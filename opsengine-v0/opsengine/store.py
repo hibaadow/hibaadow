@@ -282,3 +282,15 @@ class Store:
             closed = s["completed"] + s["no_show"] + s["cancelled"]
             s["reliability"] = round(s["completed"] / closed, 2) if closed else None
         return stats
+
+    # ---------- GDPR: redaction (the audit log keeps the fact, not the personal data) ----------
+    def redact_document(self, doc_id, keep, by, reason):
+        row = self.db.execute("SELECT data FROM documents WHERE id=?", (doc_id,)).fetchone()
+        if not row:
+            return False
+        doc = json.loads(row["data"])
+        redacted = {k: (v if k in keep else "[deleted]") for k, v in doc.items()}
+        self.db.execute("UPDATE documents SET data=? WHERE id=?", (json.dumps(redacted), doc_id))
+        self.db.commit()
+        self.audit(by, "document_redacted", doc_id, {"reason": reason, "kept": sorted(keep)})
+        return True

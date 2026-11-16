@@ -28,7 +28,13 @@ def effective_expiry(doc, req):
     return None
 
 
-def _targets(req, customer, kb):
+def _active(worker, today):
+    """Leavers (left_on on or before today) are no longer checked or chased."""
+    left = worker.get("left_on") if worker else None
+    return not (left and today and str(left)[:10] <= today.isoformat())
+
+
+def _targets(req, customer, kb, today=None):
     """Yield (holder, context, required_by) for every place this requirement applies."""
     scope = req["scope"]
     sites = customer.company.get("sites", [])
@@ -53,10 +59,13 @@ def _targets(req, customer, kb):
     elif scope == "worker_site":
         for s in sites:
             for w in s.get("workers", []):
-                yield w, s["id"], [s["main_contractor"]]
+                if _active(customer.workers.get(w), today):
+                    yield w, s["id"], [s["main_contractor"]]
     elif scope == "worker":
         cond = req.get("applies_if", {"all_workers": True})
         for wid, w in customer.workers.items():
+            if not _active(w, today):
+                continue
             mcs = sorted({s["main_contractor"] for s in customer.worker_sites(wid)})
             if cond.get("all_workers"):
                 yield wid, None, mcs
@@ -117,7 +126,7 @@ def detect(kb, customer, docs, today):
     W = kb.wording
     findings = []
     for req in kb.requirements.values():
-        for holder, context, required_by in _targets(req, customer, kb):
+        for holder, context, required_by in _targets(req, customer, kb, today):
             doc = _best_doc(docs, req["id"], holder, context)
             base = {"requirement": req["id"], "holder": holder, "context": context,
                     "required_by": required_by}
@@ -195,7 +204,7 @@ def detect(kb, customer, docs, today):
                 add("completeness", "incomplete", detail,
                     extra={"field": fname, "current_value": current, "required_value": required,
                            "required_by": contractors or required_by})
-    findings += content_findings(kb, customer, docs)
+    findings += content_findings(kb, customer, docs, today)
     # merge findings that share a key (e.g. two completeness gaps on one document)
     merged = {}
     for f in findings:
@@ -219,13 +228,15 @@ def _same_company(a, b):
     return bool(ta and tb) and (ta <= tb or tb <= ta)
 
 
-def review_document(req, doc, customer, context=None):
+def review_document(req, doc, customer, context=None, today=None):
     """Pure content checks on one document. Returns a list of plain-English gaps.
 
     These are flags for a person, not a verdict: the engine never certifies a document."""
     checks = req.get("content_checks", {})
     gaps = []
-    site = customer.sites.get(context or doc.get("context") or "", {})
+    site = dict(customer.sites.get(context or doc.get("context") or "", {}))
+    if site:
+        site["workers"] = [w for w in site.get("workers", []) if _active(customer.workers.get(w), today)]
     if checks.get("activities_cover_tasks") and site:
         text = " ".join(_norm(a) for a in doc.get("activities", []))
         tasks = sorted({t for w in site.get("workers", []) for t in customer.workers.get(w, {}).get("tasks", [])})
@@ -254,16 +265,16 @@ def review_document(req, doc, customer, context=None):
     return gaps
 
 
-def content_findings(kb, customer, docs):
+def content_findings(kb, customer, docs, today=None):
     out = []
     for req in kb.requirements.values():
         if not req.get("content_checks"):
             continue
-        for holder, context, required_by in _targets(req, customer, kb):
+        for holder, context, required_by in _targets(req, customer, kb, today):
             doc = _best_doc(docs, req["id"], holder, context)
             if not doc:
                 continue
-            gaps = review_document(req, doc, customer, context)
+            gaps = review_document(req, doc, customer, context, today)
             if gaps:
                 out.append({"requirement": req["id"], "holder": holder, "context": context, "required_by": required_by,
                             "key": f"{req['id']}|{holder}|{context or '-'}|content", "category": "content",

@@ -78,6 +78,11 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/web.py` | Portal (stdlib): customer, ops and safety reviewer views on the real engine, behind sign-in |
 | `opsengine/auth.py` | Accounts: hashed passwords, sessions, staff sign-in codes, lockout, account audit log |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
+| `opsengine/rules_versions.py` | Rules library version (hash) and competent-person sign-off (`rules/versions.json`) |
+| `opsengine/checkpoints.py` | HMAC-signed, chained checkpoints of every audit log, kept outside the data folder |
+| `opsengine/backup.py` | Backups with manifest, verify, restore into an empty folder, prune |
+| `opsengine/gdpr.py` | Retention purge (`rules/retention.json`), subject access export, data inventory (`docs/data-inventory.json`) |
+| `deploy/` | Dockerfile, docker-compose + Caddy (HTTPS), production settings, systemd nightly timer |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
@@ -98,6 +103,9 @@ python -m opsengine daily                     # every customer in data/customers
 python -m opsengine register|risks|subcontractors|assets|actions|appointments|providers|comms|documents --customer <folder>
 python -m opsengine raise-action "title" --owner w01 --due YYYY-MM-DD --severity high --by "Name" --customer <folder>
 python -m opsengine appointment APT-0001 --status attended|completed|no_show|cancelled --by "Name" --customer <folder>
+python -m opsengine nightly --backup-to DIR --checkpoint-file FILE   # production nightly run
+python -m opsengine backup make|verify|restore ; checkpoint write|verify ; rules status|register|sign-off
+python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
 python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
@@ -155,6 +163,16 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   hash-chained audit log. Demo accounts and the demo clock exist only with `web --demo`, which
   refuses non-SAMPLE customers. Never add a way round sign-in, even for testing: tests use
   `tests/helpers.py` `Client`, which signs in like a browser.
+- **Versioned rules:** any change to `rules/requirements.json`, `rules/main_contractors/*.json` or
+  `playbooks/playbooks.json` is a new rules version. Register it (`rules register`) and have a competent
+  person sign it off (`rules sign-off`) before production uses it (`OPSENGINE_REQUIRE_SIGNED_RULES`).
+  Never record a sign-off on someone's behalf; the SAMPLE library stays unsigned.
+- **Checkpoints and backups:** `nightly` writes a signed checkpoint and a verified backup. Both live
+  outside `state/`. A restore never goes over live data. Any new database with an `audit` table is
+  picked up automatically.
+- **GDPR:** a new kind of personal data needs an entry in `docs/data-inventory.json`. Purges audit
+  counts, never the deleted content. Retention periods are placeholders until `solicitor_confirmed`.
+  Leavers (`left_on` in workers.json) are never chased.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

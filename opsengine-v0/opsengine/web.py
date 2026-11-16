@@ -248,7 +248,9 @@ def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
         demo = (f'<span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>'
                 f'<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>'
                 '<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form>')
-    who = (f'<span class="small">{e_(user["name"])} · {e_(ROLE_LABELS[user["role"]])}</span>'
+    admin = '<a class="small" href="/admin/users" style="color:inherit">Users</a>' if user["role"] == "admin" else ""
+    who = (f'<span class="small">{e_(user["name"])} · {e_(ROLE_LABELS[user["role"]])}</span>{admin}'
+           '<a class="small" href="/account/password" style="color:inherit">Password</a>'
            '<form method="post" action="/logout"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Sign out</button></form>')
     flash_html = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
     html_ = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -272,6 +274,56 @@ def bare_page(title, body, portal=None):
 <title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
 <div class="top"><span class="brand"><i></i>OpsEngine{' <span class="small" style="color:var(--hivis)">SAMPLE DEMO</span>' if portal and portal.demo else ''}</span></div>
 <main style="max-width:460px">{body}</main></body></html>"""
+
+
+def view_password(portal, csrf, forced=False, error=None):
+    err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    intro = ('<p class="note">You signed in with a temporary password. Choose your own before you carry on.</p>'
+             if forced else "")
+    return with_csrf(bare_page("Change password", f"""<section><h1>Change your password</h1>{intro}{err}
+<form class="card" method="post" action="/account/password" style="display:grid;gap:10px">
+<label for="current">Current password<input id="current" name="current" type="password" autocomplete="current-password" required></label>
+<label for="new">New password (12+ characters)<input id="new" name="new" type="password" autocomplete="new-password" minlength="12" required></label>
+<label for="again">New password again<input id="again" name="again" type="password" autocomplete="new-password" minlength="12" required></label>
+<button>Change password</button></form>{'' if forced else '<a href="/">Back</a>'}</section>""", portal), csrf)
+
+
+def view_users(portal, me, csrf, flash=None, shown=None):
+    names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
+    rows = []
+    for u in portal.accounts.users():
+        status = "disabled" if u["disabled"] else ("locked" if u["locked_until"] else "active")
+        flags = [x for x, on in (("demo", u["demo"]), ("must change password", u["must_change"]),
+                                 ("code set", u["mfa_secret"] and u["role"] in auth.STAFF)) if on]
+        acts = []
+        if u["id"] != me["id"]:
+            acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/{"enable" if u["disabled"] else "disable"}">'
+                        f'<button class="ghost">{"Enable" if u["disabled"] else "Disable"}</button></form>')
+        acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/reset-password"><button class="ghost">Reset password</button></form>')
+        if u["role"] in auth.STAFF:
+            acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/reset-code"><button class="ghost">Reset sign-in code</button></form>')
+        rows.append(f'<tr><td>{e_(u["name"])}<br><span class="small muted">{e_(u["email"])}</span></td><td>{e_(ROLE_LABELS[u["role"]])}</td>'
+                    f'<td>{e_(names.get(u["customer_id"], u["customer_id"] or "All customers"))}</td>'
+                    f'<td><span class="chip {"ok" if status == "active" else "bad"}">{status}</span> <span class="small muted">{e_(", ".join(flags))}</span></td>'
+                    f'<td><div class="actions">{"".join(acts)}</div></td></tr>')
+    shown_html = ""
+    if shown:
+        shown_html = (f'<div class="card" style="border-color:var(--hivis)"><b>Temporary password for {e_(shown[0])}</b>'
+                      f'<span class="mono" style="font-size:18px">{e_(shown[1])}</span>'
+                      '<span class="small muted">Shown once. Give it to them securely (not by email with their username). '
+                      'They must choose their own password when they first sign in.</span></div>')
+    flash_html = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
+    opts = "".join(f'<option value="{c}">{e_(n)}</option>' for c, n in names.items())
+    body = f"""<section><a href="/">‹ Back</a><h1>Users</h1>{flash_html}{shown_html}
+<div class="tbl"><table><thead><tr><th>Person</th><th>Role</th><th>Company</th><th>Status</th><th></th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></section>
+<section><h2>Add a user</h2><form class="card form" method="post" action="/admin/users/add">
+<label for="u-name">Name<input id="u-name" name="name" required></label>
+<label for="u-email">Email<input id="u-email" name="email" type="email" required></label>
+<label for="u-role">Role<select id="u-role" name="role"><option value="customer">Customer</option><option value="ops">Ops team</option>
+<option value="reviewer">Safety reviewer</option><option value="admin">Admin</option></select></label>
+<label for="u-customer">Company (customer users only)<select id="u-customer" name="customer"><option value="">None (staff)</option>{opts}</select></label>
+<button>Add user</button></form><p class="note">They get a temporary password to change at first sign-in. Staff also set up an authenticator code.</p></section>"""
+    return with_csrf(bare_page("Users", body, portal).replace('<main style="max-width:460px">', "<main>"), csrf)
 
 
 def view_login(portal, error=None, email=""):
@@ -757,12 +809,15 @@ class Handler(BaseHTTPRequestHandler):
         return self.portal.accounts.session(self.token(), stages=stages)
 
     def cookie(self, token, clear=False):
-        https = self.headers.get("X-Forwarded-Proto", "").lower() == "https" or config.flag("OPSENGINE_SECURE_COOKIES")
+        https = (config.flag("OPSENGINE_TRUST_PROXY") and self.headers.get("X-Forwarded-Proto", "").lower() == "https") \
+            or config.flag("OPSENGINE_SECURE_COOKIES")
         attrs = "Path=/; HttpOnly; " + ("SameSite=None; Secure" if https else "SameSite=Lax")
         return f"{COOKIE}={'' if clear else token}; {attrs}" + ("; Max-Age=0" if clear else f"; Max-Age={auth.SESSION_HOURS * 3600}")
 
     def ip(self):
-        return (self.headers.get("X-Forwarded-For") or self.client_address[0] or "").split(",")[0].strip()
+        if config.flag("OPSENGINE_TRUST_PROXY") and self.headers.get("X-Forwarded-For"):
+            return self.headers["X-Forwarded-For"].split(",")[0].strip()
+        return self.client_address[0] or ""
 
     # ---- responses ----
     def security_headers(self):
@@ -823,10 +878,20 @@ class Handler(BaseHTTPRequestHandler):
                     return self.redirect("/login")
                 setup = auth.new_totp_secret() if pending["stage"] == "mfa_setup" else None
                 return self.send_html(view_code(p, setup, pending["user"]["email"]))
+            if parts == ["healthz"]:  # for the host's monitoring: no data, no sign-in
+                return self.send_html("ok")
             s = self.session()
             if not s:
                 return self.redirect("/login")
             user = s["user"]
+            if parts == ["account", "password"]:
+                return self.send_html(view_password(p, s["csrf"], forced=bool(user["must_change"])))
+            if user["must_change"]:
+                return self.redirect("/account/password")
+            if parts == ["admin", "users"]:
+                if user["role"] != "admin":
+                    return self.redirect(self.home_for(user) or "/", "!Only admins can manage users.")
+                return self.send_html(view_users(p, user, s["csrf"], q.get("flash", [None])[0]))
             if not parts:
                 home = self.home_for(user)
                 return self.redirect(home) if home else self.send_html(bare_page("No access", "<p>Your account isn't linked to a customer on this portal. Contact the ops team.</p>", p), 403)
@@ -933,6 +998,18 @@ class Handler(BaseHTTPRequestHandler):
             if parts == ["logout"]:
                 p.accounts.sign_out(self.token())
                 return self.redirect("/login", cookie=self.cookie("", clear=True))
+            if parts == ["account", "password"]:
+                if f.get("new", "") != f.get("again", ""):
+                    return self.send_html(view_password(p, s["csrf"], bool(user["must_change"]), "The new passwords don't match."), 400)
+                try:
+                    p.accounts.change_own_password(self.token(), f.get("current", ""), f.get("new", ""))
+                except auth.AuthError as exc:
+                    return self.send_html(view_password(p, s["csrf"], bool(user["must_change"]), str(exc)), 400)
+                return self.redirect(self.home_for(user) or "/", "Password changed. Other sessions were signed out.")
+            if user["must_change"]:
+                return self.redirect("/account/password")
+            if parts[:2] == ["admin", "users"]:
+                return self.admin_users(user, parts[2:], f, s["csrf"])
             home = self.home_for(user) or "/"
             if parts[:1] == ["demo"]:
                 if not p.demo:
@@ -1039,13 +1116,60 @@ class Handler(BaseHTTPRequestHandler):
             return self.redirect("/", f"!Something went wrong ({type(exc).__name__}).")
 
 
+def _admin_users(self, user, rest, f, csrf):
+    """POST /admin/users/add and /admin/users/<id>/<disable|enable|reset-password|reset-code>. Admins only."""
+    p = self.portal
+    if user["role"] != "admin":
+        p.accounts.audit(f"user:{user['id']}", "access_denied", user["id"], {"area": "user admin"})
+        return self.redirect(self.home_for(user) or "/", "!Only admins can manage users.")
+    a = p.accounts
+    by = auth.identity(user)
+    try:
+        if rest == ["add"]:
+            role = f.get("role", "")
+            customer = f.get("customer") or None if role == "customer" else None
+            temp = a.temporary_password()
+            a.add_user(f.get("email", ""), f.get("name", "").strip(), role, temp, customer_id=customer, by=by,
+                       must_change=True, check_strength=False)
+            return self.send_html(view_users(p, user, csrf, f"Added {f.get('email')}.", (f.get("email"), temp)))
+        if len(rest) == 2:
+            target = a.user(rest[0])
+            if not target:
+                return self.redirect("/admin/users", "!No such user.")
+            act = rest[1]
+            if act in ("disable", "enable"):
+                if target["id"] == user["id"]:
+                    return self.redirect("/admin/users", "!You can't disable your own account.")
+                if act == "disable" and target["role"] == "admin" and len(a.active_admins()) <= 1:
+                    return self.redirect("/admin/users", "!That's the last active admin.")
+                a.set_disabled(target["id"], act == "disable", by=by)
+                return self.redirect("/admin/users", f"{target['email']} {act}d.")
+            if act == "reset-password":
+                temp = a.temporary_password()
+                a.db.execute("UPDATE users SET password_hash=?, must_change=1, failures=0, locked_until=NULL WHERE id=?",
+                             (auth.hash_password(temp), target["id"]))
+                a.db.execute("DELETE FROM sessions WHERE user_id=?", (target["id"],))
+                a.db.commit()
+                a.audit(f"admin:{by}", "password_reset", target["id"], {"must_change": True})
+                return self.send_html(view_users(p, user, csrf, f"Password reset for {target['email']}.", (target["email"], temp)))
+            if act == "reset-code" and target["role"] in auth.STAFF:
+                a.reset_mfa(target["id"], by=by)
+                return self.redirect("/admin/users", f"{target['email']} will set up a new sign-in code next time.")
+        return self.redirect("/admin/users", "!Unknown action.")
+    except ValueError as exc:
+        return self.redirect("/admin/users", f"!{exc}")
+
+
+Handler.admin_users = _admin_users
+
+
 def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False, demo=False):
     if demo:
         folders = customers or SAMPLES
         state = state_dir or ROOT / "state" / "web-demo"
     else:
         folders = customers or scheduler.customer_folders()
-        state = state_dir or ROOT / "state" / "web"
+        state = state_dir or ROOT / "state"  # the same folder the daily run and `nightly` use
         if not folders:
             raise SystemExit("No customers in data/customers/. Add one with `opsengine new-customer`, or run `opsengine web --demo`.")
     portal = Portal(folders, state, demo=demo)
