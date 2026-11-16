@@ -52,7 +52,9 @@ def trim(a, sr, thr=0.008):
 
 lines, mouth = [], {"lucia": np.zeros(int(DUR * FPS)), "jason": np.zeros(int(DUR * FPS))}
 for i, (spk, start, text) in enumerate(LINES):
-    a, sr = kk.create(text.replace("...", ","), voice=VOICE[spk], speed=SPEED[spk], lang="en-us",
+    # "Lucia" is said loo-SEE-ah (not LOO-sha): phonemize, then swap in the right pronunciation
+    ph = kk.tokenizer.phonemize(text.replace("...", ","), "en-us").replace("lˈuːʃə", "luːsˈiːə")
+    a, sr = kk.create(ph, voice=VOICE[spk], speed=SPEED[spk], lang="en-us", is_phonemes=True,
                       sentence_pause=0.18, clause_pause=0.06)
     a = trim(np.asarray(a, np.float32), sr)
     raw = f"{OUT}/raw_{i:02d}.wav"
