@@ -203,9 +203,14 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   read those). Inbound files are never trusted for the channel they came by: unknown senders are kept
   aside, unverified email senders always go to review, and everything still goes through the photo reader.
   Webhooks (`/hooks/email`, `/hooks/whatsapp`) need a valid signature.
-- **Customer trust pages:** `data/service.json` holds what customers are told about fees, setup and the
-  safety reviewer (SAMPLE until the business sets them). Provider prices and our fee are always shown
-  apart (`labels.fee_line`). The "How it works" tab answers who is responsible, cost, setup and data.
+- **Customer trust pages:** `data/service.json` holds what customers are told about setup, commission and
+  the safety reviewer (SAMPLE until named). Provider prices and our fee are always shown apart
+  (`labels.fee_line`). The "How it works" tab answers who is responsible, cost, setup and data.
+- **Pricing** (`data/pricing.json`, `opsengine/pricing.py`): plans Starter €199, Growth €399, Business €699,
+  Scale €999 a month (1–10, 11–30, 31–75, 76–150 workers), Enterprise custom; onboarding fee equals one
+  month; all excluding VAT. Each customer's plan is `company.json` "plan" (`id`, `extra_worker_blocks`,
+  `extra_site_eur`). `pricing.fit_problems` tells our team (ops Insights) when a customer outgrows their
+  plan or uses features from a higher one; it never stops work. Revenue figures are staff-only.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

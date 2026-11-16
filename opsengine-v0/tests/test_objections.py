@@ -58,6 +58,58 @@ class StandingApproval(unittest.TestCase):
         self.assertFalse(any((s["approved_by"] or "").startswith("Standing approval") for s in self.bookings()))
 
 
+class Pricing(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def customer(self, plan, workers=None, **plan_extra):
+        import json
+        n = len(list(self.tmp.iterdir()))
+        folder = self.tmp / f"c{n}"
+        shutil.copytree(BREMORE, folder)
+        company = json.loads((folder / "company.json").read_text())
+        company["plan"] = {"id": plan, **plan_extra}
+        (folder / "company.json").write_text(json.dumps(company))
+        if workers:
+            ws = json.loads((folder / "workers.json").read_text())
+            base = ws[0]
+            ws += [{**base, "id": f"x{n:03d}", "name": f"Extra Worker {n}", "phone": f"+353 87 111 {n:04d}"} for n in range(workers - len(ws))]
+            (folder / "workers.json").write_text(json.dumps(ws))
+        e = Engine(folder, state_dir=self.tmp / f"s{n}", today=TODAY)
+        e.scan()
+        e.advance()
+        return e
+
+    def test_bill_and_plan_fit(self):
+        from opsengine import pricing
+        e = self.customer("growth")
+        self.assertEqual(pricing.customer_plan(e.customer)["monthly_total_eur"], 399)
+        self.assertEqual(pricing.fit_problems(e), [])
+        big = self.customer("growth", workers=40)
+        self.assertTrue(any("40 workers" in n and "Business" in n for n in pricing.fit_problems(big)))
+        extra = self.customer("growth", workers=40, extra_worker_blocks=1)
+        self.assertEqual(pricing.customer_plan(extra.customer)["monthly_total_eur"], 499)
+        self.assertEqual(pricing.fit_problems(extra), [])
+
+    def test_starter_flags_growth_features_in_use(self):
+        from opsengine import pricing
+        e = self.customer("starter", extra_site_eur=40)
+        bill = pricing.customer_plan(e.customer)
+        self.assertEqual(bill["monthly_total_eur"], 239)  # €199 + one extra site at the agreed €40
+        notes = " ".join(pricing.fit_problems(e))
+        for feature in ("subcontractor compliance tracking", "inspection and booking requests", "provider comparisons"):
+            self.assertIn(feature, notes)
+        self.assertNotIn("multiple projects", notes)  # covered by the extra-site add-on
+
+    def test_suggested_plan_by_size(self):
+        from opsengine import pricing
+        self.assertEqual([pricing.suggested(n)["id"] for n in (5, 10, 11, 75, 150, 151)],
+                         ["starter", "starter", "growth", "business", "scale", "enterprise"])
+
+
 class Portal(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -74,7 +126,9 @@ class Portal(unittest.TestCase):
         page = c.get(f"/c/{B}/how")
         for text in ("Who is responsible for what", "A qualified person signs off", "We never", "What it costs",
                      "Paid to the provider, at their price", "we take no commission", "Setup: our team does it",
-                     "You don't have to upload your certs", "Your workers' data", "never use the photo to recognise faces"):
+                     "You don't have to upload your certs", "Your workers' data", "never use the photo to recognise faces",
+                     "Your plan: Growth", "€399 a month", "excluding VAT", "One-off onboarding fee", "Additional 25 workers",
+                     "Custom pricing"):
             self.assertIn(text, page.replace("&#x27;", "'"))
 
     def test_bookings_show_provider_price_apart_from_our_fee(self):
@@ -83,6 +137,14 @@ class Portal(unittest.TestCase):
         home = c.get(f"/c/{B}/home")
         self.assertIn("paid to", home)
         self.assertIn("no extra fee from us", home)
+
+    def test_staff_see_plans_and_revenue_customers_dont(self):
+        ops = Client(self.base)
+        ops.login(DEMO["ops"])
+        self.assertIn("Monthly recurring revenue", ops.get(f"/c/{B}/insights"))
+        cust = Client(self.base)
+        cust.login(DEMO["customer"])
+        self.assertNotIn("Monthly recurring revenue", cust.get(f"/c/{B}/how"))
 
     def test_only_the_customer_sets_the_standing_approval(self):
         ops = Client(self.base)

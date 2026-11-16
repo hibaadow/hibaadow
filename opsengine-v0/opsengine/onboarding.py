@@ -84,6 +84,10 @@ def check_customer(folder, kb=None):
             if not w.get(key):
                 problems.append(f"workers.json: {w.get('id')} has no {key}")
     problems += data_protection_problems(company)
+    from .pricing import load as load_prices
+    plan_id = (company.get("plan") or {}).get("id")
+    if not is_sample(company) and plan_id and "REPLACE" not in plan_id and plan_id not in {x["id"] for x in load_prices()["plans"]}:
+        problems.append(f"company.json: plan {plan_id!r} isn't one of our plans (starter, growth, business, scale, enterprise)")
     if not company.get("owner", {}).get("email"):
         problems.append("company.json: owner email missing (needed for approvals)")
     if not company.get("sites"):

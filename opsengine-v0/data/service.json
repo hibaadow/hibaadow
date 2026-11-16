@@ -1,11 +1,6 @@
 {
-  "_about": "What customers are told about our service in the portal (How it works): fees, what we do and don't do, who signs off, setup. SAMPLE wording and placeholders until the business sets its prices and names its safety reviewer.",
+  "_about": "What customers are told about our service in the portal (How it works): what we do and don't do, who signs off, setup. SAMPLE wording and placeholders until the business sets its prices and names its safety reviewer. Prices are in data/pricing.json.",
   "sample": true,
-  "fee": {
-    "summary": "One monthly subscription per company, set out in your agreement",
-    "monthly_eur": null,
-    "covers": "Tracking, chasing, finding providers, booking admin, checking proof, records and reports, and our team's setup work"
-  },
   "takes_commission": false,
   "booking_fee_eur": 0,
   "onboarding": {
@@ -18,5 +13,8 @@
       "You check and approve the result. Nothing is booked or paid for during setup without your OK."
     ]
   },
-  "safety_reviewer": {"name": "Our safety reviewer (SAMPLE: to be named)", "qualification": "Chartered safety practitioner (SAMPLE: to be confirmed)"}
+  "safety_reviewer": {
+    "name": "Our safety reviewer (SAMPLE: to be named)",
+    "qualification": "Chartered safety practitioner (SAMPLE: to be confirmed)"
+  }
 }

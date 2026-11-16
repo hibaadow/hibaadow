@@ -92,5 +92,10 @@
         "language": "en"
       }
     }
-  ]
+  ],
+  "plan": {
+    "id": "growth",
+    "agreed_on": "2026-11-01",
+    "note": "SAMPLE"
+  }
 }

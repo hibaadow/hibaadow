@@ -7,6 +7,7 @@
   "approval_limits": {"auto_approve_up_to_eur": 0},
   "data_protection": {"dpa_signed_on": "YYYY-MM-DD", "subprocessor_list_version": 1, "dpia_adopted_on": "YYYY-MM-DD"},
   "retention": {},
+  "plan": {"id": "REPLACE starter, growth, business, scale or enterprise", "agreed_on": "YYYY-MM-DD", "extra_worker_blocks": 0},
   "sites": [
     {"id": "s1", "name": "REPLACE Site name, area", "main_contractor": "REPLACE id of a file in rules/main_contractors/", "workers": ["w01"]}
   ]

@@ -478,8 +478,7 @@ def view_how(portal, eng, cid, role):
         dpa = f"Your data processing agreement was signed on {nice_date(dp['dpa_signed_on'])}."
     else:
         dpa = "Your data processing agreement isn't signed yet. We don't handle your workers' data until it is."
-    fee = svc["fee"]
-    fee_amount = f"{money(fee['monthly_eur'])} a month" if fee.get("monthly_eur") else fee["summary"]
+    costs = view_costs(eng, svc)
     li = lambda items: "<ul>" + "".join(f"<li>{e_(x)}</li>" for x in items) + "</ul>"
     return f"""<section><h1>How OpsEngine works for you</h1>
 <p class="note">Plain answers to the questions customers ask us most: who is responsible for what, what it costs, who does the setup, and what happens to your workers' data.</p></section>
@@ -504,10 +503,7 @@ def view_how(portal, eng, cid, role):
     "Guess a document. If a photo isn't clear, a person checks it.",
     "Approve spending on your behalf beyond the limit you set."])}</div></div>
 <p class="small muted">Your agreement with us sets out liability in full. Every action, approval and decision is recorded, so you can always see who did what and when.</p></section>
-<section><h2>What it costs</h2><div class="grid">
-<div class="card"><h3>Our fee</h3><p><b>{e_(fee_amount)}</b></p><p class="small">{e_(fee["covers"])}.</p></div>
-<div class="card"><h3>Courses and inspections</h3><p><b>Paid to the provider, at their price</b></p>
-<p class="small">Every approval shows the provider's price on its own line. {e_(fee_line(svc)[0].upper() + fee_line(svc)[1:])}.</p></div></div></section>
+{costs}
 <section><h2>Setup: our team does it</h2>
 <p><b>You don't have to upload your certs.</b> Our team sets you up, usually within {svc["onboarding"]["typical_days"]} working days.</p>{li(svc["onboarding"]["how"])}
 <div class="kpis"><div class="kpi"><b>{on_file} of {total}</b><span>required records on file so far</span></div></div></section>
@@ -533,6 +529,43 @@ def view_how(portal, eng, cid, role):
     "We only message workers on WhatsApp once they've opted in, and STOP ends it.",
     "Everything is hosted in the EU."])}
 <p class="small">Outside services we use (version {subs["version"]} of the list): {e_(", ".join(x["name"] for x in subs["sub_processors"]))}. We tell you before adding one, and you can object.</p></div></div></section>"""
+
+
+def view_costs(eng, svc):
+    """Your plan and bill, every plan side by side, and what is charged separately. All excluding VAT."""
+    from . import pricing
+    prices = pricing.load()
+    mine = pricing.customer_plan(eng.customer, prices)
+    p = mine["plan"]
+    price = lambda v: f"{money(v)} a month" if v is not None else "Custom pricing"
+    if p:
+        extras = "".join(f'<li>{e_(x["name"])}: {e_(x["price"])}</li>' for x in mine["extras"])
+        total = (f'<p>Your monthly total: <b>{money(mine["monthly_total_eur"])}</b> + VAT</p>' if mine["monthly_total_eur"] is not None
+                 else '<p>Your monthly total: as agreed with you, + VAT</p>')
+        plan_card = (f'<div class="card"><h3>Your plan: {e_(p["name"])}</h3><p><b>{e_(price(p["monthly_eur"]))}</b> + VAT</p>'
+                     f'{"<ul>" + extras + "</ul>" if extras else ""}{total}'
+                     f'<p class="small">One-off onboarding fee: {money(p["onboarding_eur"]) if p["onboarding_eur"] else "quoted individually"} + VAT. '
+                     f'It pays for our team setting you up.</p></div>')
+    else:
+        plan_card = '<div class="card"><h3>Your plan</h3><p>Not set yet. Our team will agree it with you.</p></div>'
+    rows = []
+    for x in prices["plans"]:
+        size = f'{x["workers_min"]}–{x["workers_max"]} workers' if x["workers_max"] else f'{x["workers_min"] - 1}+ workers'
+        prev = "" if x is prices["plans"][0] or not x.get("includes_previous", True) else \
+            f'Everything in {prices["plans"][prices["plans"].index(x) - 1]["name"]}, plus: '
+        onboarding = money(x["onboarding_eur"]) if x["onboarding_eur"] else "Quoted"
+        rows.append(f'<tr{" style=\"font-weight:600\"" if p and x["id"] == p["id"] else ""}><td>{e_(x["name"])}</td><td>{e_(size)}</td>'
+                    f'<td>{e_(price(x["monthly_eur"]))}</td><td>{e_(onboarding)}</td>'
+                    f'<td class="small">{e_(prev + ", ".join(x["features"].values()))}</td></tr>')
+    addons = "".join(f'<tr><td>{e_(a["name"])}</td><td>{e_(a["price"])}</td></tr>' for a in prices["add_ons"])
+    return f"""<section><h2>What it costs</h2><p class="note">All prices are monthly subscriptions in euro, excluding VAT.</p>
+<div class="grid">{plan_card}
+<div class="card"><h3>Courses, inspections and repairs</h3><p><b>Paid to the provider, at their price</b></p>
+<p class="small">They're charged separately from your subscription, and only once you've approved them. Every approval shows the provider's price on its own line. {e_(fee_line(svc)[0].upper() + fee_line(svc)[1:])}.</p></div></div>
+<h3 style="margin-top:16px">All plans</h3><div style="overflow-x:auto"><table><thead><tr><th>Plan</th><th>For</th><th>Monthly</th><th>Onboarding</th><th>Includes</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div>
+<h3 style="margin-top:16px">Extras</h3><div style="overflow-x:auto"><table><thead><tr><th>Service</th><th>Price</th></tr></thead><tbody>{addons}</tbody></table></div>
+<p class="small muted">{e_(prices["separate_charges"])}</p></section>"""
 
 
 def view_settings(portal, eng, cid, role):
@@ -918,6 +951,26 @@ def view_providers(portal, eng, cid, role):
             f'<div class="tbl"><table><thead><tr><th>Provider</th><th>Service</th><th>Price</th><th>Credentials</th><th>Areas</th><th>Record</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div></section>')
 
 
+def plans_card(portal):
+    """For our team: each customer's plan, monthly revenue, and plans that no longer fit."""
+    from . import pricing
+    prices = pricing.load()
+    rows, total, notes = [], 0, []
+    for c in portal.customers:
+        e = portal.engine(c)
+        mine = pricing.customer_plan(e.customer, prices)
+        name = mine["plan"]["name"] if mine["plan"] else "No plan"
+        amount = mine["monthly_total_eur"]
+        total += amount or 0
+        rows.append(f'<li>{e_(e.customer.company["name"])}: {e_(name)}, {money(amount) if amount is not None else "custom"} a month '
+                    f'({pricing.active_workers(e.customer)} workers)</li>')
+        notes += [f'{e.customer.company["name"]}: {n}' for n in pricing.fit_problems(e, prices)]
+    fit = "".join(f"<li>{e_(n)}</li>" for n in notes) or "<li>Every customer's plan fits.</li>"
+    return (f'<div class="card"><h3>Plans and revenue (excluding VAT)</h3><ul>{"".join(rows)}</ul>'
+            f'<p>Monthly recurring revenue: <b>{money(total)}</b> · a year: <b>{money(total * 12)}</b></p>'
+            f'<h3>Plan fit</h3><ul>{fit}</ul></div>')
+
+
 def view_insights(portal, eng, cid, role):
     from .insights import insights
     r = insights([portal.engine(c) for c in portal.customers])
@@ -927,7 +980,7 @@ def view_insights(portal, eng, cid, role):
 <div class="card"><h3>Often missing</h3><ul>{li(r['frequently_missing'])}</ul></div>
 <div class="card"><h3>Hotspots</h3><ul>{li(r['hotspots'])}</ul></div>
 <div class="card"><h3>Recurring</h3><ul>{li(r['recurring'])}</ul></div></div>
-<div class="card"><h3>Recommendations</h3><ul>{''.join(f'<li>{e_(x)}</li>' for x in r['recommendations'])}</ul><p class="note">Suggestions for a person to accept. OpsEngine doesn't change its own rules.</p></div></section>"""
+{plans_card(portal)}<div class="card"><h3>Recommendations</h3><ul>{''.join(f'<li>{e_(x)}</li>' for x in r['recommendations'])}</ul><p class="note">Suggestions for a person to accept. OpsEngine doesn't change its own rules.</p></div></section>"""
 
 
 # ---------------- HTTP ----------------
