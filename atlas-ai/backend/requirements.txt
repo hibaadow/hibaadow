@@ -1,0 +1,17 @@
+fastapi==0.163.1
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.8
+psycopg==3.3.9
+psycopg-binary==3.3.9
+pydantic==2.14.3
+pydantic-settings==2.16.3
+httpx==0.28.1
+websockets==17.4
+numpy==2.5.5
+scipy==1.18.1
+redis==8.1.0
+bcrypt==5.0.0
+PyJWT==2.15.1
+anthropic==2.9.0
+alembic==1.20.1
+solders==0.29.0

@@ -1,0 +1,45 @@
+# ATLAS AI — full stack: PostgreSQL, Redis, API (serves the web UI), trading worker.
+# Usage:  cp .env.example .env  &&  edit secrets  &&  docker compose up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: atlas
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U atlas"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment:
+      ATLAS_DATABASE_URL: postgresql+psycopg://atlas:${POSTGRES_PASSWORD}@postgres:5432/atlas
+      ATLAS_REDIS_URL: redis://redis:6379/0
+      ATLAS_EMBEDDED_WORKER: "false"
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: ["python", "-m", "atlas.worker"]
+    env_file: .env
+    environment:
+      ATLAS_DATABASE_URL: postgresql+psycopg://atlas:${POSTGRES_PASSWORD}@postgres:5432/atlas
+      ATLAS_REDIS_URL: redis://redis:6379/0
+    healthcheck: { disable: true }
+    # Live trading only: mount the keypair as a read-only secret, e.g.
+    # volumes: ["./secrets/solana-keypair.json:/run/secrets/solana-keypair.json:ro"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy }, api: { condition: service_started } }
+    restart: unless-stopped
+
+volumes:
+  pgdata:

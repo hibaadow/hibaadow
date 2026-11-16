@@ -1,0 +1,42 @@
+name: atlas-ai CI
+on:
+  push:
+    paths: ["atlas-ai/**", ".github/workflows/atlas-ci.yml"]
+  pull_request:
+    paths: ["atlas-ai/**", ".github/workflows/atlas-ci.yml"]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: atlas, POSTGRES_PASSWORD: atlas_ci_pw, POSTGRES_DB: atlas_test }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U atlas" --health-interval 5s --health-retries 20
+    defaults: { run: { working-directory: atlas-ai/backend } }
+    env:
+      ATLAS_TEST_DATABASE_URL: postgresql+psycopg://atlas:atlas_ci_pw@localhost:5432/atlas_test
+      ATLAS_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt -r requirements-dev.txt pip-audit
+      - run: pytest -q
+      - name: Dependency vulnerability audit
+        run: pip-audit -r requirements.txt
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: atlas-ai/frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: atlas-ai/frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Dependency vulnerability audit
+        run: npm audit --omit=dev --audit-level=high
