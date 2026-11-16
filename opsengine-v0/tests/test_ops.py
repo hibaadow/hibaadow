@@ -195,7 +195,7 @@ class Backups(Tmp):
 
 # ---------------- GDPR ----------------
 class Gdpr(Tmp):
-    def customer_with_leaver(self, left_on="2024-01-31"):
+    def customer_with_leaver(self, left_on="2020-01-31"):
         folder = self.tmp / "c"
         shutil.copytree(BREMORE, folder)
         workers = json.loads((folder / "workers.json").read_text())
@@ -251,10 +251,88 @@ class Gdpr(Tmp):
         with self.assertRaises(ValueError):
             gdpr.export_person(e, "a01", self.tmp / "x")  # equipment isn't a person
 
-    def test_inventory_and_retention_are_marked_for_the_solicitor(self):
+    def test_inventory_and_retention_await_the_solicitor(self):
         inv = gdpr.inventory()
-        self.assertTrue(all("[SOLICITOR]" in i["lawful_basis"] for i in inv["items"]))
+        self.assertIn("awaiting solicitor confirmation", inv["status"])
+        self.assertFalse(any("Consent" in i["lawful_basis"] for i in inv["items"]))  # never consent for workers
         self.assertFalse(gdpr.retention()["solicitor_confirmed"])
+
+    def test_leavers_are_purged_in_stages(self):
+        e = self.customer_with_leaver(left_on="2025-06-30")  # 16 months ago
+        e.store.set_contact_pref("353870000207", "whatsapp", last_inbound_at="2025-06-01T00:00:00+00:00")
+        plan = gdpr.purge(e)
+        self.assertEqual(plan["leaver_contact_prefs"], ["353870000207"])  # WhatsApp preferences go on leaving
+        self.assertEqual(plan["leaver_documents"], [])  # the named training record is kept (claims)
+        self.assertEqual(plan["leaver_people_forgotten"], [])
+
+    def test_customer_sets_their_own_retention(self):
+        folder = self.tmp / "own"
+        shutil.copytree(BREMORE, folder)
+        company = json.loads((folder / "company.json").read_text())
+        company["retention"] = {"leaver_records_years": 3, "sessions_hours": 999}  # sessions aren't theirs to set
+        (folder / "company.json").write_text(json.dumps(company))
+        r = gdpr.retention(customer=Engine(folder, state_dir=self.tmp / "s2", today=TODAY).customer)
+        self.assertEqual((r["leaver_records_years"], r["sessions_hours"]), (3, 12))
+        self.assertEqual(r["customer_choices"], {"leaver_records_years": 3})
+
+
+class AuditPseudonyms(Tmp):
+    def test_the_log_holds_tokens_not_people_and_forgetting_keeps_the_chain(self):
+        e = Engine(BREMORE, state_dir=self.tmp, today=TODAY)
+        e.scan()
+        e.advance()
+        step = next(s for s in e.store.steps(state="awaiting_approval") if s["approval_role"] == "customer")
+        e.approve(step["id"], "Gráinne Murphy (SAMPLE) <grainne@bremore-groundworks.example.ie>")
+        raw = json.dumps(e.store.audit_rows(raw=True), ensure_ascii=False)
+        for person in ("Gráinne", "grainne@", "Andriy Kovalenko", "+353 87 000 0216"):
+            self.assertNotIn(person, raw)
+        self.assertIn("Andriy Kovalenko", json.dumps(e.store.audit_rows(), ensure_ascii=False))
+        e.store.forget(["Andriy Kovalenko", "Andriy_Kovalenko", "Andriy-Kovalenko"])
+        readable = json.dumps(e.store.audit_rows(), ensure_ascii=False)
+        self.assertNotIn("Andriy Kovalenko", readable)
+        self.assertIn("[removed person]", readable)
+        self.assertTrue(e.store.verify_audit()[0])
+
+    def test_sign_in_addresses_are_tokens_and_expire(self):
+        a = auth.Accounts(self.tmp / "accounts.db")
+        a.add_user("c@acme.example.ie", "Cust Omer", "customer", "a long passphrase here", customer_id="x")
+        a.sign_in("c@acme.example.ie", "a long passphrase here", ip="203.0.113.9")
+        self.assertNotIn("203.0.113.9", json.dumps(a.store.audit_rows(raw=True)))
+        self.assertEqual(gdpr.purge_signin_history(a, date(2028, 1, 1), apply=True), 1)
+        self.assertNotIn("203.0.113.9", json.dumps(a.store.audit_rows()))
+        self.assertTrue(a.store.verify_audit()[0])
+
+
+class DataProtectionGates(Tmp):
+    def real_customer(self, **dp):
+        folder = self.tmp / "data" / "customers" / "acme"
+        shutil.copytree(BREMORE, folder)
+        company = json.loads((folder / "company.json").read_text())
+        company.update({"id": "acme", "name": "Acme Groundworks Ltd", "sample": False})
+        if dp:
+            company["data_protection"] = dp
+        (folder / "company.json").write_text(json.dumps(company))
+        return folder
+
+    def test_no_signed_dpa_means_no_processing(self):
+        folder = self.real_customer()
+        with self.assertRaises(PermissionError):
+            scheduler.run_customer(folder, state_dir=self.tmp / "state", today=TODAY)
+        self.assertFalse((self.tmp / "state" / "acme").exists())  # nothing of theirs was even loaded
+        from opsengine.onboarding import data_protection_problems
+        company = json.loads((folder / "company.json").read_text())
+        self.assertTrue(any("data processing agreement" in p for p in data_protection_problems(company)))
+        company["data_protection"] = {"dpa_signed_on": "2026-11-01", "subprocessor_list_version": 0}
+        self.assertTrue(any("sub-processor list" in p for p in data_protection_problems(company)))
+
+    def test_accident_history_that_names_someone_is_held(self):
+        e = Engine(BREMORE, state_dir=self.tmp, today=TODAY)
+        doc = {"id": "acc-1", "type": "accident_incident_history", "holder": "company", "issued": "2026-11-01",
+               "period": "2023-2026", "reportable_accidents": 1, "lost_time_injuries": 1, "hsa_notices": 0,
+               "signed_by": "Gráinne Murphy", "notes": "Kovalenko hurt his hand in March"}
+        e.ingest(doc)
+        self.assertFalse(any(d["id"] == "acc-1" for d in e.store.documents()))
+        self.assertTrue(any("must not name anyone" in r for rev in e.review_queue() for r in rev["reasons"]))
 
 
 # ---------------- user admin page, password change, health check ----------------
@@ -321,6 +399,15 @@ class UserAdmin(Tmp):
         c.post(f"/admin/users/{uid}/reset-password", {})
         self.assertIn("Sign in", cust.get("/c/liffey_interiors/home"))
         self.assertEqual(a.user(uid)["must_change"], 1)
+
+    def test_customer_can_turn_on_sign_in_codes(self):
+        self.portal.accounts.add_user("cust@acme.example.ie", "Cust", "customer", "a long passphrase here", customer_id="liffey_interiors")
+        c = Client(self.base)
+        c.login("cust@acme.example.ie", "a long passphrase here")
+        self.assertIn("Turn on sign-in codes", c.get("/account/password"))
+        status, loc = c.post("/account/codes", {})
+        self.assertIn("set up your sign-in code", c.flash(loc))
+        self.assertEqual(Client(self.base).login("cust@acme.example.ie", "a long passphrase here"), (303, "/login/code"))
 
     def test_health_check_needs_no_sign_in_and_shows_no_data(self):
         self.assertEqual(Client(self.base).get("/healthz"), "ok")

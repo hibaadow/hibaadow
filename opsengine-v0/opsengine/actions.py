@@ -386,8 +386,14 @@ def a_distribute(ctx):
             continue
         sub = mc.get("submission", {})
         to = {"name": mc["name"], "channel": sub.get("method", "email"), "address": sub.get("to", "")}
-        body = (f"Updated compliance record for {ctx.customer.company['name']}: {ctx.req['name']} for "
-                f"{ctx.customer.holder_name(ctx.issue['holder'])}. Document reference: {proof}.")
+        if ctx.req.get("share_as") == "confirmation":  # data minimisation: confirm it, don't send it
+            doc = next((d for d in ctx.store.documents() if d["id"] == proof), {})
+            when = f" on {nice_date(doc['signed'])}" if doc.get("signed") else ""
+            body = (f"Confirmation for {ctx.customer.company['name']}: {ctx.customer.holder_name(ctx.issue['holder'])} "
+                    f"has signed {ctx.req['name'].lower()}{when}. The document itself stays with the employer.")
+        else:
+            body = (f"Updated compliance record for {ctx.customer.company['name']}: {ctx.req['name']} for "
+                    f"{ctx.customer.holder_name(ctx.issue['holder'])}. Document reference: {proof}.")
         sent.append(ctx.write_outbox(f"distribute-{mc_id}", to, f"Updated {ctx.req['name']}", body))
     return {"distributed_to": mcs, "outbox": sent}
 

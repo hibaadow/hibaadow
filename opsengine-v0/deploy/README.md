@@ -92,3 +92,11 @@ passing DMARC (or SPF and DKIM) result always goes to a person.
 `WHATSAPP_*` settings, `WHATSAPP_MODE=cloud`, and in Meta's settings point the webhook at
 `https://<portal>/hooks/whatsapp` with your `WHATSAPP_VERIFY_TOKEN`. Record each worker's opt-in date as
 `"whatsapp_opt_in"` in workers.json; workers without one aren't messaged and the ops team is told.
+
+## Data protection before the first real customer
+
+- Encrypt the backup volume as well as the live disk (the review asks for encrypted backups), and do a
+  restore drill; keep the record.
+- Sign the data processing agreement with each customer and record `data_protection.dpa_signed_on` and
+  `subprocessor_list_version` in their company.json, or the daily run refuses them.
+- Set `solicitor_confirmed: true` in rules/retention.json only once a solicitor has confirmed the periods.

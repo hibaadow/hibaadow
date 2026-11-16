@@ -82,6 +82,29 @@ customer (the Phase 3 exit test).
 
 **Tests:** `tests/test_comms.py` adds 19 tests, for 206 in total.
 
+## Update: GDPR first-pass review applied in the software (16 November 2026)
+
+The review (`OpsEngine – data protection advice on the brief`, 16 Nov 2026) says of itself that it is a
+first-pass review written by Claude, **not a solicitor's advice**, and must be signed off by an Irish data
+protection solicitor. Its software recommendations are built; `solicitor_confirmed` stays false, so
+nightly deletion stays off until a solicitor confirms.
+
+| Recommendation | Status | What changed |
+| --- | --- | --- |
+| Pseudonymous audit log (Q4) | **Done** | Names, emails, phone numbers and IP addresses are stored as tokens; the token table is separate and deletable. Forgetting a person anonymises their entries and the hash chain still verifies. |
+| Retention is the customer's choice (s3) | **Done** | Per-customer overrides in company.json, recorded with each purge. New defaults: rejected photos 60 days, leaver photos 12 months, named leaver record 6 years, WhatsApp preferences on leaving, unmatched inbound 30 days, sign-in IP addresses 12 months. |
+| Lawful bases (s2, Q8) | **Done (documented)** | Inventory rewritten: legitimate interests for most rows, legal obligation only for Safe Pass, CSCS and inductions, never consent for workers. Each (f) row needs a written LIA. |
+| Sub-processor authorisation (s4) | **Done** | `docs/sub-processors.json` with a version; real customers need a signed DPA and the current list version before any processing. |
+| Accident history may be health data (s2) | **Done** | Rule `no_personal_data`: a history naming a person is held for review, never stored. |
+| Signed terms of employment (s2) | **Done** | Rule `share_as: confirmation`: main contractors only ever get a confirmation. |
+| Sign-in codes for customers (s5) | **Done** | Customers can turn on authenticator codes from the Password page. |
+| Encrypted backups, restore test, security review, breach procedure (s5, Q12) | Open | Host and process tasks; see deploy/README.md. |
+| Documents (s6): DPA, worker notice template, own privacy notice, WhatsApp opt-in wording, two Art 30 records, model DPIA, LIAs, breach procedure and register, DPO note | Open | Need drafting and the solicitor. |
+| EU AI Act assessment (s8) | Open | Belongs in the DPIA; obligations from 2 December 2027. |
+| Art 22 safeguards (Q7) | Partly | A person approves anything that stops work; still to add: a way for workers to challenge a status. |
+
+**Tests:** 7 new tests in `tests/test_ops.py`, for 213 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

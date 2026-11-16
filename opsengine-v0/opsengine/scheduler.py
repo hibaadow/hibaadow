@@ -214,6 +214,11 @@ def send_approval_requests(engine):
 def run_customer(folder, state_dir=None, today=None):
     from .rules_versions import check_allowed
     rules = check_allowed()  # refuses unsigned rules when OPSENGINE_REQUIRE_SIGNED_RULES is on
+    from .onboarding import data_protection_problems
+    company = json.loads((Path(folder) / "company.json").read_text(encoding="utf-8"))
+    blocking = [x for x in data_protection_problems(company) if "(warning)" not in x]
+    if blocking:  # checked before any of their data is loaded or stored
+        raise PermissionError("not running: " + "; ".join(blocking))
     engine = Engine(folder, state_dir=state_dir, today=today)
     if not rules["signed_off"]:
         engine.store.audit("scheduler", "rules_not_signed_off", rules["current"], {"registered": rules["registered"]})

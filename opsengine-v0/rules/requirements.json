@@ -175,7 +175,9 @@
         "signed"
       ],
       "blocks_site_access": false,
-      "basis": "Terms of Employment (Information) Acts: core terms in writing shortly after starting"
+      "basis": "Terms of Employment (Information) Acts: core terms in writing shortly after starting",
+      "share_as": "confirmation",
+      "data_protection_note": "Main contractors get a confirmation that terms were signed, never the contract (pay and personal details)."
     },
     {
       "id": "site_induction",
@@ -266,7 +268,9 @@
         "signed_by"
       ],
       "blocks_site_access": false,
-      "basis": "Main contractor prequalification: declared safety record, reviewed yearly (SAMPLE form section E)"
+      "basis": "Main contractor prequalification: declared safety record, reviewed yearly (SAMPLE form section E)",
+      "no_personal_data": true,
+      "data_protection_note": "Company-level figures only. An entry naming a person and their injury would be health data (GDPR Art 9)."
     },
     {
       "id": "trade_references",

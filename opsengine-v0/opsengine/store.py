@@ -1,6 +1,7 @@
 """SQLite state store: documents, issues, steps and the hash-chained audit log."""
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +55,9 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE TABLE IF NOT EXISTS contact_prefs (
     address TEXT PRIMARY KEY, channel TEXT, opted_out_at TEXT, last_inbound_at TEXT
 );
+CREATE TABLE IF NOT EXISTS people (
+    pid TEXT PRIMARY KEY, kind TEXT, value TEXT UNIQUE COLLATE NOCASE, first_seen TEXT, last_seen TEXT
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
@@ -63,6 +67,11 @@ CREATE TRIGGER IF NOT EXISTS audit_append_only_d BEFORE DELETE ON audit BEGIN SE
 """
 
 OPEN_STATUSES = ("open", "in_progress", "escalated")
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+NAMED_EMAIL = re.compile(r"([^<>:\"]{2,80}?)\s*<([^<>\s]+@[^<>\s]+)>")
+TOKEN = re.compile(r"⟪(P-\d{4,})⟫")
+REMOVED = "[removed person]"
 
 
 def now_iso():
@@ -78,8 +87,93 @@ class Store:
         self.db.executescript(SCHEMA)
 
     # ---------- audit (append-only, hash chained) ----------
+    # ---------- people in the audit log (pseudonymised: AUDIT.md, GDPR review Q4) ----------
+    # The audit log never holds a name, email, phone number or IP address: each is replaced by a token
+    # such as ⟪P-0007⟫, and the token-to-person table is kept apart. Deleting a person's rows from
+    # `people` (forget) leaves the log tamper-evident but anonymous for them.
+    _pattern = None
+
+    def register_people(self, values, kind="name"):
+        changed = False
+        for v in values:
+            v = (v or "").strip()
+            if len(v) < 3:
+                continue
+            if not self.db.execute("SELECT 1 FROM people WHERE value=?", (v,)).fetchone():
+                n = self.db.execute("SELECT COUNT(*) FROM people").fetchone()[0] + 1
+                pid = f"P-{n:04d}"
+                while self.db.execute("SELECT 1 FROM people WHERE pid=?", (pid,)).fetchone():
+                    n += 1
+                    pid = f"P-{n:04d}"
+                self.db.execute("INSERT INTO people (pid, kind, value, first_seen, last_seen) VALUES (?,?,?,?,?)",
+                                (pid, kind, v, now_iso(), now_iso()))
+                changed = True
+        if changed:
+            self.db.commit()
+            self._pattern = None
+
+    def register_person(self, name="", email="", phone=""):
+        """A person and the variants of their details that may appear in log text."""
+        if name:
+            self.register_people([name, name.replace(" ", "_"), name.replace(" ", "-")], "name")
+        if email:
+            self.register_people([email], "email")
+        if phone:
+            digits = "".join(ch for ch in phone if ch.isdigit())
+            self.register_people([phone, digits, "+" + digits if digits else ""], "phone")
+
+    def pseudonymise(self, text):
+        if not text:
+            return text
+        for m in NAMED_EMAIL.finditer(text):  # "Name <email>" of someone not on file (e.g. staff)
+            self.register_person(m.group(1).strip(), m.group(2))
+        self.register_people(EMAIL.findall(text), "email")
+        self.register_people(IPV4.findall(text), "ip")
+        if self._pattern is None:
+            rows = self.db.execute("SELECT pid, value FROM people").fetchall()
+            self._lookup = {r["value"].lower(): r["pid"] for r in rows}
+            values = sorted(self._lookup, key=len, reverse=True)
+            self._pattern = re.compile("|".join(re.escape(v) for v in values), re.IGNORECASE) if values else False
+        if not self._pattern:
+            return text
+        seen = set()
+
+        def sub(m):
+            pid = self._lookup[m.group(0).lower()]
+            seen.add(pid)
+            return f"⟪{pid}⟫"
+        out = self._pattern.sub(sub, text)
+        if seen:
+            self.db.executemany("UPDATE people SET last_seen=? WHERE pid=?", [(now_iso(), pid) for pid in seen])
+        return out
+
+    def reidentify(self, text):
+        if not text or "⟪" not in text:
+            return text
+        names = {}
+        for r in self.db.execute("SELECT pid, value, kind FROM people ORDER BY LENGTH(value) DESC"):
+            if r["pid"] not in names or (r["kind"] == "name" and " " in r["value"]):
+                names[r["pid"]] = r["value"]
+        return TOKEN.sub(lambda m: names.get(m.group(1), REMOVED), text)
+
+    def forget(self, values=(), kinds=(), before=None):
+        """Erase people from the token table. Returns how many entries were removed."""
+        n = 0
+        for v in values:
+            if v:
+                n += self.db.execute("DELETE FROM people WHERE value=?", (v,)).rowcount
+        for kind in kinds:
+            sql, args = "DELETE FROM people WHERE kind=?", [kind]
+            if before:
+                sql, args = sql + " AND last_seen < ?", args + [before]
+            n += self.db.execute(sql, args).rowcount
+        self.db.commit()
+        self._pattern = None
+        return n
+
     def audit(self, actor, event, ref="", payload=None):
-        payload_json = json.dumps(payload or {}, sort_keys=True, default=str)
+        actor, ref = self.pseudonymise(actor), self.pseudonymise(ref)
+        payload_json = self.pseudonymise(json.dumps(payload or {}, sort_keys=True, default=str, ensure_ascii=False))
         last = self.db.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
         prev = last["hash"] if last else "GENESIS"
         ts = now_iso()
@@ -101,9 +195,15 @@ class Store:
             prev = row["hash"]
         return True, None
 
-    def audit_rows(self, limit=None):
+    def audit_rows(self, limit=None, raw=False):
+        """Audit entries with people's details put back for display (raw=True: as stored, tokens only)."""
         sql = "SELECT * FROM audit ORDER BY seq" + (f" DESC LIMIT {int(limit)}" if limit else "")
-        return [dict(r) for r in self.db.execute(sql)]
+        rows = [dict(r) for r in self.db.execute(sql)]
+        if not raw:
+            for r in rows:
+                for k in ("actor", "ref", "payload"):
+                    r[k] = self.reidentify(r[k])
+        return rows
 
     # ---------- documents ----------
     def add_document(self, doc, source, actor="engine"):

@@ -293,8 +293,13 @@ def view_link(portal, token, summary=None, approver="", error=None, done=None):
 <button class="ghost" name="decision" value="declined">Decline</button></form></section>""", portal)
 
 
-def view_password(portal, csrf, forced=False, error=None):
+def view_password(portal, csrf, forced=False, error=None, user=None):
     err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    codes = ""
+    if user and not forced and not (user["role"] in auth.STAFF) and not user.get("mfa_wanted"):
+        codes = ('<h2 style="margin-top:24px">Sign-in codes</h2><p class="note">Add a 6-digit code from an authenticator app '
+                 "to your sign-in, so a stolen password isn't enough. You'll set it up the next time you sign in.</p>"
+                 '<form method="post" action="/account/codes"><button class="ghost">Turn on sign-in codes</button></form>')
     intro = ('<p class="note">You signed in with a temporary password. Choose your own before you carry on.</p>'
              if forced else "")
     return with_csrf(bare_page("Change password", f"""<section><h1>Change your password</h1>{intro}{err}
@@ -302,7 +307,7 @@ def view_password(portal, csrf, forced=False, error=None):
 <label for="current">Current password<input id="current" name="current" type="password" autocomplete="current-password" required></label>
 <label for="new">New password (12+ characters)<input id="new" name="new" type="password" autocomplete="new-password" minlength="12" required></label>
 <label for="again">New password again<input id="again" name="again" type="password" autocomplete="new-password" minlength="12" required></label>
-<button>Change password</button></form>{'' if forced else '<a href="/">Back</a>'}</section>""", portal), csrf)
+<button>Change password</button></form>{codes}{'' if forced else '<a href="/">Back</a>'}</section>""", portal), csrf)
 
 
 def view_users(portal, me, csrf, flash=None, shown=None):
@@ -343,7 +348,7 @@ def view_users(portal, me, csrf, flash=None, shown=None):
     return with_csrf(bare_page("Users", body, portal).replace('<main style="max-width:460px">', "<main>"), csrf)
 
 
-def view_login(portal, error=None, email=""):
+def view_login(portal, error=None, email="", notice=None):
     demo = ""
     if portal.demo:
         rows = "".join(
@@ -354,6 +359,8 @@ def view_login(portal, error=None, email=""):
         demo = (f'<section><h2>Demo accounts</h2><p class="note">SAMPLE data only. These accounts exist only in demo mode, '
                 f'where staff accounts skip the second sign-in step.</p><div class="list">{rows}</div></section>')
     err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    if notice and not error:
+        err = f'<div class="flash">{e_(notice[:200])}</div>'
     return bare_page("Sign in", f"""<section><h1>Sign in</h1>{err}
 <form class="card" method="post" action="/login" style="display:grid;gap:10px">
 <label for="email">Email<input id="email" name="email" type="email" autocomplete="username" required value="{e_(email)}"></label>
@@ -937,7 +944,7 @@ class Handler(BaseHTTPRequestHandler):
         p = self.portal
         try:
             if parts == ["login"]:
-                return self.send_html(view_login(p))
+                return self.send_html(view_login(p, notice=q.get("flash", [None])[0]))
             if parts == ["login", "code"]:
                 pending = self.session(stages=("mfa", "mfa_setup"))
                 if not pending:
@@ -965,7 +972,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect("/login")
             user = s["user"]
             if parts == ["account", "password"]:
-                return self.send_html(view_password(p, s["csrf"], forced=bool(user["must_change"])))
+                return self.send_html(view_password(p, s["csrf"], forced=bool(user["must_change"]), user=user))
             if user["must_change"]:
                 return self.redirect("/account/password")
             if parts == ["admin", "users"]:
@@ -1090,6 +1097,11 @@ class Handler(BaseHTTPRequestHandler):
             if parts == ["logout"]:
                 p.accounts.sign_out(self.token())
                 return self.redirect("/login", cookie=self.cookie("", clear=True))
+            if parts == ["account", "codes"]:
+                if user["role"] in auth.STAFF:
+                    return self.redirect("/account/password")
+                p.accounts.turn_on_codes(user["id"])
+                return self.redirect("/login", "Sign in again to set up your sign-in code.", cookie=self.cookie("", clear=True))
             if parts == ["account", "password"]:
                 if f.get("new", "") != f.get("again", ""):
                     return self.send_html(view_password(p, s["csrf"], bool(user["must_change"]), "The new passwords don't match."), 400)

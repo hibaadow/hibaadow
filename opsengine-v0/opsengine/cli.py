@@ -449,7 +449,10 @@ def cmd_gdpr(args):
         for item in inv["items"]:
             print(f"- {item['who']}: {item['data']}\n    where: {item['where']}\n    why: {item['why']}\n"
                   f"    lawful basis: {item['lawful_basis']}\n    kept: {item['retention']}")
-        print("Processors: " + "; ".join(f"{x['who']} ({x['dpa']})" for x in inv["processors"]))
+        print(f"Status: {inv.get('status', '')}")
+        subs = json.loads((ROOT / "docs" / "sub-processors.json").read_text(encoding="utf-8"))
+        print(f"Sub-processors (list version {subs['version']}): " +
+              "; ".join(f"{x['name']} ({x['location']}, {x['status']})" for x in subs["sub_processors"]))
         return
     e = _engine(args)
     if args.action == "purge":
@@ -497,6 +500,10 @@ def cmd_nightly(args):
         for f in folders:
             plan = gdpr.purge(Engine(f, state_dir=state), apply=confirmed, by="nightly")
             out[f.name] = {k: len(v) for k, v in plan.items()}
+        today = date.today()
+        out["unmatched_inbound"] = len(gdpr.purge_unmatched(state, today, apply=confirmed))
+        from . import auth as _auth
+        out["signin_ip_addresses"] = gdpr.purge_signin_history(_auth.Accounts(Path(state) / "accounts.db"), today, apply=confirmed)
         return {"applied": confirmed, "counts": out}
     step("retention", purge)
     if args.checkpoint_file:

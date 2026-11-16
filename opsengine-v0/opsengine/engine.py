@@ -30,6 +30,7 @@ class Engine:
         self.outbox = base / "outbox"
         self.evidence_dir = base / "evidence"
         self.today = today or date.today()
+        self._register_people()
         if not self.store.has_documents() and not self.store.reviews():
             for d in self.customer.seed_documents:
                 clean, problems = validate_document(d, self.kb, self.customer, self.today)
@@ -37,6 +38,16 @@ class Engine:
                     self._hold_for_review(d, problems, "onboarding")
                 else:
                     self.store.add_document(clean, source="onboarding")
+
+    def _register_people(self):
+        """Everyone on file, so the audit log can refer to them by token rather than by name."""
+        c = self.customer
+        st = self.store
+        for w in c.workers.values():
+            st.register_person(w.get("name", ""), w.get("email", ""), w.get("phone", ""))
+        for who in [c.company.get("owner", {}), c.company.get("broker", {})] + \
+                [s.get("contact", {}) for s in c.subcontractors.values()]:
+            st.register_person(who.get("name", ""), who.get("email", ""), who.get("phone", ""))
 
     # ---------------- detect + plan ----------------
     def scan(self):

@@ -175,9 +175,22 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Checkpoints and backups:** `nightly` writes a signed checkpoint and a verified backup. Both live
   outside `state/`. A restore never goes over live data. Any new database with an `audit` table is
   picked up automatically.
-- **GDPR:** a new kind of personal data needs an entry in `docs/data-inventory.json`. Purges audit
-  counts, never the deleted content. Retention periods are placeholders until `solicitor_confirmed`.
-  Leavers (`left_on` in workers.json) are never chased.
+- **GDPR** (`docs/data-inventory.json`, first-pass review of 16 Nov 2026, awaiting a solicitor):
+  - A new kind of personal data needs an inventory entry with its lawful basis. Never use consent for
+    workers (the WhatsApp opt-in is a channel preference, not the lawful basis).
+  - The audit log holds people only as tokens (⟪P-0007⟫); `Store.pseudonymise` runs inside `audit()`, and
+    `audit_rows()` puts names back for display (`raw=True` for the stored form). Register new kinds of
+    people with `store.register_person`. `store.forget` anonymises a person without breaking the chain.
+  - The customer (controller) sets retention: `company.json` "retention" overrides `rules/retention.json`.
+    Purges audit counts, never content, and only run for real once `solicitor_confirmed` is true.
+  - Real customers need `data_protection.dpa_signed_on` and the current sub-processor list version
+    (`docs/sub-processors.json`) before the daily run touches their data. Adding a sub-processor means
+    bumping the list version and giving customers notice and a chance to object.
+  - Rules can mark data minimisation: `no_personal_data` (accident history: never names anyone, it could be
+    health data) and `share_as: confirmation` (main contractors get a confirmation, not the document).
+  - Leavers (`left_on` in workers.json) are never chased; their WhatsApp preferences go on leaving, photos
+    after `leaver_photos_months`, the named record after `leaver_records_years`.
+  - Never add face matching to card photos (it would make them biometric data).
 - **Messages and approvals (Phase 3):** every outgoing message goes through `delivery.dispatch`, which
   never treats a failure as sent: temporary failures are retried, permanent ones (and bounces, opt-outs,
   no WhatsApp opt-in) escalate the issue. Only customer approvals may be given by link

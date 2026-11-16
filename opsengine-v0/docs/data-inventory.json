@@ -1,115 +1,134 @@
 {
-  "_about": "What personal data OpsEngine holds, why, where and for how long. Lawful bases are PLACEHOLDERS for the solicitor to confirm. Used by `python -m opsengine gdpr inventory` and the record of processing activities.",
+  "_about": "What personal data OpsEngine holds, why, where, on what lawful basis and for how long. Lawful bases follow the GDPR first-pass review of 16 Nov 2026; an Irish data protection solicitor still has to confirm them (status below). Used by `python -m opsengine gdpr inventory` and as the starting point for the records of processing (Art 30(1) as controller, Art 30(2) as processor).",
+  "status": "Advised in the first-pass review (16 Nov 2026); awaiting solicitor confirmation",
+  "roles": {
+    "processor_for_customer": "Worker and subcontractor-contact data: the customer is controller, OpsEngine processes on its documented instructions. The customer sets the compliance standard, approves bookings and sets retention. OpsEngine takes no referral fees and does not use customer data to improve its product.",
+    "controller": "Portal accounts, security and sign-in logs, unmatched inbound messages, billing and marketing.",
+    "main_contractors": "Independent controllers receiving proof of compliance, disclosed by the customer through OpsEngine (name them in the worker privacy notice)."
+  },
   "items": [
     {
-      "who": "Workers (customer's employees)",
+      "who": "Workers",
       "data": "name, role, phone, preferred language, trades, sites worked on",
       "where": "data/customers/<id>/workers.json",
       "why": "check site-access compliance and contact them about renewals",
-      "lawful_basis": "[SOLICITOR] legitimate interests / customer's legal obligation",
-      "retention": "while employed, then leaver_records_years"
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "processor",
+      "retention": "while employed; named training record about 6 years after leaving"
     },
     {
       "who": "Workers",
-      "data": "card and certificate details (Safe Pass, CSCS, training), photos of cards, site inductions, signed terms",
-      "where": "state/<id>/state.db documents; state/<id>/evidence/ files",
+      "data": "Safe Pass and CSCS card details",
+      "where": "state/<id>/state.db documents",
+      "why": "the contractor's duty to ensure workers hold these cards",
+      "lawful_basis": "Legal obligation of the customer (Art 6(1)(c)): Safety, Health and Welfare at Work (Construction) Regulations 2013",
+      "role": "processor",
+      "retention": "about 6 years after leaving (leaver_records_years), then redacted and the person forgotten in the audit log"
+    },
+    {
+      "who": "Workers",
+      "data": "site induction records",
+      "where": "state/<id>/state.db documents",
+      "why": "site safety induction is required",
+      "lawful_basis": "Legal obligation of the customer (Art 6(1)(c)), Construction Regulations 2013",
+      "role": "processor",
+      "retention": "as above"
+    },
+    {
+      "who": "Workers",
+      "data": "photos of cards and other training certificates",
+      "where": "state/<id>/evidence/ files",
       "why": "prove compliance to main contractors",
-      "lawful_basis": "[SOLICITOR] customer's legal obligation (Construction Regulations 2013)",
-      "retention": "leaver_records_years after leaving; review uploads review_uploads_days"
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment (keeping a photo goes further than checking the card: justify it)",
+      "role": "processor",
+      "retention": "photos deleted leaver_photos_months after leaving"
+    },
+    {
+      "who": "Workers",
+      "data": "signed written terms of employment",
+      "where": "state/<id>/state.db documents",
+      "why": "employment terms in writing",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment, minimised: main contractors only get a confirmation that terms were signed",
+      "role": "processor",
+      "retention": "as named training record"
+    },
+    {
+      "who": "Workers",
+      "data": "WhatsApp opt-in date, STOP, time of last message",
+      "where": "workers.json; state/<id>/state.db contact_prefs",
+      "why": "Meta's opt-in policy and the 24-hour reply window; respecting STOP",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment. The opt-in is a channel preference, not GDPR consent",
+      "role": "processor",
+      "retention": "deleted on leaving (leaver_whatsapp_prefs_days)"
     },
     {
       "who": "Workers, subcontractor contacts, customer owners",
-      "data": "messages sent and received, delivery status",
-      "where": "state/<id>/state.db comms; state/<id>/outbox/ files",
-      "why": "chase documents, record what was asked and when",
-      "lawful_basis": "[SOLICITOR] legitimate interests",
-      "retention": "message files resolved_message_files_years; log entries kept as audit records"
+      "data": "messages sent and delivery status",
+      "where": "state/<id>/state.db comms, deliveries; outbox/ files",
+      "why": "chase documents; record what was asked and when",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "processor",
+      "retention": "message files 6 years after the issue is resolved; text waiting to send is cleared once sent"
+    },
+    {
+      "who": "Workers, customer and subcontractor contacts",
+      "data": "emails and WhatsApp messages they send in, with attachments",
+      "where": "state/<id>/inbound/ and the review queue",
+      "why": "receive the documents we asked for",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "processor",
+      "retention": "as the document they become; rejected photos review_uploads_days"
+    },
+    {
+      "who": "Anyone who contacts the service",
+      "data": "messages we couldn't match to a customer or person",
+      "where": "state/inbound-unmatched/",
+      "why": "make sure nothing sent to us is lost",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "controller",
+      "retention": "unmatched_inbound_days"
     },
     {
       "who": "Customer owners and directors",
-      "data": "name, email, phone; approvals given",
-      "where": "data/customers/<id>/company.json; audit log",
+      "data": "name, email, phone; approvals they gave",
+      "where": "company.json; audit log (as tokens)",
       "why": "approvals for spending and commitments",
-      "lawful_basis": "[SOLICITOR] contract",
-      "retention": "contract term plus [SOLICITOR] years"
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment. Contract (Art 6(1)(b)) only for a sole trader or partner who is the contracting party",
+      "role": "processor",
+      "retention": "contract term + 6 years"
     },
     {
       "who": "Subcontractors' contacts",
-      "data": "name, email, phone; their insurance and tax documents",
+      "data": "name, email, phone; insurance and tax documents (personal data for sole traders)",
       "where": "company.json; state/<id>/state.db",
       "why": "subcontractor compliance",
-      "lawful_basis": "[SOLICITOR] legitimate interests",
-      "retention": "while engaged, then [SOLICITOR] years"
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment; legal obligation for tax records where Revenue rules apply",
+      "role": "processor",
+      "retention": "engagement + 6 years"
     },
     {
-      "who": "Portal users (customers and staff)",
-      "data": "name, email, role, password hash, sign-in code secret (staff), sign-in history with IP address",
-      "where": "state/<portal>/accounts.db",
-      "why": "secure access and an audit trail of who did what",
-      "lawful_basis": "[SOLICITOR] contract / legitimate interests (security)",
-      "retention": "account life; sign-in log [SOLICITOR] years"
+      "who": "Portal users",
+      "data": "name, email, role, password hash, sign-in code secret, sign-in history with IP address (as tokens)",
+      "where": "state/accounts.db",
+      "why": "secure access and a record of who did what",
+      "lawful_basis": "Contract for individual customers; Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment for customer staff and security logging; employment basis for OpsEngine staff",
+      "role": "controller",
+      "retention": "account life; IP addresses signin_history_months"
     },
     {
       "who": "Everyone above",
-      "data": "audit log entries (who did what, when; may include names)",
-      "where": "audit table in every database",
+      "data": "audit log entries: who did what and when. People appear only as tokens (⟪P-0007⟫); the token table is separate and deletable",
+      "where": "audit and people tables in every database",
       "why": "tamper-evident record for audits and disputes",
-      "lawful_basis": "[SOLICITOR] legal obligation / legitimate interests",
-      "retention": "[SOLICITOR] - append-only; personal content is kept out of new entries where possible"
-    },
-    {
-      "who": "Workers, customer contacts, subcontractor contacts",
-      "data": "Emails and WhatsApp messages they send in, with attachments (card photos, certificates)",
-      "where": "state/<customer>/inbound/ and the review queue",
-      "why": "Receiving the documents we asked for",
-      "lawful_basis": "[SOLICITOR] proposed: legitimate interests / contract with the customer",
-      "retention": "As the document records; rejected review uploads per review_uploads_days"
-    },
-    {
-      "who": "Anyone who emails or messages the service",
-      "data": "Messages that couldn't be matched to a customer or person, kept for the ops team",
-      "where": "state/inbound-unmatched/",
-      "why": "So nothing sent to us is silently lost",
-      "lawful_basis": "[SOLICITOR] proposed: legitimate interests / contract with the customer",
-      "retention": "[SOLICITOR] proposed: delete after 30 days once checked"
-    },
-    {
-      "who": "Workers",
-      "data": "WhatsApp opt-out and time of their last message",
-      "where": "state/<customer>/state.db, contact_prefs",
-      "why": "Respecting STOP and WhatsApp's 24-hour reply window",
-      "lawful_basis": "[SOLICITOR] proposed: legitimate interests / contract with the customer",
-      "retention": "While they work for the customer; removed with leaver records"
-    },
-    {
-      "who": "Message recipients",
-      "data": "Message text waiting to be sent or retried, address, delivery status",
-      "where": "state/<customer>/state.db, deliveries (text is cleared once sent)",
-      "why": "Retrying failed sends and handling bounces",
-      "lawful_basis": "[SOLICITOR] proposed: legitimate interests / contract with the customer",
-      "retention": "Text cleared once delivered; delivery status kept with the message history"
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment; retention also under Art 17(3)(e) (legal claims)",
+      "role": "processor / controller (accounts)",
+      "retention": "contract term + 6 years; forgetting a person's tokens anonymises their entries"
     }
   ],
-  "processors": [
-    {
-      "who": "Anthropic (Claude API) - when enabled",
-      "what": "card and certificate images, message text for translation and drafting",
-      "dpa": "[SOLICITOR] needed before use"
-    },
-    {
-      "who": "Email provider - when enabled",
-      "what": "message content and addresses",
-      "dpa": "[SOLICITOR] needed before use"
-    },
-    {
-      "who": "WhatsApp (Meta) - when enabled",
-      "what": "message content and phone numbers",
-      "dpa": "[SOLICITOR] needed before use"
-    },
-    {
-      "who": "Hosting provider",
-      "what": "all of the above, at rest",
-      "dpa": "[SOLICITOR] needed before use; EU region"
-    }
-  ]
+  "special_category": {
+    "card_photos": "Not biometric in this use (Art 4(14), Recital 51): only the text is read. Never add face matching.",
+    "accident_history": "Held at company level only. A document naming a person is held for review and never stored (rule no_personal_data).",
+    "under_18s": "Apprentices can be 16 or 17: the worker notice and WhatsApp messages must suit them."
+  },
+  "processors": "See docs/sub-processors.json (customers authorise the list version in their DPA)."
 }
