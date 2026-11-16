@@ -72,11 +72,21 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/vision.py` | Claude vision: photo/scan -> document JSON + confidence score |
 | `opsengine/scheduler.py` | Daily run per customer: scan, advance, chase after 2 days, escalate after 5 |
 | `opsengine/onboarding.py` | Create a customer folder from the template; list what is missing |
-| `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
+| `opsengine/connectors.py` | One send attempt: email via SMTP (`EMAIL_MODE=smtp`, Message-ID, issue ref in subject), WhatsApp via `whatsapp.py` |
+| `opsengine/delivery.py` | Retries with backoff, delivery reports, WhatsApp consent and 24-hour window; failures escalate |
+| `opsengine/whatsapp.py` | Meta Cloud API: send text/template, webhook signature, parse, media download |
+| `opsengine/inbound.py` | Inbound email (.eml folder or IMAP) and WhatsApp photos -> photo reader, routed by sender and `[ISS-0007]` |
+| `opsengine/approval_links.py` | One-time approval links for customer approvals (money and commitments) |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
-| `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
+| `opsengine/web.py` | Portal (stdlib): customer, ops and safety reviewer views on the real engine, behind sign-in |
+| `opsengine/auth.py` | Accounts: hashed passwords, sessions, staff sign-in codes, lockout, account audit log |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
+| `opsengine/rules_versions.py` | Rules library version (hash) and competent-person sign-off (`rules/versions.json`) |
+| `opsengine/checkpoints.py` | HMAC-signed, chained checkpoints of every audit log, kept outside the data folder |
+| `opsengine/backup.py` | Backups with manifest, verify, restore into an empty folder, prune |
+| `opsengine/gdpr.py` | Retention purge (`rules/retention.json`), subject access export, data inventory (`docs/data-inventory.json`) |
+| `deploy/` | Dockerfile, docker-compose + Caddy (HTTPS), production settings, systemd nightly timer |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
 | `tests/fixtures/photos/` | Fictional sample card/certificate images |
@@ -85,7 +95,10 @@ These are product rules, not style preferences. Never weaken them in code.
 
 ```bash
 python -m opsengine demo                      # full scripted walkthrough
-python -m opsengine web                       # clickable portal on http://127.0.0.1:8000
+python -m opsengine web --demo                # portal with SAMPLE companies + demo accounts (http://127.0.0.1:8000)
+python -m opsengine web                       # portal for real customers; needs users:
+python -m opsengine user add --email a@b.ie --name "Name" --role admin|ops|reviewer|customer [--customer <id>]
+python -m opsengine user list|disable|enable|reset-password|reset-code --email a@b.ie
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>
@@ -94,6 +107,10 @@ python -m opsengine daily                     # every customer in data/customers
 python -m opsengine register|risks|subcontractors|assets|actions|appointments|providers|comms|documents --customer <folder>
 python -m opsengine raise-action "title" --owner w01 --due YYYY-MM-DD --severity high --by "Name" --customer <folder>
 python -m opsengine appointment APT-0001 --status attended|completed|no_show|cancelled --by "Name" --customer <folder>
+python -m opsengine nightly --backup-to DIR --checkpoint-file FILE   # production nightly run
+python -m opsengine backup make|verify|restore ; checkpoint write|verify ; rules status|register|sign-off
+python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
+python -m opsengine inbound-email --dir FOLDER | --imap ; deliveries [--retry]   # Phase 3 messaging
 python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
@@ -143,6 +160,33 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   time is tight. The one-line reason is shown in the comparison and the approval.
 - **Approvals** of the same kind are grouped in the portal ("Approve all"), but each is approved and
   audited on its own (`Engine.approve_group`).
+- **Sign-in and access** (`auth.py`, AUDIT.md Phase 2): every portal page needs a signed-in user.
+  Customer users are tied to one customer and can never see or act on another (checked on every
+  GET, POST and file). Staff (ops, reviewer, admin) need a 6-digit authenticator code after their
+  password. Every form carries a per-session CSRF token. Approvals and evidence are recorded as
+  "Name <email>" of the signed-in person. Account events go to `state/<portal>/accounts.db`'s own
+  hash-chained audit log. Demo accounts and the demo clock exist only with `web --demo`, which
+  refuses non-SAMPLE customers. Never add a way round sign-in, even for testing: tests use
+  `tests/helpers.py` `Client`, which signs in like a browser.
+- **Versioned rules:** any change to `rules/requirements.json`, `rules/main_contractors/*.json` or
+  `playbooks/playbooks.json` is a new rules version. Register it (`rules register`) and have a competent
+  person sign it off (`rules sign-off`) before production uses it (`OPSENGINE_REQUIRE_SIGNED_RULES`).
+  Never record a sign-off on someone's behalf; the SAMPLE library stays unsigned.
+- **Checkpoints and backups:** `nightly` writes a signed checkpoint and a verified backup. Both live
+  outside `state/`. A restore never goes over live data. Any new database with an `audit` table is
+  picked up automatically.
+- **GDPR:** a new kind of personal data needs an entry in `docs/data-inventory.json`. Purges audit
+  counts, never the deleted content. Retention periods are placeholders until `solicitor_confirmed`.
+  Leavers (`left_on` in workers.json) are never chased.
+- **Messages and approvals (Phase 3):** every outgoing message goes through `delivery.dispatch`, which
+  never treats a failure as sent: temporary failures are retried, permanent ones (and bounces, opt-outs,
+  no WhatsApp opt-in) escalate the issue. Only customer approvals may be given by link
+  (`approval_links.py`): secret, single-use, 3-day expiry, opening it changes nothing, recorded as
+  "Name <email> (email link)". Safety reviewer and ops sign-off stay in the portal with sign-in and a code.
+  Links are only issued when email really goes out, and never appear in saved outbox copies (staff can
+  read those). Inbound files are never trusted for the channel they came by: unknown senders are kept
+  aside, unverified email senders always go to review, and everything still goes through the photo reader.
+  Webhooks (`/hooks/email`, `/hooks/whatsapp`) need a valid signature.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
@@ -162,8 +206,8 @@ per customer falling**. When adding features, ask whether they remove human work
 
 ## Roadmap (next steps, in order)
 
-1. **Connectors:** real sending (WhatsApp Business API, email) and inbound capture
-   (WhatsApp photos, email attachments) feeding `engine.ingest()`.
+1. **Connectors (built, Phase 3; waiting on accounts):** email sending with retries and delivery reports,
+   inbound email and WhatsApp photos into the photo reader. Needs a mail provider and a Meta account to go live.
 2. **Document reading (v0 done: `vision.py`):** use Claude vision to extract fields from card photos and certificates
    into document JSON, with a confidence score; low confidence goes to a human.
 3. **Rules library depth (started: SAMPLE Glenmara form adds PI, Safe-T-Cert/CIRI, accident history,
@@ -172,6 +216,6 @@ per customer falling**. When adding features, ask whether they remove human work
    (GA2/GA3 style registers), working-at-height and silica controls.
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall
    (e.g. chase after 2 days, escalate after 5).
-5. **Approval channel:** approve/reject from WhatsApp or email with one tap, recorded in the audit log.
+5. **Approval channel (built for email, Phase 3):** one-tap approve/decline links for customer approvals.
 6. **Multi-customer ops console** for the internal team (queues across customers).
 7. **Main contractor pack export** in each contractor's required format.

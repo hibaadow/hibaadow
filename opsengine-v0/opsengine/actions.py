@@ -7,7 +7,7 @@ from pathlib import Path
 
 from datetime import date, timedelta
 
-from . import connectors, llm
+from . import approval_links, delivery, llm
 from .knowledge import LANGUAGE_NAMES
 from .labels import join, money, nice_date
 
@@ -116,8 +116,10 @@ class ActionContext:
                  f"- Issue: {self.issue['id']} ({self.issue['requirement']}, {self.issue['kind']})"]
         for k, v in (meta or {}).items():
             lines.append(f"- {k}: {v}")
-        status = "internal" if to.get("channel") == "file" else connectors.send(to.get("channel"), to.get("address"), subject, body)
-        lines += [f"- Delivery: {status}", "", body, ""]
+        status = "internal" if to.get("channel") == "file" else delivery.dispatch(
+            self.store, self.customer, to, subject, body, self.issue["id"], self.step["id"], str(path))
+        # one-time approval links only exist in the message that is sent, never in the saved copy (which staff can read)
+        lines += [f"- Delivery: {status}", "", approval_links.redact(body), ""]
         path.write_text("\n".join(lines), encoding="utf-8")
         self.store.log_comm("out", to.get("channel"), to.get("name"), to.get("address"), subject,
                             self.issue["id"], self.step["id"], status, str(path))

@@ -1,18 +1,22 @@
-"""Clickable web portal on top of the real engine (stdlib only).
+"""Web portal on top of the real engine (stdlib only), with sign-in.
 
-    python -m opsengine web            # then open http://127.0.0.1:8000
+    python -m opsengine web --demo     # SAMPLE companies + demo accounts (shown on the sign-in page)
+    python -m opsengine web            # real customers in data/customers/; users from `opsengine user add`
 
-Three views, switched at the top of every page:
-  - Customer: what a subcontractor's owner sees - site status, approvals, what's being done.
-  - Ops team: the internal team across all customers - photo reviews, escalations, bookings.
+Who sees what:
+  - Customer users see only their own company: site status, approvals, what's being done.
+  - Ops team: every customer - photo reviews, escalations, bookings.
   - Safety reviewer: drafted safety documents and high-risk closures waiting for a competent person.
 
-Every button calls the engine itself (approve, ingest, raise an action, update a booking) and is
-audited like any other action. The demo clock lets you run the daily job day by day to watch
-reminders and escalations happen. This is a local demo: there is no login, so do not put it on
-the internet with real customer data.
+Sign-in, sessions, the second step for staff, lockout and the account audit log are in auth.py.
+Every form carries a per-session token (CSRF). Every approval is recorded against the signed-in
+person's name and email. The demo clock and Reset exist only in --demo mode.
 """
 import email.parser
+import hashlib
+import hmac
+import os
+import re
 import email.policy
 import html
 import json
@@ -22,7 +26,7 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import config, llm, scheduler
+from . import approval_links, auth, config, delivery, inbound, llm, scheduler, whatsapp
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
@@ -32,43 +36,69 @@ from .report import (ACTION_WORDS, STATE_WORDS, compliance_register, current_ste
 
 SAMPLES = [ROOT / "data" / "sample" / "bremore_groundworks", ROOT / "data" / "sample" / "liffey_interiors"]
 DEFAULT_DAY = date(2026, 11, 11)
-ROLES = {"customer": "Customer", "ops": "Ops team", "reviewer": "Safety reviewer"}
 ROLE_APPROVES = {"customer": "customer", "ops": "ops", "reviewer": "safety_reviewer"}
 e_ = html.escape
 
 
+VIEW_ROLE = {"customer": "customer", "ops": "ops", "admin": "ops", "reviewer": "reviewer"}
+TABS = {"customer": {"home", "issues", "issue", "people", "subcontractors", "equipment", "documents", "actions",
+                     "bookings", "messages", "message", "report"},
+        "ops": {"ops", "issues", "issue", "bookings", "providers", "documents", "actions", "messages", "message", "insights",
+                "home", "people", "subcontractors", "equipment", "report"},
+        "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message"}}
+
+
 class Portal:
-    def __init__(self, customers, state_dir):
+    def __init__(self, customers, state_dir, demo=False):
+        self.demo = demo
         self.customers = {}
         for folder in customers:
             company = json.loads((Path(folder) / "company.json").read_text(encoding="utf-8"))
+            if demo and not company.get("sample"):
+                raise ValueError(f"--demo only runs with SAMPLE customers; {company['name']} is not SAMPLE")
             self.customers[company["id"]] = Path(folder)
         self.state = Path(state_dir)
+        self.state.mkdir(parents=True, exist_ok=True)
         self.uploads = self.state / "uploads"
         self.clock_file = self.state / "clock.json"
-        if not self.clock_file.exists():
-            self.reset()
+        self.accounts_path = self.state / "accounts.db"
+        if demo:
+            auth.ensure_demo_users(self.accounts, set(self.customers))
+            if not self.clock_file.exists():
+                self.reset()
 
-    # ---- demo clock ----
+    @property
+    def accounts(self):
+        """A fresh connection per use: SQLite connections can't be shared between the server's threads."""
+        return auth.Accounts(self.accounts_path)
+
+    # ---- demo clock (demo mode only; real mode uses today's date) ----
     @property
     def today(self):
+        if not self.demo:
+            return date.today()
         try:
             return date.fromisoformat(json.loads(self.clock_file.read_text())["today"])
         except (OSError, ValueError, KeyError):
             return DEFAULT_DAY
 
     def set_today(self, day):
-        self.state.mkdir(parents=True, exist_ok=True)
         self.clock_file.write_text(json.dumps({"today": day.isoformat()}))
 
     def reset(self):
-        if self.state.exists():
-            shutil.rmtree(self.state)
+        if not self.demo:
+            raise PermissionError("reset is only available in demo mode")
+        for child in self.state.iterdir():  # keep accounts.db: sign-ins and their audit log survive a reset
+            if child.name.startswith("accounts.db"):
+                continue
+            shutil.rmtree(child) if child.is_dir() else child.unlink()
         self.set_today(DEFAULT_DAY)
         for folder in self.customers.values():
             scheduler.run_customer(folder, state_dir=self.state, today=DEFAULT_DAY)
 
     def next_day(self):
+        if not self.demo:
+            raise PermissionError("the demo clock is only available in demo mode")
         day = self.today + timedelta(days=1)
         self.set_today(day)
         return [scheduler.run_customer(f, state_dir=self.state, today=day) for f in self.customers.values()]
@@ -76,11 +106,17 @@ class Portal:
     def engine(self, cid):
         return Engine(self.customers[cid], state_dir=self.state, today=self.today)
 
-    def safe_file(self, path):
-        """Only serve files from the demo state, the sample data and the test photos."""
+    def safe_file(self, path, user=None):
+        """Serve only files from the portal state and the sample data; a customer user only their own."""
         p = Path(path).resolve()
-        roots = [self.state.resolve(), (ROOT / "data" / "sample").resolve(), (ROOT / "tests" / "fixtures").resolve()]
-        return p if p.is_file() and any(r in p.parents for r in roots) else None
+        if user and user["role"] == "customer":
+            cid = user["customer_id"]
+            roots = [(self.state / cid).resolve(), self.customers[cid].resolve()] if cid in self.customers else []
+            if self.demo:
+                roots.append((ROOT / "tests" / "fixtures").resolve())
+        else:
+            roots = [self.state.resolve(), (ROOT / "data" / "sample").resolve(), (ROOT / "tests" / "fixtures").resolve()]
+        return p if p.is_file() and not p.name.startswith("accounts.db") and any(r in p.parents for r in roots) else None
 
 
 # ---------------- plain-language helpers ----------------
@@ -192,10 +228,9 @@ FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=
          '&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">')
 
 
-def page(portal, role, cid, tab, title, body, flash=None):
-    eng_names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
-    roles = "".join(f'<a class="{"on" if r == role else ""}" href="/as/{r}?next=/c/{cid}/home">{label}</a>'
-                    for r, label in ROLES.items())
+def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
+    role = VIEW_ROLE[user["role"]]
+    names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
     tabs = {"customer": [("home", "Overview"), ("issues", "Issues"), ("people", "People"), ("subcontractors", "Subcontractors"),
                          ("equipment", "Equipment"), ("documents", "Documents"), ("actions", "Corrective actions"),
                          ("bookings", "Bookings"), ("messages", "Messages"), ("report", "Weekly report")],
@@ -203,18 +238,143 @@ def page(portal, role, cid, tab, title, body, flash=None):
                     ("documents", "Documents"), ("actions", "Corrective actions"), ("messages", "Messages"), ("insights", "Insights")],
             "reviewer": [("reviewer", "To review"), ("actions", "Corrective actions"), ("documents", "Documents")]}[role]
     nav = "".join(f'<a class="{"on" if t == tab else ""}" href="/c/{cid}/{t}">{label}</a>' for t, label in tabs)
-    pick = ('<select aria-label="Customer" onchange="location=this.value">' +
-            "".join(f'<option value="/c/{c}/{tab}" {"selected" if c == cid else ""}>{e_(n)}</option>' for c, n in eng_names.items()) +
-            "</select>")
+    pick = ""
+    if role != "customer" and len(names) > 1:  # staff can move between customers; customers never see others
+        pick = (f'<form class="inline" method="get" action="/switch" style="margin-left:auto"><input type="hidden" name="tab" value="{e_(tab)}">'
+                '<select name="to" aria-label="Customer">' +
+                "".join(f'<option value="{c}" {"selected" if c == cid else ""}>{e_(n)}</option>' for c, n in names.items()) +
+                '</select><button class="ghost" style="padding:4px 10px">Go</button></form>')
     mode = "mock AI" if config.mock_ai() else ("live Claude" if llm.available() else "AI off")
+    demo = ""
+    if portal.demo:
+        demo = (f'<span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>'
+                f'<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>'
+                '<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form>')
+    admin = '<a class="small" href="/admin/users" style="color:inherit">Users</a>' if user["role"] == "admin" else ""
+    who = (f'<span class="small">{e_(user["name"])} · {e_(ROLE_LABELS[user["role"]])}</span>{admin}'
+           '<a class="small" href="/account/password" style="color:inherit">Password</a>'
+           '<form method="post" action="/logout"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Sign out</button></form>')
     flash_html = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
+    html_ = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>OpsEngine{' <span class="small" style="color:var(--hivis)">SAMPLE DEMO</span>' if portal.demo else ''}</span>
+<span class="roles">{who}</span><span class="demo">{demo}</span></div>
+<nav class="sub">{nav}{pick}</nav><main>{flash_html}{body}</main></body></html>"""
+    return with_csrf(html_, csrf)
+
+
+ROLE_LABELS = {"customer": "Customer", "ops": "Ops team", "admin": "Admin", "reviewer": "Safety reviewer"}
+
+
+def with_csrf(html_, csrf):
+    """Every POST form carries the session's CSRF token."""
+    return re.sub(r'(<form[^>]*method="post"[^>]*>)', lambda m: m.group(1) + f'<input type="hidden" name="csrf" value="{e_(csrf)}">', html_)
+
+
+def bare_page(title, body, portal=None):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
-<div class="top"><span class="brand"><i></i>OpsEngine</span><span class="roles">{roles}</span>
-<span class="demo"><span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>
-<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>
-<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form></span></div>
-<nav class="sub">{nav}{pick}</nav><main>{flash_html}{body}</main></body></html>"""
+<div class="top"><span class="brand"><i></i>OpsEngine{' <span class="small" style="color:var(--hivis)">SAMPLE DEMO</span>' if portal and portal.demo else ''}</span></div>
+<main style="max-width:460px">{body}</main></body></html>"""
+
+
+def view_link(portal, token, summary=None, approver="", error=None, done=None):
+    """Approve-by-link page. Opening it changes nothing; only the buttons do."""
+    if error or done:
+        msg = f'<div class="flash{" err" if error else ""}">{e_(error or done)}</div>'
+        return bare_page("Approval", f"<section><h1>Approval</h1>{msg}</section>", portal)
+    return bare_page("Approval", f"""<section><h1>Your approval is needed</h1>
+<p class="note">For {e_(approver)}. Nothing has happened yet: choose below. This link works once.</p>
+<div class="card"><p>{e_(summary)}</p></div>
+<form method="post" action="/a/{e_(token)}" style="display:grid;gap:10px;margin-top:12px">
+<button name="decision" value="approved">Approve</button></form>
+<form method="post" action="/a/{e_(token)}" style="display:grid;gap:10px;margin-top:18px">
+<label for="reason">Or decline, and tell us why<input id="reason" name="reason" maxlength="300" required></label>
+<button class="ghost" name="decision" value="declined">Decline</button></form></section>""", portal)
+
+
+def view_password(portal, csrf, forced=False, error=None):
+    err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    intro = ('<p class="note">You signed in with a temporary password. Choose your own before you carry on.</p>'
+             if forced else "")
+    return with_csrf(bare_page("Change password", f"""<section><h1>Change your password</h1>{intro}{err}
+<form class="card" method="post" action="/account/password" style="display:grid;gap:10px">
+<label for="current">Current password<input id="current" name="current" type="password" autocomplete="current-password" required></label>
+<label for="new">New password (12+ characters)<input id="new" name="new" type="password" autocomplete="new-password" minlength="12" required></label>
+<label for="again">New password again<input id="again" name="again" type="password" autocomplete="new-password" minlength="12" required></label>
+<button>Change password</button></form>{'' if forced else '<a href="/">Back</a>'}</section>""", portal), csrf)
+
+
+def view_users(portal, me, csrf, flash=None, shown=None):
+    names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
+    rows = []
+    for u in portal.accounts.users():
+        status = "disabled" if u["disabled"] else ("locked" if u["locked_until"] else "active")
+        flags = [x for x, on in (("demo", u["demo"]), ("must change password", u["must_change"]),
+                                 ("code set", u["mfa_secret"] and u["role"] in auth.STAFF)) if on]
+        acts = []
+        if u["id"] != me["id"]:
+            acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/{"enable" if u["disabled"] else "disable"}">'
+                        f'<button class="ghost">{"Enable" if u["disabled"] else "Disable"}</button></form>')
+        acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/reset-password"><button class="ghost">Reset password</button></form>')
+        if u["role"] in auth.STAFF:
+            acts.append(f'<form class="inline" method="post" action="/admin/users/{u["id"]}/reset-code"><button class="ghost">Reset sign-in code</button></form>')
+        rows.append(f'<tr><td>{e_(u["name"])}<br><span class="small muted">{e_(u["email"])}</span></td><td>{e_(ROLE_LABELS[u["role"]])}</td>'
+                    f'<td>{e_(names.get(u["customer_id"], u["customer_id"] or "All customers"))}</td>'
+                    f'<td><span class="chip {"ok" if status == "active" else "bad"}">{status}</span> <span class="small muted">{e_(", ".join(flags))}</span></td>'
+                    f'<td><div class="actions">{"".join(acts)}</div></td></tr>')
+    shown_html = ""
+    if shown:
+        shown_html = (f'<div class="card" style="border-color:var(--hivis)"><b>Temporary password for {e_(shown[0])}</b>'
+                      f'<span class="mono" style="font-size:18px">{e_(shown[1])}</span>'
+                      '<span class="small muted">Shown once. Give it to them securely (not by email with their username). '
+                      'They must choose their own password when they first sign in.</span></div>')
+    flash_html = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
+    opts = "".join(f'<option value="{c}">{e_(n)}</option>' for c, n in names.items())
+    body = f"""<section><a href="/">‹ Back</a><h1>Users</h1>{flash_html}{shown_html}
+<div class="tbl"><table><thead><tr><th>Person</th><th>Role</th><th>Company</th><th>Status</th><th></th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></section>
+<section><h2>Add a user</h2><form class="card form" method="post" action="/admin/users/add">
+<label for="u-name">Name<input id="u-name" name="name" required></label>
+<label for="u-email">Email<input id="u-email" name="email" type="email" required></label>
+<label for="u-role">Role<select id="u-role" name="role"><option value="customer">Customer</option><option value="ops">Ops team</option>
+<option value="reviewer">Safety reviewer</option><option value="admin">Admin</option></select></label>
+<label for="u-customer">Company (customer users only)<select id="u-customer" name="customer"><option value="">None (staff)</option>{opts}</select></label>
+<button>Add user</button></form><p class="note">They get a temporary password to change at first sign-in. Staff also set up an authenticator code.</p></section>"""
+    return with_csrf(bare_page("Users", body, portal).replace('<main style="max-width:460px">', "<main>"), csrf)
+
+
+def view_login(portal, error=None, email=""):
+    demo = ""
+    if portal.demo:
+        rows = "".join(
+            f'<form class="row" method="post" action="/login"><div><h3>{e_(name)}</h3><div class="meta">{e_(ROLE_LABELS[role])}</div></div>'
+            f'<input type="hidden" name="email" value="{e_(addr)}"><input type="hidden" name="password" value="{auth.DEMO_PASSWORD}">'
+            f'<button class="ghost">Sign in</button></form>'
+            for addr, name, role, cid in auth.DEMO_USERS if not cid or cid in portal.customers)
+        demo = (f'<section><h2>Demo accounts</h2><p class="note">SAMPLE data only. These accounts exist only in demo mode, '
+                f'where staff accounts skip the second sign-in step.</p><div class="list">{rows}</div></section>')
+    err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    return bare_page("Sign in", f"""<section><h1>Sign in</h1>{err}
+<form class="card" method="post" action="/login" style="display:grid;gap:10px">
+<label for="email">Email<input id="email" name="email" type="email" autocomplete="username" required value="{e_(email)}"></label>
+<label for="password">Password<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+<button>Sign in</button></form></section>{demo}""", portal)
+
+
+def view_code(portal, setup_secret=None, email="", error=None):
+    err = f'<div class="flash err">{e_(error)}</div>' if error else ""
+    setup = ""
+    if setup_secret:
+        setup = (f'<p>Staff accounts need a second step. Add OpsEngine to an authenticator app (for example Google Authenticator, '
+                 f'Microsoft Authenticator or 1Password) using this key, then enter the 6-digit code it shows.</p>'
+                 f'<div class="card"><span class="small muted">Setup key</span><b class="mono" style="font-size:16px;word-break:break-all">'
+                 f'{e_(" ".join(setup_secret[i:i + 4] for i in range(0, len(setup_secret), 4)))}</b>'
+                 f'<span class="small muted" style="word-break:break-all">{e_(auth.totp_uri(setup_secret, email))}</span></div>'
+                 f'<input type="hidden" name="secret" value="{e_(setup_secret)}">')
+    return bare_page("Enter your code", f"""<section><h1>{"Set up your sign-in code" if setup_secret else "Enter your code"}</h1>{err}
+<form class="card" method="post" action="/login/code" style="display:grid;gap:10px">{setup}
+<label for="code">6-digit code<input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{{6,7}}" required></label>
+<button>Continue</button></form><a href="/login">Start again</a></section>""", portal)
 
 
 # ---------------- views ----------------
@@ -530,7 +690,7 @@ def view_message(portal, eng, cid, role, path):
     who, _, how = to.partition(" via ")
     channel = how.split(" (")[0]
     extra = "".join(f'<p class="note">{e_(meta[k])}</p>' for k in ("Translation",) if meta.get(k))
-    return (f'<section><a href="javascript:history.back()">‹ Back</a><div class="card msg"><h2>{e_(subject)}</h2>'
+    return (f'<section><a href="/c/{cid}/messages">‹ Messages</a><div class="card msg"><h2>{e_(subject)}</h2>'
             f'<p class="muted small">To {e_(who)}{" by " + e_(channel) if channel and channel != "file" else ""}</p>{extra}'
             f'{md_to_html(body)}</div></section>')
 
@@ -589,13 +749,13 @@ def view_ops(portal, eng, cid, role):
 <div class="kpi"><b>{len(blocked)}</b><span>blocked steps</span></div><div class="kpi"><b>{len(waiting_customer)}</b><span>waiting on the customer</span></div></div>
 {''.join(rv)}<div class="list">{''.join(issue_row(e, c, i) for i in esc[:10])}</div></section>""")
     sim = []
-    for p in sorted((portal.customers[cid] / "incoming").glob("*.json")):
+    for p in (sorted((portal.customers[cid] / "incoming").glob("*.json")) if portal.demo else []):
         doc = json.loads(p.read_text(encoding="utf-8"))
         sim.append(f'<form class="row" method="post" action="/c/{cid}/simulate"><div><h3>{e_(eng.kb.requirements.get(doc["type"], {}).get("name", doc["type"]))}</h3>'
                    f'<div class="meta">from {e_(eng.customer.holder_name(doc["holder"]))} · {e_(doc.get("received_via", ""))} · <span class="mono">{e_(p.name)}</span></div></div>'
                    f'<input type="hidden" name="file" value="{e_(p.name)}"><button class="ghost">Simulate arrival</button></form>')
     return f"""<section><h1>Ops queue</h1><p class="muted">The internal team's view across every customer: photos the AI wasn't sure about, escalations, and anything blocked.</p></section>
-{''.join(parts)}<section><h2>Simulate incoming documents ({e_(eng.customer.company['name'])})</h2><p class="note">For the demo: pretend these arrived by email or WhatsApp.</p><div class="list">{''.join(sim) or '<p class=muted>Nothing to simulate for this customer.</p>'}</div></section>"""
+{''.join(parts)}<section {'' if portal.demo else 'hidden'}><h2>Simulate incoming documents ({e_(eng.customer.company['name'])})</h2><p class="note">For the demo: pretend these arrived by email or WhatsApp.</p><div class="list">{''.join(sim) or '<p class=muted>Nothing to simulate for this customer.</p>'}</div></section>"""
 
 
 def view_reviewer(portal, eng, cid, role):
@@ -643,52 +803,185 @@ def view_insights(portal, eng, cid, role):
 
 # ---------------- HTTP ----------------
 
+COOKIE = "opsengine_session"
+CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence"}
+STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate"}
+
+
 class Handler(BaseHTTPRequestHandler):
     portal: Portal = None
 
     def log_message(self, fmt, *args):  # keep the console quiet
         pass
 
-    def role(self):
+    # ---- sessions ----
+    def token(self):
         for part in (self.headers.get("Cookie") or "").split(";"):
             k, _, v = part.strip().partition("=")
-            if k == "role" and v in ROLES:
+            if k == COOKIE:
                 return v
-        return "customer"
+        return None
 
-    def send_html(self, body, status=200):
+    def session(self, stages=("active",)):
+        return self.portal.accounts.session(self.token(), stages=stages)
+
+    def cookie(self, token, clear=False):
+        https = (config.flag("OPSENGINE_TRUST_PROXY") and self.headers.get("X-Forwarded-Proto", "").lower() == "https") \
+            or config.flag("OPSENGINE_SECURE_COOKIES")
+        attrs = "Path=/; HttpOnly; " + ("SameSite=None; Secure" if https else "SameSite=Lax")
+        return f"{COOKIE}={'' if clear else token}; {attrs}" + ("; Max-Age=0" if clear else f"; Max-Age={auth.SESSION_HOURS * 3600}")
+
+    def ip(self):
+        if config.flag("OPSENGINE_TRUST_PROXY") and self.headers.get("X-Forwarded-For"):
+            return self.headers["X-Forwarded-For"].split(",")[0].strip()
+        return self.client_address[0] or ""
+
+    # ---- responses ----
+    def security_headers(self):
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "same-origin")
+        self.send_header("Cache-Control", "no-store")
+        frame = "" if self.portal.demo else "frame-ancestors 'none'; "  # the demo may be shown in a preview pane
+        if not self.portal.demo:
+            self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy",
+                         "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                         f"font-src https://fonts.gstatic.com; img-src 'self' data:; form-action 'self'; {frame}base-uri 'none'")
+
+    def send_html(self, body, status=200, cookie=None):
         data = body.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        self.security_headers()
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         self.wfile.write(data)
 
     def redirect(self, to, flash=None, cookie=None):
+        if not to.startswith("/") or to.startswith("//"):
+            to = "/"  # never redirect off-site
         if flash:
             to += ("&" if "?" in to else "?") + "flash=" + urllib.parse.quote(flash)
         self.send_response(303)
         self.send_header("Location", to)
+        self.security_headers()
         if cookie:
             self.send_header("Set-Cookie", cookie)
         self.end_headers()
 
+    def home_for(self, user, cid=None):
+        cid = user["customer_id"] if user["role"] == "customer" else (cid or next(iter(self.portal.customers), None))
+        if not cid or cid not in self.portal.customers:
+            return None
+        return f"/c/{cid}/" + {"customer": "home", "ops": "ops", "admin": "ops", "reviewer": "reviewer"}[user["role"]]
+
+    def allowed_customer(self, user, cid):
+        return cid in self.portal.customers and (user["role"] != "customer" or user["customer_id"] == cid)
+
+    def send_text(self, text, status=200):
+        data = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(data)
+
+    def link_engine(self, secret):
+        if not re.fullmatch(r"[0-9a-f]{64}", secret or ""):
+            return None, None
+        for cid in self.portal.customers:
+            eng = self.portal.engine(cid)
+            if approval_links.owns(eng, secret):
+                return eng, secret
+        return None, None
+
+    def webhook(self, parts):
+        """Machine-to-machine: delivery reports and inbound WhatsApp. Signed, never signed in."""
+        raw = self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024 * 1024))
+        p = self.portal
+        if parts == ["hooks", "email"]:
+            secret = os.environ.get("OPSENGINE_WEBHOOK_SECRET", "")
+            sig = self.headers.get("X-OpsEngine-Signature", "")
+            if len(secret) < 32 or not hmac.compare_digest(hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest(), sig):
+                return self.send_text("bad signature", 403)
+            try:
+                events = json.loads(raw)
+            except json.JSONDecodeError:
+                return self.send_text("bad body", 400)
+            matched = 0
+            for ev in events if isinstance(events, list) else [events]:
+                for cid in p.customers:
+                    if delivery.report(p.engine(cid).store, str(ev.get("message_id", "")), str(ev.get("event", "")), str(ev.get("detail", ""))[:200]):
+                        matched += 1
+                        break
+            return self.send_text(f"ok {matched}")
+        if parts == ["hooks", "whatsapp"]:
+            if not whatsapp.verify_signature(raw, self.headers.get("X-Hub-Signature-256", "")):
+                return self.send_text("bad signature", 403)
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                return self.send_text("bad body", 400)
+            inbound.handle_whatsapp(p.customers, p.state, payload, today=p.today)
+            return self.send_text("ok")
+        return self.send_text("not found", 404)
+
+    # ---- GET ----
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(url.query)
         parts = [p for p in url.path.split("/") if p]
         p = self.portal
-        first = next(iter(p.customers))
         try:
+            if parts == ["login"]:
+                return self.send_html(view_login(p))
+            if parts == ["login", "code"]:
+                pending = self.session(stages=("mfa", "mfa_setup"))
+                if not pending:
+                    return self.redirect("/login")
+                setup = auth.new_totp_secret() if pending["stage"] == "mfa_setup" else None
+                return self.send_html(view_code(p, setup, pending["user"]["email"]))
+            if parts == ["healthz"]:  # for the host's monitoring: no data, no sign-in
+                return self.send_html("ok")
+            if len(parts) == 2 and parts[0] == "a":  # approve by link: the link itself is the credential
+                eng, secret = self.link_engine(parts[1])
+                if not eng:
+                    return self.send_html(view_link(p, "", error="This link isn't valid. Use the portal, or ask the ops team for a new link."), 404)
+                try:
+                    link, step = approval_links.check(eng, secret)
+                except ValueError as exc:
+                    return self.send_html(view_link(p, "", error=str(exc)), 410)
+                prior = {x["action"]: x["result"] for x in eng.store.steps(step["issue_id"]) if x["state"] in DONE and x["result"]}
+                return self.send_html(view_link(p, secret, eng.approval_summary(step, prior), link["approver"]))
+            if parts == ["hooks", "whatsapp"]:  # Meta's subscription check
+                ok = q.get("hub.mode", [""])[0] == "subscribe" and os.environ.get("WHATSAPP_VERIFY_TOKEN") and \
+                    hmac.compare_digest(q.get("hub.verify_token", [""])[0], os.environ.get("WHATSAPP_VERIFY_TOKEN", ""))
+                return self.send_text(q.get("hub.challenge", [""])[0] if ok else "forbidden", 200 if ok else 403)
+            s = self.session()
+            if not s:
+                return self.redirect("/login")
+            user = s["user"]
+            if parts == ["account", "password"]:
+                return self.send_html(view_password(p, s["csrf"], forced=bool(user["must_change"])))
+            if user["must_change"]:
+                return self.redirect("/account/password")
+            if parts == ["admin", "users"]:
+                if user["role"] != "admin":
+                    return self.redirect(self.home_for(user) or "/", "!Only admins can manage users.")
+                return self.send_html(view_users(p, user, s["csrf"], q.get("flash", [None])[0]))
             if not parts:
-                return self.redirect(f"/c/{first}/home")
-            if parts[0] == "as" and len(parts) == 2 and parts[1] in ROLES:
-                start = {"customer": "home", "ops": "ops", "reviewer": "reviewer"}[parts[1]]
-                nxt = q.get("next", [f"/c/{first}/home"])[0]
-                cid = nxt.split("/")[2] if nxt.startswith("/c/") else first
-                return self.redirect(f"/c/{cid}/{start}", cookie=f"role={parts[1]}; Path=/; SameSite=Lax")
+                home = self.home_for(user)
+                return self.redirect(home) if home else self.send_html(bare_page("No access", "<p>Your account isn't linked to a customer on this portal. Contact the ops team.</p>", p), 403)
+            if parts == ["switch"]:
+                to, tab = q.get("to", [""])[0], q.get("tab", ["home"])[0]
+                if not self.allowed_customer(user, to) or not re.fullmatch(r"[a-z]+", tab):
+                    return self.redirect("/")
+                return self.redirect(f"/c/{to}/{tab}")
             if parts[0] == "file":
-                f = p.safe_file(q.get("path", [""])[0])
+                f = p.safe_file(q.get("path", [""])[0], user)
                 if not f:
                     return self.send_html("Not found", 404)
                 data = f.read_bytes()
@@ -696,11 +989,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", ctype)
                 self.send_header("Content-Length", str(len(data)))
+                self.security_headers()
                 self.end_headers()
                 return self.wfile.write(data)
-            if parts[0] != "c" or len(parts) < 3 or parts[1] not in p.customers:
+            if parts[0] != "c" or len(parts) < 3:
                 return self.send_html("Not found", 404)
-            cid, tab, role = parts[1], parts[2], self.role()
+            cid, tab = parts[1], parts[2]
+            role = VIEW_ROLE[user["role"]]
+            if not self.allowed_customer(user, cid):
+                return self.redirect(self.home_for(user) or "/login", "!You don't have access to that company.")
+            if tab not in TABS[role]:
+                return self.redirect(self.home_for(user, cid) or "/", "!That page isn't available to you.")
             eng = p.engine(cid)
             views = {"home": view_home, "documents": view_documents, "actions": view_actions, "bookings": view_bookings,
                      "messages": view_messages, "report": view_report, "ops": view_ops, "reviewer": view_reviewer,
@@ -715,7 +1014,8 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     body = view_issue(p, eng, cid, role, parts[3])
             elif tab == "message":
-                body = view_message(p, eng, cid, role, q.get("path", [""])[0])
+                path = q.get("path", [""])[0]
+                body = view_message(p, eng, cid, role, path) if p.safe_file(path, user) else '<p class="flash err">Message not found.</p>'
             elif tab in ("people", "subcontractors", "equipment"):
                 kind, title, intro = {
                     "people": ("worker", "People", "Each worker's cards, training and inductions."),
@@ -724,13 +1024,13 @@ class Handler(BaseHTTPRequestHandler):
                 body = view_register(eng, cid, kind, title, intro)
             else:
                 return self.send_html("Not found", 404)
-            self.send_html(page(p, role, cid, tab.replace("issue", "issues") if tab == "issue" else tab, tab.title(), body,
-                                q.get("flash", [None])[0]))
+            self.send_html(page(p, user, cid, "issues" if tab == "issue" else tab, tab.title(), body,
+                                q.get("flash", [None])[0], csrf=s["csrf"]))
         except Exception as exc:  # show the problem instead of a blank page
-            self.send_html(f"<pre>Something went wrong: {e_(repr(exc))}</pre>", 500)
+            self.send_html(f"<pre>Something went wrong: {e_(type(exc).__name__)}</pre>", 500)
 
     def form(self):
-        length = int(self.headers.get("Content-Length") or 0)
+        length = min(int(self.headers.get("Content-Length") or 0), 20 * 1024 * 1024)  # 20 MB upload cap
         raw = self.rfile.read(length)
         ctype = self.headers.get("Content-Type", "")
         if ctype.startswith("multipart/form-data"):
@@ -746,53 +1046,117 @@ class Handler(BaseHTTPRequestHandler):
             return fields, files
         return {k: v[0] for k, v in urllib.parse.parse_qs(raw.decode("utf-8")).items()}, {}
 
+    # ---- POST ----
     def do_POST(self):
         url = urllib.parse.urlparse(self.path)
         parts = [p for p in url.path.split("/") if p]
         p = self.portal
+        if parts[:1] == ["hooks"]:
+            return self.webhook(parts)
         f, files = self.form()
-        role = self.role()
-        by = {"customer": None, "ops": "Ops team", "reviewer": "Safety reviewer (competent person)"}[role]
+        if len(parts) == 2 and parts[0] == "a":
+            eng, secret = self.link_engine(parts[1])
+            if not eng:
+                return self.send_html(view_link(p, "", error="This link isn't valid. Use the portal, or ask the ops team for a new link."), 404)
+            try:
+                approval_links.use(eng, secret, f.get("decision", ""), f.get("reason", "").strip(), ip=self.ip())
+            except ValueError as exc:
+                return self.send_html(view_link(p, "", error=str(exc)), 410)
+            return self.send_html(view_link(p, "", done="Thank you. Your decision has been recorded."
+                                            if f.get("decision") == "approved" else "Declined. The ops team will be in touch."))
         try:
-            if parts == ["demo", "next-day"]:
-                runs = p.next_day()
-                chased = sum(len(r["chased"]) for r in runs)
-                esc = sum(len(r["escalated"]) for r in runs)
-                return self.redirect(f.get("next", "/"), f"Daily run for {p.today}: {chased} reminder(s) sent, {esc} escalation(s).")
-            if parts == ["demo", "reset"]:
-                p.reset()
-                return self.redirect("/", "Demo reset to 2026-11-11 with fresh sample data.")
+            if parts == ["login"]:
+                try:
+                    token, stage = p.accounts.sign_in(f.get("email", ""), f.get("password", ""), ip=self.ip())
+                except auth.AuthError as exc:
+                    return self.send_html(view_login(p, str(exc), f.get("email", "")), 401)
+                return self.redirect("/" if stage == "active" else "/login/code", cookie=self.cookie(token))
+            if parts == ["login", "code"]:
+                try:
+                    token = p.accounts.verify_code(self.token(), f.get("code", ""), ip=self.ip(), new_secret=f.get("secret") or None)
+                except auth.AuthError as exc:
+                    pending = self.session(stages=("mfa", "mfa_setup"))
+                    if not pending:
+                        return self.redirect("/login")
+                    return self.send_html(view_code(p, f.get("secret") or None, pending["user"]["email"], str(exc)), 401)
+                return self.redirect("/", cookie=self.cookie(token))
+            s = self.session()
+            if not s:
+                return self.redirect("/login")
+            if not hmac.compare_digest(f.get("csrf", ""), s["csrf"]):
+                p.accounts.audit(f"user:{s['user_id']}", "csrf_rejected", s["user_id"], {"path": url.path, "ip": self.ip()})
+                return self.send_html(bare_page("Expired", '<p>This form expired. Go back, reload the page and try again.</p><a href="/">Home</a>', p), 403)
+            user = s["user"]
+            if parts == ["logout"]:
+                p.accounts.sign_out(self.token())
+                return self.redirect("/login", cookie=self.cookie("", clear=True))
+            if parts == ["account", "password"]:
+                if f.get("new", "") != f.get("again", ""):
+                    return self.send_html(view_password(p, s["csrf"], bool(user["must_change"]), "The new passwords don't match."), 400)
+                try:
+                    p.accounts.change_own_password(self.token(), f.get("current", ""), f.get("new", ""))
+                except auth.AuthError as exc:
+                    return self.send_html(view_password(p, s["csrf"], bool(user["must_change"]), str(exc)), 400)
+                return self.redirect(self.home_for(user) or "/", "Password changed. Other sessions were signed out.")
+            if user["must_change"]:
+                return self.redirect("/account/password")
+            if parts[:2] == ["admin", "users"]:
+                return self.admin_users(user, parts[2:], f, s["csrf"])
+            home = self.home_for(user) or "/"
+            if parts[:1] == ["demo"]:
+                if not p.demo:
+                    return self.redirect(home, "!That's only available in the demo.")
+                if parts == ["demo", "next-day"]:
+                    runs = p.next_day()
+                    chased = sum(len(r["chased"]) for r in runs)
+                    esc = sum(len(r["escalated"]) for r in runs)
+                    nxt = f.get("next", "/")
+                    return self.redirect(nxt if nxt.startswith("/c/") else home, f"Daily run for {p.today}: {chased} reminder(s) sent, {esc} escalation(s).")
+                if parts == ["demo", "reset"]:
+                    p.reset()
+                    return self.redirect(home, "Demo reset to 2026-11-11 with fresh sample data.")
+            if len(parts) != 3 or parts[0] != "c":
+                return self.redirect(home, "!Unknown action.")
             cid, act = parts[1], parts[2]
+            if not self.allowed_customer(user, cid):
+                p.accounts.audit(f"user:{user['id']}", "access_denied", user["id"], {"customer": cid, "action": act})
+                return self.redirect(home, "!You don't have access to that company.")
+            role = VIEW_ROLE[user["role"]]
+            if act not in (CUSTOMER_ACTS if role == "customer" else STAFF_ACTS):
+                return self.redirect(home, "!That action isn't available to you.")
             eng = p.engine(cid)
-            by = by or eng.customer.company["owner"]["name"]
-            back = self.headers.get("Referer") or f"/c/{cid}/home"
-            back = urllib.parse.urlparse(back).path or f"/c/{cid}/home"
+            by = auth.identity(user)
+            back = urllib.parse.urlparse(self.headers.get("Referer") or "").path
+            back = back if back.startswith(f"/c/{cid}/") else home
             if act == "approve-group":
                 steps = [eng.store.step(x) for x in f["steps"].split(",") if x]
                 if not steps or any(not st or ROLE_APPROVES[role] != st["approval_role"] for st in steps):
                     return self.redirect(back, "!Only the right person can approve these.")
                 eng.approve_group([st["id"] for st in steps], by)
-                return self.redirect(back, f"Approved all {len(steps)} by {by}. Each one is recorded separately.")
+                return self.redirect(back, f"Approved all {len(steps)} by {user['name']}. Each one is recorded separately.")
             if act in ("approve", "reject"):
                 step = eng.store.step(f["step"])
                 if not step or ROLE_APPROVES[role] != step["approval_role"]:
                     return self.redirect(back, "!Only the right person can approve this.")
                 if act == "approve":
                     eng.approve(step["id"], by)
-                    return self.redirect(back, f"Approved by {by}. OpsEngine has carried on.")
+                    return self.redirect(back, f"Approved by {user['name']}. OpsEngine has carried on.")
                 eng.reject(step["id"], by, f.get("reason", ""))
                 return self.redirect(back, "Declined. Our team will follow up.")
             if act == "upload":
                 p.uploads.mkdir(parents=True, exist_ok=True)
                 if f.get("sample"):
-                    path = p.safe_file(f["sample"])
+                    path = p.safe_file(f["sample"], user) if p.demo else None
                     if not path:
                         return self.redirect(back, "!Sample not found.")
                 else:
                     name, data = files.get("file", (None, None))
                     if not data:
                         return self.redirect(back, "!Choose a photo first.")
-                    path = p.uploads / f"{date.today().isoformat()}-{Path(name).name}"
+                    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", Path(name).name)[-80:]
+                    folder = p.state / cid / "uploads"
+                    folder.mkdir(parents=True, exist_ok=True)
+                    path = folder / f"{date.today().isoformat()}-{safe_name}"
                     path.write_bytes(data)
                 r = eng.ingest_photo(path, f.get("holder", "company"), expected_type=f.get("type") or None)
                 if r["status"] == "ingested":
@@ -809,16 +1173,19 @@ class Handler(BaseHTTPRequestHandler):
                 eng.reject_review(f["id"], by, "Not readable; ask for a new photo")
                 return self.redirect(back, f"{f['id']} rejected.")
             if act == "raise":
-                aid = eng.raise_corrective_action(f["title"], holder="company", owner=f.get("owner", "company"), due=f.get("due") or None,
+                owner = f.get("owner", "company")
+                aid = eng.raise_corrective_action(f["title"], holder="company", owner=owner, due=f.get("due") or None,
                                                   severity=f.get("severity", "medium"), context=f.get("site") or None,
                                                   evidence_required=f.get("evidence") or "photo of the completed work", raised_by=by)
                 eng._advance_issue(aid)
                 return self.redirect(f"/c/{cid}/issue/{aid}", f"Raised {aid}. The owner has been told.")
             if act == "evidence":
                 issue = eng.store.issue(f["issue"])
+                if not issue or issue["requirement"] != "corrective_action":
+                    return self.redirect(back, "!That isn't a corrective action.")
                 n = len(eng.store.documents()) + 1
                 eng.ingest({"id": f"ev-{issue['id']}-{n}", "type": "corrective_action", "holder": issue["holder"], "action": issue["id"],
-                            "description": f.get("note", ""), "received_via": "portal"})
+                            "description": f.get("note", ""), "received_via": f"portal ({by})"})
                 return self.redirect(f"/c/{cid}/issue/{issue['id']}", "Evidence received and checked.")
             if act == "appointment":
                 if role != "ops":
@@ -826,24 +1193,85 @@ class Handler(BaseHTTPRequestHandler):
                 eng.update_appointment(f["id"], f["status"], by)
                 return self.redirect(back, f"{f['id']} marked {f['status'].replace('_', ' ')}.")
             if act == "simulate":
+                if not p.demo or role != "ops":
+                    return self.redirect(back, "!Simulated arrivals are only for the ops team in the demo.")
                 src = p.customers[cid] / "incoming" / Path(f["file"]).name
                 doc = json.loads(src.read_text(encoding="utf-8"))
-                if doc.get("defect") is None and doc.get("type") == "corrective_action" and not doc.get("action"):
-                    return self.redirect(back, "!That evidence needs an action id.")
                 events = eng.ingest(doc)
                 return self.redirect(back, f"{doc['id']} arrived: {len(events)} step(s) moved on.")
             return self.redirect(back, "!Unknown action.")
         except KeyError as exc:
-            return self.redirect(urllib.parse.urlparse(self.headers.get("Referer") or "/").path or "/", f"!Missing field: {exc}")
+            return self.redirect("/", f"!Missing field: {exc}")
+        except (ValueError, PermissionError) as exc:
+            return self.redirect("/", f"!{exc}")
         except Exception as exc:
-            return self.redirect(urllib.parse.urlparse(self.headers.get("Referer") or "/").path or "/", f"!{exc}")
+            return self.redirect("/", f"!Something went wrong ({type(exc).__name__}).")
 
 
-def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False):
-    portal = Portal(customers or SAMPLES, state_dir or ROOT / "state" / "web")
-    if fresh:
+def _admin_users(self, user, rest, f, csrf):
+    """POST /admin/users/add and /admin/users/<id>/<disable|enable|reset-password|reset-code>. Admins only."""
+    p = self.portal
+    if user["role"] != "admin":
+        p.accounts.audit(f"user:{user['id']}", "access_denied", user["id"], {"area": "user admin"})
+        return self.redirect(self.home_for(user) or "/", "!Only admins can manage users.")
+    a = p.accounts
+    by = auth.identity(user)
+    try:
+        if rest == ["add"]:
+            role = f.get("role", "")
+            customer = f.get("customer") or None if role == "customer" else None
+            temp = a.temporary_password()
+            a.add_user(f.get("email", ""), f.get("name", "").strip(), role, temp, customer_id=customer, by=by,
+                       must_change=True, check_strength=False)
+            return self.send_html(view_users(p, user, csrf, f"Added {f.get('email')}.", (f.get("email"), temp)))
+        if len(rest) == 2:
+            target = a.user(rest[0])
+            if not target:
+                return self.redirect("/admin/users", "!No such user.")
+            act = rest[1]
+            if act in ("disable", "enable"):
+                if target["id"] == user["id"]:
+                    return self.redirect("/admin/users", "!You can't disable your own account.")
+                if act == "disable" and target["role"] == "admin" and len(a.active_admins()) <= 1:
+                    return self.redirect("/admin/users", "!That's the last active admin.")
+                a.set_disabled(target["id"], act == "disable", by=by)
+                return self.redirect("/admin/users", f"{target['email']} {act}d.")
+            if act == "reset-password":
+                temp = a.temporary_password()
+                a.db.execute("UPDATE users SET password_hash=?, must_change=1, failures=0, locked_until=NULL WHERE id=?",
+                             (auth.hash_password(temp), target["id"]))
+                a.db.execute("DELETE FROM sessions WHERE user_id=?", (target["id"],))
+                a.db.commit()
+                a.audit(f"admin:{by}", "password_reset", target["id"], {"must_change": True})
+                return self.send_html(view_users(p, user, csrf, f"Password reset for {target['email']}.", (target["email"], temp)))
+            if act == "reset-code" and target["role"] in auth.STAFF:
+                a.reset_mfa(target["id"], by=by)
+                return self.redirect("/admin/users", f"{target['email']} will set up a new sign-in code next time.")
+        return self.redirect("/admin/users", "!Unknown action.")
+    except ValueError as exc:
+        return self.redirect("/admin/users", f"!{exc}")
+
+
+Handler.admin_users = _admin_users
+
+
+def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False, demo=False):
+    if demo:
+        folders = customers or SAMPLES
+        state = state_dir or ROOT / "state" / "web-demo"
+    else:
+        folders = customers or scheduler.customer_folders()
+        state = state_dir or ROOT / "state"  # the same folder the daily run and `nightly` use
+        if not folders:
+            raise SystemExit("No customers in data/customers/. Add one with `opsengine new-customer`, or run `opsengine web --demo`.")
+    portal = Portal(folders, state, demo=demo)
+    if not demo and not portal.accounts.users():
+        raise SystemExit("No users yet. Create one first:\n  python -m opsengine user add --email you@example.ie "
+                         "--name \"Your Name\" --role admin")
+    if fresh and demo:
         portal.reset()
     Handler.portal = portal
     httpd = ThreadingHTTPServer((host, port), Handler)
-    print(f"OpsEngine portal on http://{host}:{port}  (demo date {portal.today}; Ctrl+C to stop)")
+    kind = f"SAMPLE demo, demo date {portal.today}" if demo else f"{len(portal.customers)} customer(s)"
+    print(f"OpsEngine portal on http://{host}:{port}  ({kind}; Ctrl+C to stop)")
     httpd.serve_forever()

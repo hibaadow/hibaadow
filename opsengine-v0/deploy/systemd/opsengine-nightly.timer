@@ -1,0 +1,9 @@
+[Unit]
+Description=Run OpsEngine nightly at 02:30 Irish time
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 Europe/Dublin
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+{
+  "_about": "How long OpsEngine keeps personal data before deleting it. These periods are PLACEHOLDERS: a solicitor must confirm each one against the customer contract, the lawful basis and any legal duty to keep records (e.g. safety training and accident records) before go-live. `python -m opsengine gdpr purge` applies them (dry run unless --apply).",
+  "solicitor_confirmed": false,
+  "review_uploads_days": 90,
+  "leaver_records_years": 2,
+  "resolved_message_files_years": 6,
+  "sessions_hours": 12
+}

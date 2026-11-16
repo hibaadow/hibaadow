@@ -26,6 +26,62 @@ re-validated before they count.
 
 **Tests:** `tests/test_bad_data.py` reproduces every probe from this audit: 16 tests, 124 in total.
 
+## Update: Phase 2, part 1 (logins) complete (14 November 2026)
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| D6 (portal roles were a cookie anyone could set) | **Fixed** | Every page needs sign-in (`auth.py`). Passwords are PBKDF2-hashed. Sessions are random tokens, stored hashed. Staff need an authenticator code (TOTP). Lockout after 5 failures. CSRF token on every form. Customer users are tied to one customer, enforced on every page, action and file. Security headers are sent. |
+| Approver identity | **Fixed** | Approvals, declines, reviews and evidence are recorded as the signed-in person's "Name <email>". |
+| Account audit | **Added** | Sign-ins, failures, lockouts, codes, user changes, refused forms and refused access go to a separate append-only, hash-chained log. |
+| Demo separation | **Added** | Demo accounts and the demo clock exist only with `web --demo`, which refuses non-SAMPLE customers. |
+
+**Still to do in Phase 2:** hosting in an EU region behind HTTPS; managed database and encrypted
+storage with backups; signed audit checkpoints stored separately; rule versioning; the GDPR pack.
+User management is through the command line only, with no admin page yet. Approve-by-link is
+Phase 3.
+
+**Tests:** `tests/test_auth.py` adds 21 tests, for 162 in total.
+
+## Update: Phase 2, part 2 (operations and GDPR basics) complete (16 November 2026)
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| Backups with a restore check | **Added** | `backup make` copies every database with SQLite's online backup and every evidence/message file, with a SHA-256 manifest and each audit log's head. `backup verify` re-hashes, runs SQLite's integrity check and re-verifies every audit chain. `backup restore` verifies first and only restores into an empty folder. Old backups are pruned (14 kept). |
+| Signed audit checkpoints | **Added** | `checkpoint write` records each audit log's entry count and last hash, signed with HMAC-SHA256 (`OPSENGINE_CHECKPOINT_KEY`) and chained to the previous checkpoint. Kept outside the data folder. `checkpoint verify` catches a rewritten history even when the attacker rebuilt the whole hash chain, and catches removed or edited checkpoints. |
+| Rule versioning with sign-off | **Added** | The rules library has a version (a hash of every rule and playbook file). Every finding, corrective action and scan records it. `rules register` and `rules sign-off --by --qualification` record a competent person's approval in `rules/versions.json`. With `OPSENGINE_REQUIRE_SIGNED_RULES=true` (production) the daily run refuses unsigned rules. **The SAMPLE library is not signed off.** |
+| GDPR basics | **Added** | Data inventory (`docs/data-inventory.json`). Retention schedule (`rules/retention.json`). `gdpr purge` is a dry run unless `--apply`: it deletes rejected review photos, redacts leavers' records and evidence, and deletes old message files, auditing counts only. `gdpr export` produces a subject access pack. Leavers (`left_on` in workers.json) are no longer chased. **Periods, lawful bases and processors are placeholders until a solicitor confirms them**; the nightly run only applies retention once `solicitor_confirmed` is true. |
+| User admin page | **Added** | `/admin/users` (admins only): add users with a one-time temporary password, disable or enable, reset passwords and sign-in codes. Temporary passwords must be changed at first sign-in. You can't disable yourself or the last admin. Everyone can change their password at `/account/password`. All audited. |
+| Ready-to-deploy package | **Added, untested as a container** | `deploy/`: Dockerfile (non-root, health check), docker-compose with Caddy for automatic HTTPS, production settings template, and a systemd timer for the `nightly` run (rules check, daily run, retention, checkpoint, verify, backup) at 02:30 Irish time with a failure alert hook. `/healthz` for monitoring. Forwarded headers are only trusted with `OPSENGINE_TRUST_PROXY`; cookies are Secure behind HTTPS. **The Docker image was not built in this session (no Docker available).** |
+| Encryption at rest | **Host's job** | Stdlib Python has no encryption library. Use an encrypted disk/volume for the data, backups and checkpoints (deploy/README.md). |
+
+**Still to do before real customer data:** pick an EU host and deploy; a solicitor to confirm the
+retention schedule, data inventory, privacy notice and data processing agreements; a competent
+person to check and sign off the rules; off-site encrypted backup copies and a restore drill; a
+security review.
+
+**Tests:** `tests/test_ops.py` adds 25 tests, for 187 in total.
+
+## Update: Phase 3 (communications and approvals) built, not yet live (16 November 2026)
+
+Everything below runs in tests with fake mail servers and a fake WhatsApp API. None of it has
+talked to a real provider: that needs an email provider account and a Meta WhatsApp Business
+account. Mock mode and the approval rules are unchanged.
+
+| Item | Status | What changed |
+| --- | --- | --- |
+| D9 (failed email treated as sent) | **Fixed** | `delivery.py`: a temporary failure is retried after 15 minutes, 1 hour, 4 hours and 12 hours; after the fifth failure, or at once for a permanent one (no address, address refused), the issue is escalated to the ops team. The message history shows "could not be sent yet (trying again)". |
+| Delivery reports | **Added** | Each email has a Message-ID. A signed webhook (`/hooks/email`) records delivered, bounced and complained; a bounce escalates the issue. Provider-specific adapters are still to write once a provider is chosen. |
+| Approve by link | **Added** | Customer approvals (money and commitments) are emailed once a day with a one-time link per item: secret, 3-day expiry, works once, opening it changes nothing, recorded as "Name <email> (email link)". Safety reviewer and ops sign-off are never by link. Links aren't stored in the saved message copies that staff can read. Reminders no longer say "Reply APPROVE", which nothing read. |
+| Inbound email | **Added** | `.eml` folder or IMAP. Routed by `docs+<customer>@` address or the sender; the issue reference in the subject tells whose document it is. Unknown senders are set aside, unverified senders (no DMARC pass) always go to review, and every attachment goes through the photo reader as before. IMAP is untested against a live server. |
+| WhatsApp | **Added, untested live** | Meta Cloud API: opt-in required (`whatsapp_opt_in` in workers.json), STOP/START honoured, template message outside the 24-hour window and the full message when they reply, signed webhooks, photos and PDFs from a known worker read by the photo reader. |
+| Scheduling | **Added** | `opsengine-messages.timer` runs retries and inbound email every 15 minutes. |
+
+**Still to do for Phase 3:** choose and set up the email provider (SPF, DKIM, DMARC; its webhook
+adapter), set up the WhatsApp Business account and template, and do a real round trip with a test
+customer (the Phase 3 exit test).
+
+**Tests:** `tests/test_comms.py` adds 19 tests, for 206 in total.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.
@@ -366,8 +422,8 @@ only for reading photos, translating and drafting, and none of these has run liv
 | Web portal (customer, ops, reviewer) | 2 | Real engine behind it; 6 tests; no authentication (D6); local only |
 | Shareable clickable preview | 4 | Snapshot of engine output; buttons simulated in the browser |
 | Multi-customer support | 3 | Folder and database per customer; no tenancy, projects or shared people |
-| Security (authentication, authorisation, encryption) | 5 | None |
-| Data protection (GDPR) | 3 | Real data kept out of git; SAMPLE separation enforced. No retention, deletion, subject access, data processing agreements or encryption |
+| Security (authentication, authorisation, encryption) | 2 | Sign-in, MFA, CSRF, tenancy (Phase 2). Encryption at rest is left to the host. Not yet security reviewed |
+| Data protection (GDPR) | 3 | Real data kept out of git; SAMPLE separation enforced. Inventory, retention purge and subject access export built (Phase 2); periods, legal bases and processor agreements await a solicitor |
 | Translation | 6 | Correctly flags; live translation never run |
 | Mock AI mode | 1 | Tested; cannot fake reads of real photos or translations |
 | Customer onboarding checks | 1 | `new-customer` and `check`; tested |

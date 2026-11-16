@@ -75,6 +75,11 @@ def check_customer(folder, kb=None):
     for w in workers:
         if w.get("language", "en") not in LANGUAGE_NAMES:
             problems.append(f"workers.json: {w.get('id')} language {w.get('language')!r} is not supported yet")
+        if w.get("left_on"):
+            try:
+                parse_date(w["left_on"])
+            except ValueError:
+                problems.append(f"workers.json: {w.get('id')} left_on is not a date (YYYY-MM-DD)")
         for key in ("name", "phone", "role"):
             if not w.get(key):
                 problems.append(f"workers.json: {w.get('id')} has no {key}")

@@ -45,7 +45,7 @@ class Engine:
         for f in findings:
             seen.add(f["key"])
             data = json.dumps({**{k: f.get(k) for k in ("doc_id", "expires", "field", "current_value", "required_value")},
-                               "opened_on": self.today.isoformat()})
+                               "opened_on": self.today.isoformat(), "rules_version": self.kb.rules_version})
             existing = self.store.open_issue_by_key(f["key"])
             if existing:
                 if (existing["kind"], existing["detail"]) != (f["kind"], f["detail"]):
@@ -70,7 +70,7 @@ class Engine:
                 })
             self.store.audit("engine", "issue_opened", issue_id,
                              {"requirement": f["requirement"], "holder": f["holder"], "kind": f["kind"],
-                              "severity": f["severity"], "detail": f["detail"]})
+                              "severity": f["severity"], "detail": f["detail"], "rules_version": self.kb.rules_version})
             opened.append(issue_id)
         opened += self._raise_defect_actions()
         closed = []
@@ -80,6 +80,9 @@ class Engine:
             if issue["key"] not in seen:
                 self._resolve(issue, proof=issue["proof"] or "no longer detected on rescan", actor="engine")
                 closed.append(issue["id"])
+        self.store.audit("engine", "scan_completed", self.customer.company["id"],
+                         {"rules_version": self.kb.rules_version, "findings": len(findings), "opened": len(opened),
+                          "updated": len(updated), "closed": len(closed)})
         return {"opened": opened, "updated": updated, "closed": closed, "findings": len(findings)}
 
     # ---------------- act ----------------
@@ -299,13 +302,15 @@ class Engine:
         return events
 
     # ---------------- inbound photos (Claude vision) ----------------
-    def ingest_photo(self, path, holder, context=None, expected_type=None, received_via="whatsapp", call=None):
+    def ingest_photo(self, path, holder, context=None, expected_type=None, received_via="whatsapp", call=None,
+                     hold_reasons=()):
         """Read a card/certificate photo. Confident, consistent reads go straight into ingest();
         everything else waits in the human review queue. Nothing is ever guessed."""
         if holder != "company" and holder not in self.customer.workers:
             raise ValueError(f"unknown holder {holder}")
         ex = vision.read_photo(path, self.kb, expected_type=expected_type, call=call)
         confidence, reasons, values = vision.assess(ex, self.kb, self.customer, holder, expected_type)
+        reasons = list(reasons) + list(hold_reasons)  # e.g. an email whose sender couldn't be verified
         self.store.audit("engine", "photo_read", str(Path(path).name),
                          {"holder": holder, "source": ex["source"], "model": ex.get("model"),
                           "document_type": ex.get("document_type"), "confidence": confidence, "reasons": reasons})
@@ -385,7 +390,7 @@ class Engine:
         ts = now_iso()
         data = {"title": title, "owner": owner, "due": due, "evidence_required": evidence_required,
                 "raised_by": raised_by, "source": source, "note": detail, "defect": defect or title,
-                "opened_on": self.today.isoformat()}
+                "opened_on": self.today.isoformat(), "rules_version": self.kb.rules_version}
         self.store.insert_issue({
             "id": issue_id, "key": key, "requirement": "corrective_action", "holder": holder, "context": context,
             "category": "corrective", "kind": "corrective", "severity": severity, "status": "open",

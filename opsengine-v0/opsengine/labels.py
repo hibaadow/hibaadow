@@ -42,7 +42,7 @@ class Wording:
 
     def delivery(self, status):
         s = (status or "").split(" ")[0].split(":")[0]
-        key = "queued" if s.startswith("queued") else s
+        key = "queued" if s.startswith("queued") else "retrying" if "will retry" in (status or "") else s
         return self.data["delivery"].get(key, "not sent yet")
 
     def visible_fields(self, doc):

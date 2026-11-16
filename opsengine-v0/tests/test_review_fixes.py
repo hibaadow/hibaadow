@@ -76,41 +76,31 @@ class CriticalIsolation(Base):
 # 3. Grouped approvals, each still audited on its own
 class GroupedApprovals(Base):
     def test_group_shown_and_approve_all_audits_each(self):
-        web.Handler.portal = web.Portal(web.SAMPLES, self.tmp / "web")
-        httpd = ThreadingHTTPServer(("127.0.0.1", 0), web.Handler)
-        base = f"http://127.0.0.1:{httpd.server_address[1]}"
-        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        from helpers import DEMO, Client, start_portal
+        base, portal, httpd = start_portal(self.tmp / "web")
         cid = "bremore_groundworks_sample"
         try:
-            page = urllib.request.urlopen(urllib.request.Request(f"{base}/c/{cid}/home", headers={"Cookie": "role=customer"})).read().decode()
+            cust = Client(base)
+            cust.login(DEMO["customer"])
+            page = cust.get(f"/c/{cid}/home")
             self.assertIn("Book SOLAS Safe Pass for 4 workers, €690 total", page)
             self.assertIn("Review one by one", page)
-            eng = web.Handler.portal.engine(cid)
+            eng = portal.engine(cid)
             group = [s["id"] for s in eng.store.steps(state="awaiting_approval")
                      if s["action"] == "book_service" and eng.store.issue(s["issue_id"])["requirement"] == "safe_pass"]
             self.assertEqual(len(group), 4)
-
-            def post(role):
-                req = urllib.request.Request(f"{base}/c/{cid}/approve-group", method="POST", headers={"Cookie": f"role={role}", "Referer": base},
-                                             data=urllib.parse.urlencode({"steps": ",".join(group)}).encode())
-                try:
-                    urllib.request.build_opener(_NoRedirect).open(req)
-                except urllib.error.HTTPError as e:
-                    return urllib.parse.unquote(e.headers["Location"])
-            self.assertIn("Only the right person", post("ops"))
-            self.assertIn("Approved all 4", post("customer"))
-            eng = web.Handler.portal.engine(cid)
+            ops = Client(base)
+            ops.login(DEMO["ops"])
+            ops.get(f"/c/{cid}/ops")
+            self.assertIn("Only the right person", ops.flash(ops.post(f"/c/{cid}/approve-group", {"steps": ",".join(group)})[1]))
+            self.assertIn("Approved all 4", cust.flash(cust.post(f"/c/{cid}/approve-group", {"steps": ",".join(group)})[1]))
+            eng = portal.engine(cid)
             approved = [a["ref"] for a in eng.store.audit_rows() if a["event"] == "approved"]
             self.assertEqual(sorted(approved), sorted(group))  # one audit entry per approval
             self.assertEqual(len(eng.store.appointments()), 4)
         finally:
             httpd.shutdown()
             httpd.server_close()
-
-
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **k):
-        return None
 
 
 # 4. One issue for one fix, covering every contractor at the highest value

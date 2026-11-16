@@ -33,28 +33,33 @@ The demo runs a sample drylining firm (Liffey Interiors, 6 workers, 2 sites) thr
 Look in `state/demo/liffey_interiors/outbox/` to see every message, booking request,
 provider comparison and draft the engine produced.
 
-## Click around (web portal)
+## Web portal
 
 ```bash
-python -m opsengine web          # open http://127.0.0.1:8000
+python -m opsengine web --demo   # SAMPLE companies; pick a demo account on the sign-in page
 ```
 
-A working portal on the real engine, with the two SAMPLE customers loaded. Switch between
-three views at the top:
+Open http://127.0.0.1:8000. In demo mode the sign-in page lists demo accounts: two SAMPLE
+customer owners, the ops team and a safety reviewer. **Run next day** and **Reset** drive the
+demo clock.
 
-- **Customer**: can my team work on each site, what needs my OK (approve or decline), what is
-  being done, people, subcontractors, equipment, documents (upload a photo), corrective actions,
-  bookings, messages and the weekly report.
-- **Ops team**: across all customers: photos the AI wasn't sure about (accept or reject),
-  escalations, blocked steps, booking outcomes (attended / no-show), providers, insights, and
-  "simulate incoming documents".
-- **Safety reviewer**: drafted Safety Statements and RAMS, and high-risk corrective actions,
-  to release or sign off.
+For real customers (folders in `data/customers/`), create users first, then start the portal
+without `--demo`:
 
-**Run next day** runs the daily job so you can watch reminders and escalations happen;
-**Reset** starts the demo again. Every button calls the engine and is audited. Each view can
-only approve what that role is allowed to. It's a local demo with no login: don't put it on
-the internet with real customer data.
+```bash
+python -m opsengine user add --email you@yourfirm.ie --name "Your Name" --role admin
+python -m opsengine user add --email owner@customer.ie --name "Owner" --role customer --customer <customer id>
+python -m opsengine web
+```
+
+- Every page needs sign-in. Customer users only ever see their own company.
+- Staff (ops, safety reviewer, admin) set up a 6-digit code in an authenticator app at first
+  sign-in and enter it every time.
+- 5 wrong passwords lock an account for 15 minutes. Passwords are stored hashed, never in clear.
+- Approvals are recorded against the signed-in person's name and email.
+- Every sign-in, failure, lockout and account change is in an append-only, tamper-evident log.
+- Put it behind HTTPS before using it over the internet (set `OPSENGINE_SECURE_COOKIES=1`).
+  Hosting, backups and encryption at rest are the next part of Phase 2 (see `AUDIT.md`).
 
 ## Use it step by step
 
@@ -131,6 +136,27 @@ Scans and advances every customer, sends a reminder to whoever a step is waiting
 2 days (including approvers - a reminder never approves anything), and escalates to the ops
 team after 5 days. Every action goes into that customer's audit trail. Schedule it with cron:
 `5 7 * * * cd /path/to/opsengine-v0 && python -m opsengine daily`.
+
+## Running it for real (operations)
+
+```bash
+python -m opsengine nightly --backup-to /backups --checkpoint-file /checkpoints/audit.jsonl
+python -m opsengine backup make --to /backups      # verify PATH, restore PATH --to NEW_DIR
+python -m opsengine checkpoint write|verify --file /checkpoints/audit.jsonl
+python -m opsengine rules status                   # register --note "...", sign-off --version r-... --by "Name" --qualification "..."
+python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
+```
+
+`nightly` does, in order: refuse unsigned rules (in production), the daily run, the retention
+schedule (only once a solicitor has confirmed it), a signed audit checkpoint and its check, then a
+backup that is verified before old ones are pruned. It exits non-zero if any step fails.
+Admins manage users at `/admin/users`.
+
+Messages: `deliveries --retry` resends failed messages and `inbound-email --dir FOLDER` (or `--imap`)
+reads documents people email in. Customer approvals are emailed once a day with one-time links once
+`EMAIL_MODE=smtp` and `OPSENGINE_PUBLIC_URL` are set. WhatsApp needs a Meta Business account (see
+`deploy/README.md`). Deployment (Docker, HTTPS, the nightly timer, backups,
+restore drills) is in `deploy/README.md`.
 
 ## Settings and the Claude API key
 

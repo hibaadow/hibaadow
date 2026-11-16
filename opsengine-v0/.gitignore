@@ -7,3 +7,6 @@ __pycache__/
 data/customers/*
 !data/customers/_template/
 !data/customers/README.md
+
+# Production settings and secrets
+deploy/production.env

@@ -1,0 +1,7 @@
+[Unit]
+Description=Alert the ops team that %i failed
+
+[Service]
+Type=oneshot
+# Replace with your alerting (email, Slack webhook, pager). The run's details are in state/nightly-last.json.
+ExecStart=/usr/bin/logger -p user.err "OpsEngine: %i FAILED - check state/nightly-last.json"

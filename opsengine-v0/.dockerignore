@@ -1,0 +1,10 @@
+# Never bake data or secrets into the image: they arrive on mounted volumes and env.
+state/
+data/customers/*
+!data/customers/_template/
+!data/customers/README.md
+.env
+deploy/production.env
+**/__pycache__
+*.pyc
+tests/

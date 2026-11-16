@@ -1,0 +1,6 @@
+# Replace portal.example.ie with your domain; Caddy gets and renews the HTTPS certificate.
+portal.example.ie {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy opsengine:8000
+}
