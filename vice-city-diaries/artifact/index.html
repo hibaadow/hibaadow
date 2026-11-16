@@ -1,0 +1,43 @@
+<title>Vice City Diaries</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:ital,wght@0,500;0,600;0,700;0,800;1,700&display=swap">
+<style>
+  :root { color-scheme: dark; --bg: #05060c; --fg: #f3f3f7; --accent: #ff3d7f; --muted: #8a8fb0; }
+  html, body { margin: 0; height: 100%; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; background: var(--bg); color: var(--fg); font-family: Inter, system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; overflow: hidden; }
+  #wrap { position: relative; height: min(calc(100vh - 84px), calc((100vw - 32px) * 16 / 9)); aspect-ratio: 9 / 16; }
+  #stage { width: 100%; height: 100%; display: block; border-radius: 10px; background: #000; }
+  #start { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 14px; background: rgba(5, 6, 12, .55); border-radius: 10px; cursor: pointer; text-align: center; padding: 16px; }
+  #start h1 { font-family: Anton, Impact, sans-serif; font-weight: 400; letter-spacing: .04em; margin: 0; font-size: clamp(26px, 5vh, 46px); }
+  #start p { margin: 0; color: var(--muted); font-size: 13px; }
+  .play { width: 74px; height: 74px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+  .play::after { content: ""; border-left: 24px solid #fff; border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 6px; }
+  #bar { display: flex; gap: 8px; align-items: center; width: min(100%, 560px); padding: 0 16px; box-sizing: border-box; }
+  button { background: #171a2c; color: var(--fg); border: 1px solid #2b3050; border-radius: 999px; padding: 8px 14px;
+           font: 600 13px Inter, system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--accent); }
+  #prog { flex: 1; height: 4px; background: #23263d; border-radius: 4px; overflow: hidden; }
+  #prog > div { height: 100%; width: 0; background: var(--accent); }
+  #status { font-size: 12px; color: var(--muted); min-width: 40px; text-align: right; }
+  body.render #bar, body.render #start { display: none; }
+  body.render { display: block; }
+  body.render #wrap { height: auto; width: 1080px; aspect-ratio: auto; }
+  body.render #stage { width: 1080px; height: 1920px; border-radius: 0; }
+</style>
+<script>window.NO_DOWNLOADS = true; window.AUDIO_SRC = 'audio/soundtrack.mp3';</script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/" } }
+</script>
+
+  <div id="wrap">
+    <canvas id="stage" width="1080" height="1920"></canvas>
+    <div id="start"><div class="play"></div><h1>THE VICE CITY DIARIES</h1><p>Episode 1 · The Girl Who Had Nothing to Lose<br>Unofficial fan-made animation · tap to play with sound</p></div>
+  </div>
+  <div id="bar">
+    <button id="replay">↺ Replay</button>
+    <div id="prog"><div></div></div>
+    <span id="status">0:00</span>
+    <button id="export" title="Records the episode in real time with sound and downloads it">⬇ Export MP4</button>
+  </div>
+  <script type="module" src="js/main.js"></script>

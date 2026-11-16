@@ -979,7 +979,7 @@ window.EPISODE = { duration: DUR, ready: true };
 
 // ---------------------------------------------------------------- playback (browser)
 if (!RENDER) {
-  const audio = new Audio('audio/soundtrack.m4a'); audio.preload = 'auto';
+  const audio = new Audio(window.AUDIO_SRC || 'audio/soundtrack.m4a'); audio.preload = 'auto';
   const startEl = document.getElementById('start'), bar = document.querySelector('#prog > div'), status = document.getElementById('status');
   let playing = false, t0 = 0, clockStart = 0;
   const now = () => (audio.readyState >= 2 && !audio.paused ? audio.currentTime : (performance.now() - clockStart) / 1000 + t0);
@@ -996,6 +996,9 @@ if (!RENDER) {
   }
   loop();
   // export: records the canvas + soundtrack in real time with MediaRecorder (MP4 where the browser supports it)
+  if (window.NO_DOWNLOADS) {   // embedded viewers block downloads: point to the rendered MP4 instead
+    const ex = document.getElementById('export'); ex.textContent = 'MP4: see chat'; ex.disabled = true; ex.title = 'Downloads are blocked here; the rendered MP4 is delivered separately';
+  }
   document.getElementById('export').addEventListener('click', async () => {
     const types = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
     const type = types.find(x => window.MediaRecorder && MediaRecorder.isTypeSupported(x));
