@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE TABLE IF NOT EXISTS contact_prefs (
     address TEXT PRIMARY KEY, channel TEXT, opted_out_at TEXT, last_inbound_at TEXT
 );
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
+);
 CREATE TABLE IF NOT EXISTS people (
     pid TEXT PRIMARY KEY, kind TEXT, value TEXT UNIQUE COLLATE NOCASE, first_seen TEXT, last_seen TEXT
 );
@@ -394,6 +397,17 @@ class Store:
             closed = s["completed"] + s["no_show"] + s["cancelled"]
             s["reliability"] = round(s["completed"] / closed, 2) if closed else None
         return stats
+
+    # ---------- settings (e.g. the customer's standing approval) ----------
+    def setting(self, key, default=None):
+        row = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return json.loads(row["value"]) if row else default
+
+    def set_setting(self, key, value, by):
+        self.db.execute("INSERT INTO settings (key, value, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                        "value=excluded.value, updated_at=excluded.updated_at", (key, json.dumps(value), now_iso()))
+        self.db.commit()
+        self.audit(by, "setting_changed", key, {"value": value})
 
     # ---------- deliveries (retries, delivery reports, WhatsApp messages waiting for a reply window) ----------
     def add_delivery(self, **d):

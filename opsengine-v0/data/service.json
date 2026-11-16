@@ -1,0 +1,22 @@
+{
+  "_about": "What customers are told about our service in the portal (How it works): fees, what we do and don't do, who signs off, setup. SAMPLE wording and placeholders until the business sets its prices and names its safety reviewer.",
+  "sample": true,
+  "fee": {
+    "summary": "One monthly subscription per company, set out in your agreement",
+    "monthly_eur": null,
+    "covers": "Tracking, chasing, finding providers, booking admin, checking proof, records and reports, and our team's setup work"
+  },
+  "takes_commission": false,
+  "booking_fee_eur": 0,
+  "onboarding": {
+    "done_for_you": true,
+    "typical_days": 5,
+    "how": [
+      "Send us whatever you have: photos, scans, PDFs, a spreadsheet or a box file. Our team files it.",
+      "We message your workers directly on WhatsApp, in their own language, for anything missing.",
+      "We set up your sites, main contractors' requirements and subcontractors for you.",
+      "You check and approve the result. Nothing is booked or paid for during setup without your OK."
+    ]
+  },
+  "safety_reviewer": {"name": "Our safety reviewer (SAMPLE: to be named)", "qualification": "Chartered safety practitioner (SAMPLE: to be confirmed)"}
+}

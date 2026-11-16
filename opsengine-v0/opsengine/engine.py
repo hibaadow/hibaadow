@@ -120,6 +120,8 @@ class Engine:
                 return events
             if nxt["state"] in STOPS:
                 return events
+            if nxt["approval_role"] == "customer" and not nxt["approved_by"] and self._standing_approval(nxt, prior):
+                continue
             if nxt["approval_role"] and not nxt["approved_by"]:
                 self.store.update_step(nxt["id"], state="awaiting_approval",
                                        result=json.dumps({"awaiting_since": self.today.isoformat()}))
@@ -220,6 +222,45 @@ class Engine:
         if step["action"] == "request_document":
             return f"Ask {step['spec'].get('from')} about the {req['name']} for {who}: {issue['detail']}"
         return f"Approve the next step for {req['name']} ({who})"
+
+    # ---------------- standing approval (the customer's own limit) ----------------
+    STANDING_ACTIONS = ("book_service",)  # only bookings with a known price; never insurance, signatures or safety
+
+    def standing_approval(self):
+        """The customer's rule for approving small bookings without asking each time, or None."""
+        rule = self.store.setting("standing_approval")
+        if rule is None:
+            limit = (self.customer.company.get("approval_limits") or {}).get("auto_approve_up_to_eur") or 0
+            rule = {"limit_eur": limit, "monthly_cap_eur": None, "set_by": f"{self.customer.company['owner']['name']} (in your setup details)"} if limit else None
+        return rule if rule and rule.get("limit_eur") else None
+
+    def set_standing_approval(self, limit_eur, monthly_cap_eur, by):
+        if not 0 <= limit_eur <= 5000 or (monthly_cap_eur is not None and not 0 < monthly_cap_eur <= 50000):
+            raise ValueError("limit must be €0 to €5,000 each, and a monthly cap €1 to €50,000")
+        self.store.set_setting("standing_approval", {"limit_eur": limit_eur, "monthly_cap_eur": monthly_cap_eur,
+                                                     "set_by": by, "set_on": self.today.isoformat()} if limit_eur else None, by)
+
+    def auto_spent_this_month(self):
+        return self.store.setting(f"standing_approval_spent:{self.today:%Y-%m}", 0)
+
+    def _standing_approval(self, step, prior):
+        """Approve a booking under the customer's own limit. Recorded as the customer's approval, by rule."""
+        rule = self.standing_approval()
+        price = ((prior.get("find_provider") or {}).get("recommended") or {}).get("price_eur")
+        if not rule or step["action"] not in self.STANDING_ACTIONS or price is None or price > rule["limit_eur"]:
+            return False
+        spent = self.auto_spent_this_month()
+        if rule.get("monthly_cap_eur") and spent + price > rule["monthly_cap_eur"]:
+            return False
+        by = f"Standing approval set by {rule['set_by']} (bookings up to {money(rule['limit_eur'])})"
+        self.store.update_step(step["id"], approved_by=by, approved_at=now_iso())
+        key = f"standing_approval_spent:{self.today:%Y-%m}"
+        self.store.db.execute("INSERT INTO settings (key, value, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                              "value=excluded.value, updated_at=excluded.updated_at", (key, json.dumps(spent + price), now_iso()))
+        self.store.db.commit()
+        self.store.audit("engine", "auto_approved", step["id"], {"price_eur": price, "limit_eur": rule["limit_eur"],
+                                                                 "spent_this_month_eur": spent + price, "rule_set_by": rule["set_by"]})
+        return True
 
     def approval_queue(self):
         out = []

@@ -30,7 +30,7 @@ from . import approval_links, auth, config, delivery, inbound, llm, scheduler, w
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
-from .labels import money, nice_date
+from .labels import fee_line, money, nice_date, service
 from .report import (ACTION_WORDS, STATE_WORDS, compliance_register, current_step, customer_stats, metrics,
                      risk_overview, title_of, weekly_summary, where_it_stands)
 
@@ -42,9 +42,9 @@ e_ = html.escape
 
 VIEW_ROLE = {"customer": "customer", "ops": "ops", "admin": "ops", "reviewer": "reviewer"}
 TABS = {"customer": {"home", "issues", "issue", "people", "subcontractors", "equipment", "documents", "actions",
-                     "bookings", "messages", "message", "report"},
+                     "bookings", "messages", "message", "report", "how", "settings"},
         "ops": {"ops", "issues", "issue", "bookings", "providers", "documents", "actions", "messages", "message", "insights",
-                "home", "people", "subcontractors", "equipment", "report"},
+                "home", "people", "subcontractors", "equipment", "report", "how", "settings"},
         "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message"}}
 
 
@@ -233,9 +233,11 @@ def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
     names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
     tabs = {"customer": [("home", "Overview"), ("issues", "Issues"), ("people", "People"), ("subcontractors", "Subcontractors"),
                          ("equipment", "Equipment"), ("documents", "Documents"), ("actions", "Corrective actions"),
-                         ("bookings", "Bookings"), ("messages", "Messages"), ("report", "Weekly report")],
+                         ("bookings", "Bookings"), ("messages", "Messages"), ("report", "Weekly report"),
+                         ("settings", "Approvals"), ("how", "How it works")],
             "ops": [("ops", "Ops queue"), ("issues", "Issues"), ("bookings", "Bookings"), ("providers", "Providers"),
-                    ("documents", "Documents"), ("actions", "Corrective actions"), ("messages", "Messages"), ("insights", "Insights")],
+                    ("documents", "Documents"), ("actions", "Corrective actions"), ("messages", "Messages"), ("insights", "Insights"),
+                    ("how", "How it works")],
             "reviewer": [("reviewer", "To review"), ("actions", "Corrective actions"), ("documents", "Documents")]}[role]
     nav = "".join(f'<a class="{"on" if t == tab else ""}" href="/c/{cid}/{t}">{label}</a>' for t, label in tabs)
     pick = ""
@@ -400,8 +402,17 @@ def prior_results(eng, step):
     return {p["action"]: p["result"] for p in eng.store.steps(step["issue_id"]) if p["state"] in DONE and p["result"]}
 
 
+def cost_note(eng, s):
+    """For anything that costs money: who gets paid what, and what we charge, kept apart."""
+    rec = (prior_results(eng, s).get("find_provider") or {}).get("recommended")
+    if s["action"] != "book_service" or not rec:
+        return ""
+    return (f'<div class="small" style="margin-top:4px">{money(rec["price_eur"])} paid to {e_(rec["name"])} at their price · '
+            f'{e_(fee_line())}</div>')
+
+
 def approval_row(eng, cid, role, s):
-    return (f'<div class="row"><div><h3>{e_(eng.approval_summary(s, prior_results(eng, s)))}</h3>'
+    return (f'<div class="row"><div><h3>{e_(eng.approval_summary(s, prior_results(eng, s)))}</h3>{cost_note(eng, s)}'
             f'<div class="meta"><a href="/c/{cid}/issue/{s["issue_id"]}">{s["issue_id"]}</a></div></div>'
             f'<div class="actions">{approve_buttons(cid, s, role)}</div></div>')
 
@@ -422,7 +433,7 @@ def approval_groups(eng, cid, role, steps):
         names = [eng.customer.holder_name(i["holder"]) for _, i in members]
         if action == "book_service":
             total = sum((prior_results(eng, s).get("find_provider") or {}).get("recommended", {}).get("price_eur", 0) for s, _ in members)
-            title = f"Book {req} for {len(members)} workers, {money(total)} total"
+            title = f"Book {req} for {len(members)} workers, {money(total)} total, paid to the course providers"
         else:
             first = eng.approval_summary(members[0][0], prior_results(eng, members[0][0]))
             title = f"{len(members)} similar approvals: {first.split(' for ')[0]} ({req})"
@@ -430,8 +441,9 @@ def approval_groups(eng, cid, role, steps):
         allowed = ROLE_APPROVES[role] == members[0][0]["approval_role"]
         buttons = (f'<form class="inline" method="post" action="/c/{cid}/approve-group"><input type="hidden" name="steps" value="{e_(ids)}">'
                    f'<button>Approve all {len(members)}</button></form>') if allowed else ""
+        extra = f'<div class="small">{e_(fee_line()[0].upper() + fee_line()[1:])}.</div>' if action == "book_service" else ""
         out.append(f'<div class="card"><div class="actions" style="justify-content:space-between"><h3>{e_(title)}</h3>{buttons}</div>'
-                   f'<span class="small muted">{e_(", ".join(names))}</span>'
+                   f'<span class="small muted">{e_(", ".join(names))}</span>{extra}'
                    f'<details><summary>Review one by one</summary><div class="list" style="margin-top:8px">'
                    f'{"".join(approval_row(eng, cid, role, s) for s, _ in members)}</div></details></div>')
     return "".join(out)
@@ -442,6 +454,105 @@ def issue_row(eng, cid, i, extra=""):
     return (f'<div class="row"><a href="/c/{cid}/issue/{i["id"]}"><h3>{e_(title_of(eng, i))}</h3>'
             f'<div class="meta">{e_(who)} · {e_(where_it_stands(eng, i))} · <span class="mono">{i["id"]}</span></div></a>'
             f'<div class="actions">{pill(i["severity"])}{extra}</div></div>')
+
+
+def setup_progress(eng):
+    rows = [r for r in compliance_register(eng) if r["requirement"] != "safe_to_use"]
+    on_file = sum(1 for r in rows if r["document"])
+    return on_file, len(rows)
+
+
+def view_how(portal, eng, cid, role):
+    """The customer's questions answered: who is responsible, what it costs, who does setup, workers' data."""
+    from . import gdpr
+    svc = service()
+    c = eng.customer
+    rev = svc["safety_reviewer"]
+    on_file, total = setup_progress(eng)
+    r = gdpr.retention(customer=c)
+    subs = json.loads((ROOT / "docs" / "sub-processors.json").read_text(encoding="utf-8"))
+    dp = c.company.get("data_protection") or {}
+    if c.company.get("sample"):
+        dpa = "This is a SAMPLE company, so no agreement is needed."
+    elif dp.get("dpa_signed_on"):
+        dpa = f"Your data processing agreement was signed on {nice_date(dp['dpa_signed_on'])}."
+    else:
+        dpa = "Your data processing agreement isn't signed yet. We don't handle your workers' data until it is."
+    fee = svc["fee"]
+    fee_amount = f"{money(fee['monthly_eur'])} a month" if fee.get("monthly_eur") else fee["summary"]
+    li = lambda items: "<ul>" + "".join(f"<li>{e_(x)}</li>" for x in items) + "</ul>"
+    return f"""<section><h1>How OpsEngine works for you</h1>
+<p class="note">Plain answers to the questions customers ask us most: who is responsible for what, what it costs, who does the setup, and what happens to your workers' data.</p></section>
+<section><h2>Who is responsible for what</h2><div class="grid">
+<div class="card"><h3>We do</h3>{li([
+    "Track every card, certificate, insurance and inspection, and spot gaps before they stop work.",
+    "Chase workers, subcontractors and brokers for documents, in their own language.",
+    "Find the cheapest or fastest provider in time, and do the booking admin once you approve.",
+    "Check every document we receive. Anything we're not sure about goes to a person on our team.",
+    "Keep a complete record of who did what and when, ready for any main contractor or audit."])}</div>
+<div class="card"><h3>You decide</h3>{li([
+    "Anything that costs money or commits you. Nothing is booked or paid for without your OK, or your own standing approval.",
+    "Who works on your sites. We tell you who is clear and who isn't; the call is yours.",
+    "How long your workers' data is kept (we suggest periods; you choose)."])}
+<p class="small">You stay the employer and the contractor, with the legal duties that come with that. We help you meet them; we don't take them over.</p></div>
+<div class="card"><h3>A qualified person signs off</h3>{li([
+    f"Safety Statements, method statements (RAMS) and high-risk corrective actions are released only by {rev['name']}, {rev['qualification']}.",
+    "Training, inspections and repairs are done by qualified providers. We never mark them done without their proof.",
+    "Translated safety content is checked by a native speaker before it's used."])}</div>
+<div class="card"><h3>We never</h3>{li([
+    "Act as your PSCS or PSDP, or sign anything in a legal capacity. We put you in touch with qualified partners.",
+    "Guess a document. If a photo isn't clear, a person checks it.",
+    "Approve spending on your behalf beyond the limit you set."])}</div></div>
+<p class="small muted">Your agreement with us sets out liability in full. Every action, approval and decision is recorded, so you can always see who did what and when.</p></section>
+<section><h2>What it costs</h2><div class="grid">
+<div class="card"><h3>Our fee</h3><p><b>{e_(fee_amount)}</b></p><p class="small">{e_(fee["covers"])}.</p></div>
+<div class="card"><h3>Courses and inspections</h3><p><b>Paid to the provider, at their price</b></p>
+<p class="small">Every approval shows the provider's price on its own line. {e_(fee_line(svc)[0].upper() + fee_line(svc)[1:])}.</p></div></div></section>
+<section><h2>Setup: our team does it</h2>
+<p><b>You don't have to upload your certs.</b> Our team sets you up, usually within {svc["onboarding"]["typical_days"]} working days.</p>{li(svc["onboarding"]["how"])}
+<div class="kpis"><div class="kpi"><b>{on_file} of {total}</b><span>required records on file so far</span></div></div></section>
+<section><h2>Your workers' data</h2>
+<p>Card photos and worker details are personal data. You control them; we look after them for you under a data processing agreement. {e_(dpa)}</p>
+<div class="grid"><div class="card"><h3>What we hold</h3>{li([
+    "Workers' names, roles, phone numbers and preferred language.",
+    "Card and certificate details, and photos of the cards they send us.",
+    "The messages we send and receive about their documents."])}
+<p class="small">We only read the text on a card. We never use the photo to recognise faces.</p></div>
+<div class="card"><h3>Who sees it</h3>{li([
+    "You, and our team when they need to.",
+    "Main contractors you work for: proof that your workers are compliant. For employment terms, only a confirmation, never the contract.",
+    "Course providers: only what a booking you approved needs."])}</div>
+<div class="card"><h3>How long we keep it</h3>{li([
+    f"Card photos: {r['leaver_photos_months']} months after someone leaves.",
+    f"Training records: {r['leaver_records_years']} years after someone leaves, in case of an injury claim. Then they're deleted and the person is removed from our records.",
+    f"Photos a person rejected: {r['review_uploads_days']} days.",
+    "WhatsApp preferences: deleted when someone leaves."])}
+<p class="small">These are our suggested periods{' and the ones you chose' if r.get('customer_choices') else ''}. You can change them.</p></div>
+<div class="card"><h3>Your workers' rights</h3>{li([
+    "We can give any worker a full copy of what we hold about them.",
+    "We only message workers on WhatsApp once they've opted in, and STOP ends it.",
+    "Everything is hosted in the EU."])}
+<p class="small">Outside services we use (version {subs["version"]} of the list): {e_(", ".join(x["name"] for x in subs["sub_processors"]))}. We tell you before adding one, and you can object.</p></div></div></section>"""
+
+
+def view_settings(portal, eng, cid, role):
+    rule = eng.standing_approval()
+    spent = eng.auto_spent_this_month()
+    limit = rule["limit_eur"] if rule else 0
+    cap = (rule or {}).get("monthly_cap_eur") or ""
+    state = (f'<p><b>On:</b> bookings up to {money(limit)} each are approved automatically'
+             f'{f", up to {money(cap)} a month" if cap else ""}. Set by {e_(rule["set_by"])}. '
+             f'Used so far this month: {money(spent)}.</p>' if rule else
+             '<p><b>Off:</b> every booking waits for your OK.</p>')
+    form = "" if role != "customer" else f"""<form class="card" method="post" action="/c/{cid}/standing-approval" style="display:grid;gap:10px;max-width:420px">
+<label for="limit">Approve bookings automatically up to (€ each, 0 = off)<input id="limit" name="limit" type="number" min="0" max="5000" step="1" value="{e_(str(limit))}"></label>
+<label for="cap">But no more than (€ a month, optional)<input id="cap" name="cap" type="number" min="1" max="50000" step="1" value="{e_(str(cap))}"></label>
+<button>Save</button></form>"""
+    return f"""<section><h1>Approvals</h1>
+<p class="note">Fewer taps: let small, routine bookings (training courses, inspections) go ahead without asking you each time.
+Each one is still recorded and shown to you, with the provider's price. Insurance changes, signatures and anything over your limit always wait for your OK.
+Safety sign-off always needs the safety reviewer. The limit applies to new bookings; anything already waiting stays for you to approve.</p>
+{state}{form}{'' if role == 'customer' else '<p class="small muted">Only the customer can change this.</p>'}</section>"""
 
 
 def view_home(portal, eng, cid, role):
@@ -463,11 +574,22 @@ def view_home(portal, eng, cid, role):
     working = "".join(issue_row(eng, cid, i) for i in open_issues[:8])
     done = eng.store.issues("resolved")[-5:]
     st = customer_stats(eng)
+    rule = eng.standing_approval()
+    auto_note = (f", or it's a booking under the {money(rule['limit_eur'])} limit you set (<a href=\"/c/{cid}/settings\">change</a>)" if rule
+                 else f' (<a href="/c/{cid}/settings">let small bookings go ahead automatically</a>)')
+    auto = [x for x in eng.store.steps() if (x["approved_by"] or "").startswith("Standing approval")][-5:]
+    auto_list = ('<h3 style="margin-top:14px">Approved automatically under your limit</h3><div class="list">' +
+                 "".join(f'<div class="row"><div><h3>{e_(eng.approval_summary(x, prior_results(eng, x)))}</h3>{cost_note(eng, x)}</div></div>' for x in reversed(auto)) +
+                 "</div>") if auto else ""
+    on_file, total = setup_progress(eng)
+    setup = (f'<section><h2>Setup</h2><p>Our team is setting you up: <b>{on_file} of {total}</b> required records are on file. '
+             f'You don\'t need to upload anything; we ask your workers directly. <a href="/c/{cid}/how">How it works ›</a></p></section>'
+             if total and on_file < total * 0.8 else "")
     return f"""
 <section><div><span class="muted small">{e_(c.company["name"])}</span><h1>Can your team work on site?</h1></div>
 <div class="grid">{''.join(sites)}</div></section>
-<section><h2>Needs your OK ({len(yours)})</h2><p class="note">Nothing that costs money or commits you happens until you approve it. {len(others)} other item(s) are with the safety reviewer or our team.</p>
-<div class="list">{appr}</div></section>
+<section><h2>Needs your OK ({len(yours)})</h2><p class="note">Nothing that costs money or commits you happens until you approve it{auto_note}. {len(others)} other item(s) are with the safety reviewer or our team.</p>
+<div class="list">{appr}</div>{auto_list}</section>{setup}
 <section><h2>We're working on ({len(open_issues)})</h2><div class="list">{working}</div>
 <a href="/c/{cid}/issues">See all issues ›</a></section>
 <section><h2>Recently sorted</h2><div class="list">{''.join(issue_row(eng, cid, i) for i in reversed(done)) or '<p class="muted">Nothing sorted yet. Try uploading a card photo under Documents.</p>'}</div></section>
@@ -811,7 +933,7 @@ def view_insights(portal, eng, cid, role):
 # ---------------- HTTP ----------------
 
 COOKIE = "opsengine_session"
-CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence"}
+CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval"}
 STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate"}
 
 
@@ -1010,7 +1132,7 @@ class Handler(BaseHTTPRequestHandler):
             eng = p.engine(cid)
             views = {"home": view_home, "documents": view_documents, "actions": view_actions, "bookings": view_bookings,
                      "messages": view_messages, "report": view_report, "ops": view_ops, "reviewer": view_reviewer,
-                     "providers": view_providers, "insights": view_insights}
+                     "providers": view_providers, "insights": view_insights, "how": view_how, "settings": view_settings}
             if tab in views:
                 body = views[tab](p, eng, cid, role)
             elif tab == "issues":
@@ -1155,6 +1277,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self.redirect(back, f"Approved by {user['name']}. OpsEngine has carried on.")
                 eng.reject(step["id"], by, f.get("reason", ""))
                 return self.redirect(back, "Declined. Our team will follow up.")
+            if act == "standing-approval":
+                try:
+                    limit = int(float(f.get("limit") or 0))
+                    cap = int(float(f["cap"])) if f.get("cap") else None
+                    eng.set_standing_approval(limit, cap, by)
+                except ValueError as exc:
+                    return self.redirect(f"/c/{cid}/settings", f"!Not saved: {exc}.")
+                return self.redirect(f"/c/{cid}/settings", "Saved. New bookings under your limit will go ahead automatically." if limit
+                                     else "Saved. Every booking will wait for your OK.")
             if act == "upload":
                 p.uploads.mkdir(parents=True, exist_ok=True)
                 if f.get("sample"):

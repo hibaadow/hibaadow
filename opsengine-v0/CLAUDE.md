@@ -26,7 +26,10 @@ stopping only at approval gates or while it waits for proof.
 These are product rules, not style preferences. Never weaken them in code.
 
 1. **Money and commitments need customer approval.** Bookings, quotes accepted and insurance
-   changes always have `"approval": "customer"` in the playbook.
+   changes always have `"approval": "customer"` in the playbook. The only shortcut is the customer's
+   own standing approval (`Engine.set_standing_approval`, set by a customer user, never by staff): bookings
+   with a known price under their limit and monthly cap go ahead, recorded as theirs. Never extend it to
+   insurance, signatures or safety sign-off.
 2. **Safety documents need a competent human.** Anything drafted (Safety Statement, RAMS)
    goes through `"approval": "safety_reviewer"` before release. Drafts are always marked DRAFT.
 3. **The engine never takes legal duty-holder roles.** No PSCS/PSDP appointments, no legal
@@ -200,6 +203,9 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   read those). Inbound files are never trusted for the channel they came by: unknown senders are kept
   aside, unverified email senders always go to review, and everything still goes through the photo reader.
   Webhooks (`/hooks/email`, `/hooks/whatsapp`) need a valid signature.
+- **Customer trust pages:** `data/service.json` holds what customers are told about fees, setup and the
+  safety reviewer (SAMPLE until the business sets them). Provider prices and our fee are always shown
+  apart (`labels.fee_line`). The "How it works" tab answers who is responsible, cost, setup and data.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

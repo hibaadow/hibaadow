@@ -18,6 +18,7 @@ from pathlib import Path
 
 from . import approval_links, delivery
 from .actions import ActionContext
+from .labels import fee_line
 from .engine import DONE, Engine
 from .knowledge import ROOT
 
@@ -203,7 +204,9 @@ def send_approval_requests(engine):
     ctx = _context(engine, engine.store.issue(first["issue_id"]), first)
     subject, body = ctx.render("approval_request", approval_count_phrase=count[0].upper() + count[1:],
                                approval_count_phrase_lower=count, approval_items="\n\n".join(items),
-                               approval_footer=approval_links.LINK_FOOTER if links else approval_links.PORTAL_FOOTER)
+                               approval_footer=(f"Course and inspection prices are paid to the provider at their price: {fee_line()}.\n\n"
+                                                if any(st["action"] == "book_service" for st in new) else "") +
+                               (approval_links.LINK_FOOTER if links else approval_links.PORTAL_FOOTER))
     ctx.write_outbox(f"approval-request-{engine.today.isoformat()}", _approver(engine, "customer"), subject, body,
                      {"Items": ", ".join(s["id"] for s in new)})
     for step in new:
