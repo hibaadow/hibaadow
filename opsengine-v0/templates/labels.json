@@ -44,5 +44,5 @@
                "failed": "could not be sent (the ops team has been told)", "retrying": "could not be sent yet (trying again)",
                "not": "not sent (the ops team has been told)", "notified": "notified on WhatsApp; the full message goes when they reply",
                "delivered": "delivered", "bounced": "bounced (the ops team has been told)"},
-  "hidden_document_fields": ["id", "type", "holder", "context", "file", "received_via", "extraction", "evidence", "defects", "action", "defect"]
+  "hidden_document_fields": ["id", "type", "holder", "context", "file", "received_via", "extraction", "evidence", "defects", "action", "defect", "corrected_by_challenge"]
 }

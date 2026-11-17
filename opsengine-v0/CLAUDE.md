@@ -218,6 +218,10 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   allowance waits in the reviewer queue (`LimitReached`) until an admin adds capacity. One amended
   resubmission (`Engine.resubmit_draft`) is included in a draft's original review. Ordinary RAMS and
   Safety Statement reviews are never specialist work. Admins change limits at `/admin/plans` (audited).
+- **Challenges** (`opsengine/challenges.py`): anyone can dispute a status (portal "Challenge it", or a worker
+  replying WRONG/CHALLENGE on WhatsApp). A person on the ops team always decides, within 5 days (overdue ones
+  escalate). The issue stays visible and still counts; only reminders pause. Upheld needs a corrected record
+  that goes through `engine.ingest` checks; never resolve an issue on a challenge alone.
 - **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
   the photo reader is validated, claim the rules are approved, claim safety reviews run before
   `service.json` has an appointed reviewer, or send real messages before email/WhatsApp are tested.

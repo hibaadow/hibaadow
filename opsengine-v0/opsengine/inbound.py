@@ -194,6 +194,14 @@ def handle_whatsapp(customers, state_dir, payload, today=None, transport=None, c
             delivery.set_opt_out(e.store, m["from"], True)
             out.append({"status": "opted_out", "worker": wid})
             continue
+        if word.startswith(("CHALLENGE", "WRONG")):
+            from . import challenges
+            mine = [i for i in e.store.issues("open") if i["holder"] == wid and not challenges.open_for(e.store, i["id"])]
+            reason = (m["text"] or "").strip()
+            ch = challenges.raise_challenge(e, mine[0]["id"] if len(mine) == 1 else "", name, reason if len(reason) >= 5 else
+                                            "worker says their status is wrong", channel="whatsapp", holder=wid)
+            out.append({"status": "challenge_raised", "worker": wid, "challenge": ch})
+            continue
         if word == "START":
             delivery.set_opt_out(e.store, m["from"], False)
         sent = delivery.reply_window_opened(e.store, m["from"])

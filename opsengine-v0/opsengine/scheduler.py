@@ -107,7 +107,10 @@ def _escalate(engine, issue, step, days):
 def chase_stalled(engine):
     """Remind after CHASE_AFTER_DAYS, escalate after ESCALATE_AFTER_DAYS. Returns events."""
     events = []
+    from .challenges import open_for
     for issue in engine.store.issues("open"):
+        if open_for(engine.store, issue["id"]):
+            continue  # disputed: a person is checking, so the worker isn't chased meanwhile (the issue stays open)
         step = next((s for s in engine.store.steps(issue["id"]) if s["state"] not in DONE), None)
         if step and step["state"] in ("waiting", "awaiting_approval"):
             since = _since(step)
@@ -233,6 +236,8 @@ def run_customer(folder, state_dir=None, today=None):
     advanced = engine.advance()
     retried = delivery.retry_due(engine.store, engine.customer)
     requests = send_approval_requests(engine)
+    from .challenges import overdue as overdue_challenges
+    late_challenges = overdue_challenges(engine)
     from .limits import notify as usage_notices
     notices = usage_notices(engine)
     chased = chase_stalled(engine)
@@ -245,7 +250,7 @@ def run_customer(folder, state_dir=None, today=None):
                "escalated": [ref for ref, what in chased if what.startswith("escalated")],
                "overdue_actions": [ref for ref, _ in overdue],
                "appointments_followed_up": [ref for ref, _ in followed],
-               "approval_requests_sent": len(requests), "usage_notices": [f"{m} {lvl}%" for m, lvl in notices], "messages_retried": len(retried),
+               "challenges_overdue": late_challenges, "approval_requests_sent": len(requests), "usage_notices": [f"{m} {lvl}%" for m, lvl in notices], "messages_retried": len(retried),
                "approvals_waiting": len(engine.approval_queue()),
                "reviews_waiting": len(engine.review_queue())}
     engine.store.audit("scheduler", "daily_run_finished", summary["customer"], summary)
