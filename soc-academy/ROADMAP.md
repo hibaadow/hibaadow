@@ -1,92 +1,90 @@
-# 6-Month SOC Analyst Roadmap
+# SOC Analyst Roadmap
 
-Starts **Monday 9 November 2026** · finishes early May 2027.
+Hibo's plan: **Microsoft-focused SOC Analyst**, free only, in Ireland 🇮🇪
+- **Phase 1 (Nov–Feb, 12 weeks + Christmas break):** skills, Microsoft SOC tools, portfolio
+- **Phase 2 (Feb–May):** free certs, CV and job applications
+- **After that:** grow from SOC analyst to cybersecurity engineer
 
-Goal: job-ready **SOC Analyst Tier 1** in 26 weeks (~15–20 hrs/week), then grow into a **cybersecurity engineer**.
+Study time: 3 hours a day. Every topic gets a Professor Byte video episode.
 
-> Prices, exam versions and free offers change. Check each official site before paying.
+> Free offers, prices and links change. Check each official site before relying on it.
 
-## The core stack (what you'll use most)
+---
 
-| What | Why | Cost |
+## Phase 1 — November to February
+
+### Weeks 1–3: IT foundations
+
+| Week | Dates | Topic | Free practice |
+|---|---|---|---|
+| 1 | 9–15 Nov | **Networking:** IP, packets, routers, ports, TCP/UDP, OSI model (Episodes 1–2 ✅) | TryHackMe Pre Security: What is Networking?, Intro to LAN, OSI Model |
+| 2 | 16–22 Nov | **IP addresses and DNS:** public vs private IPs, subnets basics, DHCP, DNS records and lookups | TryHackMe "DNS in Detail"; run `ipconfig` / `nslookup` on your own laptop |
+| 3 | 23–29 Nov | **Windows fundamentals + Linux basics:** users, processes, services, Event Viewer, PowerShell; Linux files, permissions, `grep`, logs | TryHackMe Windows Fundamentals 1 + Linux Fundamentals 1; OverTheWire Bandit levels 0–10 |
+
+### Weeks 4–6: Cybersecurity
+
+| Week | Dates | Topic | Free practice |
+|---|---|---|---|
+| 4 | 30 Nov–6 Dec | **Malware and phishing:** malware types, ransomware, phishing emails, headers, SPF/DKIM/DMARC, suspicious links | Professor Messer Security+ malware + social engineering videos; LetsDefend free phishing alerts |
+| 5 | 7–13 Dec | **Brute-force attacks + authentication and access control:** failed logons (event 4625), password spraying, MFA, least privilege, Entra ID basics | Microsoft Learn SC-900 identity modules; read real 4624/4625 log examples |
+| 6 | 14–20 Dec | **Firewalls and endpoint security:** firewall rules and logs, IDS/IPS, antivirus vs EDR, what an endpoint alert looks like | Professor Messer Security+ security architecture videos; Microsoft Learn Defender for Endpoint intro module |
+| 🎄 | 21–27 Dec | **Christmas break.** Rest! Optional: rewatch episodes | |
+
+### Weeks 7–10: SOC tools (Microsoft)
+
+| Week | Dates | Topic | Free practice |
+|---|---|---|---|
+| 7 | 28 Dec–3 Jan | **SIEM investigation + Microsoft Sentinel:** what a SIEM does, logs → analytics rules → incidents, workbooks | Microsoft Learn SC-200 path (Sentinel modules); Microsoft Sentinel Ninja Training (free) |
+| 8 | 4–10 Jan | **KQL queries:** `where`, `project`, `summarize`, `count`, `bin`, `join`; hunting failed logons and suspicious processes | Microsoft Learn "Write your first query with KQL"; [Kusto Detective Agency](https://detective.kusto.io) (free KQL game); [Must Learn KQL](https://github.com/rod-trent/MustLearnKQL); Log Analytics demo workspace ([aka.ms/LADemo](https://aka.ms/LADemo)) |
+| 9 | 11–17 Jan | **Microsoft Defender XDR:** Defender for Endpoint, Office 365, Identity; incidents, device timeline, advanced hunting | Microsoft Learn SC-200 Defender XDR modules; Microsoft's free Defender interactive guides |
+| 10 | 18–24 Jan | **Security alert triage:** true vs false positive, severity, evidence, MITRE ATT&CK, escalate / contain / close | LetsDefend free alerts; daily Professor Byte alert drills |
+
+**Lab note:** a free Azure account lets you try Microsoft Sentinel on a small trial, but Azure asks for a bank card to prove you're real. If you'd rather not, the Log Analytics demo workspace, Kusto Detective Agency and Microsoft Learn sandboxes cover KQL for free with no card.
+
+### Weeks 11–12: Practical experience
+
+| Week | Dates | Topic | Free practice |
+|---|---|---|---|
+| 11 | 25–31 Jan | **Investigate simulated attacks + SOC labs:** phishing, brute force, malware, data theft scenarios | CyberDefenders free labs; Blue Team Labs Online free investigations; LetsDefend free alerts |
+| 12 | 1–7 Feb | **Investigation reports + small portfolio:** write 3 reports like a real ticket; publish them on GitHub with your KQL queries | Professor Byte reviews each report; pin them on this GitHub profile |
+
+**End of Phase 1 goal:** 3 written investigation reports, a folder of your own KQL hunting queries, and confidence explaining a phishing, brute-force and malware investigation.
+
+---
+
+## Phase 2 — February to May: certs and jobs
+
+| Weeks | Dates | Goal |
 |---|---|---|
-| [TryHackMe](https://tryhackme.com) — Pre Security, Cyber Security 101, **SOC Level 1**, SOC Level 2 | Best guided hands-on path for SOC work | Free tier + premium monthly |
-| [Professor Messer](https://www.professormesser.com) — Network+ and Security+ videos | Free, complete exam video courses | Free |
-| [LetsDefend](https://letsdefend.io) — SOC Analyst path + alert practice | Feels like a real SOC console | Free tier + premium |
-| [Splunk free training](https://www.splunk.com/en_us/training/free-courses/overview.html) + Boss of the SOC datasets | Splunk is the most asked-for SIEM in job ads | Free |
-| [CyberDefenders](https://cyberdefenders.org) and [Blue Team Labs Online](https://blueteamlabs.online) | Real investigations for your portfolio | Free tier |
-| [Malware-Traffic-Analysis.net](https://www.malware-traffic-analysis.net) | Free Wireshark exercises with answers | Free |
-| [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) | Linux command line by playing | Free |
-| [MITRE ATT&CK](https://attack.mitre.org) | The common language of every SOC | Free |
-
-**Real YouTube teachers (free):** [Professor Messer](https://www.youtube.com/@professormesser) (Network+ / Security+), [Practical Networking](https://www.youtube.com/@PracticalNetworking) (networking explained simply), [NetworkChuck](https://www.youtube.com/@NetworkChuck) (fun intros, Linux, labs), [MyDFIR](https://www.youtube.com/@MyDFIR) (SOC analyst life and home labs), [John Hammond](https://www.youtube.com/@_JohnHammond) (malware and CTFs), [13Cubed](https://www.youtube.com/@13Cubed) (Windows forensics), [Simply Cyber](https://www.youtube.com/@SimplyCyber) (careers and getting hired).
-
-**Certs, in order:** CompTIA **Security+** (most UK/US SOC job ads ask for it) → **BTL1** (Security Blue Team, practical) *or* **CySA+** *or* Microsoft **SC-200** (pick one based on job ads near you). Optional to fill gaps: Google Cybersecurity Certificate (Coursera, financial aid available).
+| 13–15 | Feb | **ISC2 Certified in Cybersecurity (CC)**: free course and, through ISC2's One Million Certified programme, a free exam (check it is still running on isc2.org) |
+| 16–18 | Mar | **SC-200 study** (Microsoft Security Operations Analyst) on Microsoft Learn, free to study. Matches your Sentinel/Defender/KQL skills. The exam is paid: check for Microsoft free exam offers or Springboard+ funding, or ask your first employer |
+| 19–20 | Mar–Apr | **CV and LinkedIn:** one page, projects first, keywords from job ads (Microsoft Sentinel, Defender, KQL, SIEM, phishing, incident response, MITRE ATT&CK) |
+| 21–26 | Apr–May | **Apply:** 5–10 tailored applications a week on IrishJobs.ie, Jobs.ie and LinkedIn. SOC Analyst, Security Analyst, MSSP / MDR roles in Dublin, Cork and remote. Daily mock interviews and alert drills |
 
 ---
 
-## Hibo's free-only route 🇮🇪
+## Free resources
 
-Hibo is in **Ireland** and studying **free only**. Where this plan says something paid, use the free swap:
-
-| Paid in the plan | Free swap |
+| What | Use it for |
 |---|---|
-| CompTIA Security+ exam | **ISC2 Certified in Cybersecurity (CC)** — free online training and, through ISC2's One Million Certified programme, a free exam (check it is still running on isc2.org). Still watch Professor Messer's free Security+ videos: same knowledge. |
-| BTL1 / CySA+ / SC-200 | **Google Cybersecurity Certificate** on Coursera with financial aid (apply per course), and **Fortinet** free training + FCF/FCA exams. Microsoft Learn SC-200 path is free to study. |
-| TryHackMe Premium (SOC Level 1) | TryHackMe free rooms, **LetsDefend** free tier, **Blue Team Labs Online** free challenges, **CyberDefenders** free labs, **Splunk** free courses, Malware-Traffic-Analysis.net |
-| Home lab software | All free: VirtualBox, Ubuntu, Windows evaluation VMs, Sysmon, Wazuh |
+| [Microsoft Learn](https://learn.microsoft.com/training/) | Sentinel, Defender, KQL, SC-900 and SC-200 paths, free sandboxes |
+| [TryHackMe](https://tryhackme.com) | Free rooms for networking, Windows, Linux, DNS |
+| [LetsDefend](https://letsdefend.io) | Free SOC alert practice |
+| [CyberDefenders](https://cyberdefenders.org) and [Blue Team Labs Online](https://blueteamlabs.online) | Free investigation labs for your portfolio |
+| [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) | Linux command line by playing |
+| [MITRE ATT&CK](https://attack.mitre.org) | The common language of every SOC |
+| [Kusto Detective Agency](https://detective.kusto.io) | Learn KQL as a detective game |
 
-**Ireland extras:** check **Springboard+** (springboardcourses.ie) and **Skillnet Ireland** for government-funded cyber courses that can be free if you're eligible; **Cyber Ireland** for events and meet-ups. Search job sites (IrishJobs.ie, Jobs.ie, LinkedIn) for "SOC Analyst" in Dublin, Cork and remote. Many employers will pay for Security+ after hiring you.
+**Real YouTube teachers (free):** [Professor Messer](https://www.youtube.com/@professormesser) (Network+ / Security+), [Practical Networking](https://www.youtube.com/@PracticalNetworking), [NetworkChuck](https://www.youtube.com/@NetworkChuck), [MyDFIR](https://www.youtube.com/@MyDFIR) (SOC analyst life), [John Hammond](https://www.youtube.com/@_JohnHammond), [13Cubed](https://www.youtube.com/@13Cubed), [Simply Cyber](https://www.youtube.com/@SimplyCyber).
 
-## Month 1 — Foundations (weeks 1–4)
-
-- **Week 1 — How computers and networks talk.** OSI and TCP/IP models, IP addresses, subnets, ports, TCP vs UDP. *Do:* TryHackMe Pre Security (Network Fundamentals); Messer Network+ sections 1.x.
-- **Week 2 — Network protocols.** DNS, HTTP/HTTPS, DHCP, ARP, SMTP, common ports you must know by heart. *Do:* TryHackMe "Networking" rooms; capture your own traffic in Wireshark.
-- **Week 3 — Linux.** Files, permissions, users, processes, grep/awk/cut, logs in `/var/log`. *Do:* OverTheWire Bandit levels 0–15; TryHackMe Linux Fundamentals 1–3.
-- **Week 4 — Windows.** Users, groups, Active Directory basics, registry, services, PowerShell basics, Event Viewer. *Do:* TryHackMe Windows Fundamentals 1–3, Active Directory Basics. **Checkpoint quiz.**
-
-## Month 2 — Security fundamentals + Security+ (weeks 5–8)
-
-- **Week 5 — Core concepts.** CIA triad, threats vs vulnerabilities vs risk, attack types (phishing, malware, ransomware, brute force, MITM), social engineering. *Do:* Messer Security+ domain 1–2.
-- **Week 6 — Security architecture & controls.** Firewalls, IDS/IPS, VPN, proxies, EDR, SIEM, encryption, hashing, PKI, authentication/MFA. *Do:* Messer Security+ domain 3.
-- **Week 7 — Operations & IR.** Incident response lifecycle (NIST SP 800-61), vulnerability management, logging, governance basics. *Do:* Messer Security+ domains 4–5.
-- **Week 8 — Exam prep.** Free practice questions (Messer's free resources, ISC2 CC course quizzes), review weak areas. **Book the free ISC2 CC exam** (free route) or Security+ for end of week 9 or 10.
-
-## Month 3 — SOC core skills (weeks 9–12)
-
-- **Week 9 — Exam week (ISC2 CC on the free route)** + intro to the SOC: tiers, shifts, tickets, SLAs, playbooks, true/false positives. *Do:* TryHackMe SOC Level 1 intro rooms.
-- **Week 10 — SIEM with Splunk.** Indexes, SPL searches, stats, timecharts, dashboards, alerts. *Do:* Splunk free "Intro to Splunk"; TryHackMe Splunk rooms; Boss of the SOC v1.
-- **Week 11 — Windows logs.** Event IDs that matter (4624, 4625, 4688, 4720, 4732, 7045, 1102), Sysmon, PowerShell logging. *Do:* TryHackMe Windows Event Logs, Sysmon rooms.
-- **Week 12 — MITRE ATT&CK & Cyber Kill Chain.** Map alerts to techniques. *Do:* TryHackMe MITRE, Pyramid of Pain, Cyber Kill Chain. **Alert drills ×3.**
-
-## Month 4 — Investigation skills (weeks 13–16)
-
-- **Week 13 — Phishing analysis.** Email headers, SPF/DKIM/DMARC, URL and attachment analysis, sandboxes (Any.Run, VirusTotal). *Do:* TryHackMe Phishing module; LetsDefend phishing alerts.
-- **Week 14 — Network traffic analysis.** Wireshark, Zeek, Snort/Suricata, spotting beacons and exfiltration. *Do:* 3 Malware-Traffic-Analysis exercises; TryHackMe Wireshark + Snort.
-- **Week 15 — Endpoint & malware basics.** EDR, processes, persistence, IOCs, basic static analysis, YARA. *Do:* TryHackMe Endpoint Security module.
-- **Week 16 — Threat intel & IR.** OSINT, threat intel feeds, IOC enrichment, writing incident reports. *Do:* LetsDefend 10 alerts, written up like a real ticket. **Checkpoint quiz + mock interview.**
-
-## Month 5 — Home lab + second cert (weeks 17–21)
-
-- **Week 17 — Build a home lab.** VirtualBox/VMware: Windows VM + Sysmon, Ubuntu VM, **Wazuh** or Elastic or Splunk Free as your SIEM. Document every step on GitHub.
-- **Week 18 — Attack & detect your own lab.** Run safe simulations (Atomic Red Team) against your own VMs and build detections for them. Write it up.
-- **Week 19 — Cloud & identity basics.** Microsoft Entra ID / Azure logs, AWS CloudTrail, impossible travel, MFA fatigue. *Do:* TryHackMe cloud rooms; SC-200 Microsoft Learn path (free).
-- **Week 20–21 — Second cert.** Free route: finish the Google Cybersecurity Certificate (financial aid) or Fortinet FCF/FCA. Paid options for later: BTL1, CySA+, SC-200.
-
-## Month 6 — Get hired (weeks 22–26)
-
-- **Week 22 — Portfolio.** GitHub with: home-lab write-up, 3–5 investigation reports (CyberDefenders/BTLO), detection rules, this roadmap's notes. Pin them on this profile README.
-- **Week 23 — CV & LinkedIn.** One-page CV with projects, certs, keywords from job ads (SIEM, Splunk, EDR, phishing, incident response, MITRE ATT&CK). Start posting what you learn on LinkedIn.
-- **Week 24 — Interview prep.** Daily mock interviews and alert drills with your teacher; STAR stories ready.
-- **Week 25–26 — Apply.** 5–10 tailored applications per week: SOC Analyst, Security Analyst, Cyber Security Analyst, MSSP / MDR roles, graduate schemes. Keep doing 2–3 labs a week so skills stay sharp.
+**Ireland extras:** check **Springboard+** and **Skillnet Ireland** for government-funded cyber courses that can be free if you're eligible; **Cyber Ireland** for events and meet-ups.
 
 ---
 
-## After you land the SOC job — path to engineer
+## After the SOC job — path to engineer
 
-Year 1–2 in the SOC, then grow towards engineering:
-- **Scripting/automation:** Python, PowerShell, Bash; SOAR playbooks. (Your JavaScript helps here.)
-- **Detection engineering:** Sigma, KQL, SPL, writing and tuning detections.
-- **Cloud security:** AWS/Azure security, infrastructure as code, AWS Security Specialty or AZ-500.
-- **Next certs:** SC-200 / CySA+ (if not done), GCIH, then cloud or engineering certs.
-- Target roles: SOC Tier 2/3 → Detection Engineer → Security Engineer / Cloud Security Engineer.
+Year 1–2 in the SOC, then:
+- **Automation:** Python, PowerShell, Logic Apps / SOAR playbooks in Sentinel (your JavaScript helps here)
+- **Detection engineering:** writing and tuning KQL analytics rules, Sigma
+- **Cloud security:** Azure security, AZ-500, then Microsoft SC-100 or cloud engineering roles
+- Target roles: SOC Tier 2/3 → Detection Engineer → Security Engineer / Cloud Security Engineer
