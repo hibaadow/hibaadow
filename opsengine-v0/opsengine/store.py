@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS contact_prefs (
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS audit_text (
+    tid TEXT PRIMARY KEY, sha256 TEXT UNIQUE, text TEXT, created_at TEXT, erased_at TEXT, erased_reason TEXT
+);
 CREATE TABLE IF NOT EXISTS people (
     pid TEXT PRIMARY KEY, kind TEXT, value TEXT UNIQUE COLLATE NOCASE, first_seen TEXT, last_seen TEXT
 );
@@ -74,7 +77,22 @@ EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 NAMED_EMAIL = re.compile(r"([^<>:\"]{2,80}?)\s*<([^<>\s]+@[^<>\s]+)>")
 TOKEN = re.compile(r"⟪(P-\d{4,})⟫")
+TEXT_TOKEN = re.compile(r"⟪(T-\d{4,})⟫")
 REMOVED = "[removed person]"
+REMOVED_TEXT = "[removed text]"
+# What may stay in the immutable audit log as written: identifiers, dates, hashes and lowercase machine words.
+# Everything else (sentences, names in any spelling, nicknames, card and policy numbers, file names, phone
+# numbers) goes to the separate, erasable audit_text table, and the log keeps only a token for it.
+SAFE_STRINGS = [
+    re.compile(r"^(ISS|REV|CH|APT|PK|BR|SC|P|T)-\d{3,}(\.\d+)?$"),          # our own record ids
+    re.compile(r"^\d{4}-\d{2}(-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?)?)?$"),  # dates and times
+    re.compile(r"^[0-9a-f]{8,64}$"),                                             # hashes
+    re.compile(r"^(r|u)-[0-9a-f]{6,16}$"),                                       # rules versions, user ids
+    re.compile(r"^-?\d+(\.\d+)?%?$"),                                         # numbers written as text
+]
+MACHINE_WORDS = re.compile(r"^[a-z][a-z0-9_:/-]{0,60}$")                       # e.g. book_service, inbound:email
+PHONE = re.compile(r"\+?\d[\d\s().-]{6,}\d")
+LONG_DIGITS = re.compile(r"\d{6,}")
 
 
 def now_iso():
@@ -150,9 +168,18 @@ class Store:
             self.db.executemany("UPDATE people SET last_seen=? WHERE pid=?", [(now_iso(), pid) for pid in seen])
         return out
 
-    def reidentify(self, text):
+    def reidentify(self, text, in_json=False):
         if not text or "⟪" not in text:
             return text
+        if "⟪T-" in text:
+            texts = {r["tid"]: r["text"] for r in self.db.execute("SELECT tid, text FROM audit_text")}
+
+            def put_back(m):
+                t = texts.get(m.group(1))
+                if t is None:
+                    return REMOVED_TEXT
+                return json.dumps(t, ensure_ascii=False)[1:-1] if in_json else t  # stays valid inside a JSON string
+            text = TEXT_TOKEN.sub(put_back, text)
         names = {}
         for r in self.db.execute("SELECT pid, value, kind FROM people ORDER BY LENGTH(value) DESC"):
             if r["pid"] not in names or (r["kind"] == "name" and " " in r["value"]):
@@ -174,9 +201,57 @@ class Store:
         self._pattern = None
         return n
 
+    def _is_safe(self, value):
+        if any(p.match(value) for p in SAFE_STRINGS):
+            return True
+        bare = TOKEN.sub("", value)
+        if not bare.strip(" <>()"):
+            return True  # only person tokens
+        if PHONE.search(bare) or LONG_DIGITS.search(bare) or "@" in bare:
+            return False
+        return all(MACHINE_WORDS.match(part) for part in re.split(r"[\s<>()]+", bare.strip(" <>()")) if part)
+
+    def _text_token(self, value):
+        """Keep free text out of the immutable log: store it (people already tokenised) in audit_text, by hash."""
+        digest = hashlib.sha256(value.encode()).hexdigest()
+        row = self.db.execute("SELECT tid FROM audit_text WHERE sha256=?", (digest,)).fetchone()
+        if row:
+            return f"⟪{row['tid']}⟫"
+        n = self.db.execute("SELECT COUNT(*) FROM audit_text").fetchone()[0] + 1
+        tid = f"T-{n:05d}"
+        self.db.execute("INSERT INTO audit_text (tid, sha256, text, created_at) VALUES (?,?,?,?)", (tid, digest, value, now_iso()))
+        return f"⟪{tid}⟫"
+
+    def _scrub(self, value):
+        if isinstance(value, dict):
+            return {k: self._scrub(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._scrub(v) for v in value]
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+        text = self.pseudonymise(str(value))
+        return text if self._is_safe(text) else self._text_token(text)
+
+    def verify_audit_text(self):
+        """Every stored free-text entry still matches the hash the log was written with (erased ones excepted)."""
+        bad = [r["tid"] for r in self.db.execute("SELECT tid, sha256, text FROM audit_text WHERE text IS NOT NULL")
+               if hashlib.sha256(r["text"].encode()).hexdigest() != r["sha256"]]
+        return not bad, bad
+
+    def erase_text(self, containing, reason):
+        """Erase free text in the audit record that mentions someone (any spelling given). The log row, the token
+        and the hash stay, so it is still provable that an entry existed and was erased, and when."""
+        n = 0
+        for v in containing:
+            if v and len(v) >= 3:
+                n += self.db.execute("UPDATE audit_text SET text=NULL, erased_at=?, erased_reason=? WHERE text IS NOT NULL "
+                                     "AND text LIKE ? COLLATE NOCASE", (now_iso(), reason, f"%{v}%")).rowcount
+        self.db.commit()
+        return n
+
     def audit(self, actor, event, ref="", payload=None):
-        actor, ref = self.pseudonymise(actor), self.pseudonymise(ref)
-        payload_json = self.pseudonymise(json.dumps(payload or {}, sort_keys=True, default=str, ensure_ascii=False))
+        actor, ref = self._scrub(actor), self._scrub(ref or "")
+        payload_json = json.dumps(self._scrub(payload or {}), sort_keys=True, default=str, ensure_ascii=False)
         last = self.db.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
         prev = last["hash"] if last else "GENESIS"
         ts = now_iso()
@@ -205,7 +280,7 @@ class Store:
         if not raw:
             for r in rows:
                 for k in ("actor", "ref", "payload"):
-                    r[k] = self.reidentify(r[k])
+                    r[k] = self.reidentify(r[k], in_json=(k == "payload"))
         return rows
 
     # ---------- documents ----------

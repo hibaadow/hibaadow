@@ -181,9 +181,12 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **GDPR** (`docs/data-inventory.json`, first-pass review of 16 Nov 2026, awaiting a solicitor):
   - A new kind of personal data needs an inventory entry with its lawful basis. Never use consent for
     workers (the WhatsApp opt-in is a channel preference, not the lawful basis).
-  - The audit log holds people only as tokens (⟪P-0007⟫); `Store.pseudonymise` runs inside `audit()`, and
-    `audit_rows()` puts names back for display (`raw=True` for the stored form). Register new kinds of
-    people with `store.register_person`. `store.forget` anonymises a person without breaking the chain.
+  - The immutable audit log holds only identifiers, dates, numbers, hashes and lowercase machine words
+    (`Store._scrub` in `audit()`). People become ⟪P-0007⟫ tokens (people table); every other string (notes,
+    reasons, subjects, file names, card or policy numbers, nicknames, phone numbers) becomes a ⟪T-00001⟫ token
+    whose text and SHA-256 live in `audit_text`. `audit_rows()` puts both back for display (`raw=True` for the
+    stored form). `store.erase_text` / `store.forget` erase without breaking the chain; the hash stays as
+    evidence and `verify_audit_text` checks the kept text. Never write personal data into `event` names.
   - The customer (controller) sets retention: `company.json` "retention" overrides `rules/retention.json`.
     Purges audit counts, never content, and only run for real once `solicitor_confirmed` is true.
   - Real customers need `data_protection.dpa_signed_on` and the current sub-processor list version
@@ -215,7 +218,10 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   (Starter 10/1/5, Growth 30/3/15, Business 75/10/40, Scale 150/25/100, Enterprise custom). Notices at 80%
   and 100% (once a month each). Limits must never stop monitoring, hide an issue, silence a safety alert or
   approve anything: workers and sites over the limit stay fully monitored; a routine review over the
-  allowance waits in the reviewer queue (`LimitReached`) until an admin adds capacity. One amended
+  allowance waits in the reviewer queue (`LimitReached`) until an admin adds capacity, unless it is urgent:
+  anything missing or expired that could stop work, critical/high issues, or a review someone marks urgent
+  (`limits.mark_urgent`) is never held (overage recorded for agreement). Held reviews are announced at once
+  to the customer, ops and reviewer, and escalate after 2 days (`limits.hold_notices`). One amended
   resubmission (`Engine.resubmit_draft`) is included in a draft's original review. Ordinary RAMS and
   Safety Statement reviews are never specialist work. Admins change limits at `/admin/plans` (audited).
 - **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
