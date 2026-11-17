@@ -15,7 +15,7 @@ from ..db import init_db, session_scope
 from ..events import get_bus
 from ..logging import get_logger, setup_logging
 from ..security import COOKIE, client_ip, ensure_admin, limiter, user_from_token
-from . import backtests, routes
+from . import backtests, coach, routes
 
 log = get_logger("atlas.api")
 
@@ -61,7 +61,8 @@ def create_app(disable_agent: bool = False) -> FastAPI:
     async def security_mw(request: Request, call_next):
         if request.url.path.startswith("/api/") and not limiter.allow(f"api:{client_ip(request)}", 600, 60):
             return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
-        if request.headers.get("content-length") and int(request.headers["content-length"]) > 1_000_000:
+        limit = 25_000_000 if request.url.path == "/api/coach/analyze" else 1_000_000
+        if request.headers.get("content-length") and int(request.headers["content-length"]) > limit:
             return JSONResponse({"detail": "request too large"}, status_code=413)
         resp = await call_next(request)
         resp.headers["X-Content-Type-Options"] = "nosniff"
@@ -80,6 +81,7 @@ def create_app(disable_agent: bool = False) -> FastAPI:
         return JSONResponse({"detail": "internal error"}, status_code=500)
 
     app.include_router(backtests.router)
+    app.include_router(coach.router)
     app.include_router(routes.router)
 
     @app.websocket("/api/ws")

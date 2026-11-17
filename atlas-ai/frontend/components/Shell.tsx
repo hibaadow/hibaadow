@@ -15,6 +15,7 @@ const NAV = [
   { href: "/markets", label: "Markets · Gold & Forex", icon: "M3 3v18h18M7 14l3-3 3 3 5-6" },
   { href: "/gold", label: "XAU/USD Workspace", icon: "M4 17l3-9h10l3 9H4zm5-9l3-5 3 5" },
   { href: "/terminal", label: "Forex Terminal", icon: "M4 4h16v12H4zM8 20h8M12 16v4" },
+  { href: "/coach", label: "Chart Coach (screenshots)", icon: "M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 100-8 4 4 0 000 8z" },
   { href: "/analyst", label: "AI Analyst", icon: "M12 3a6 6 0 016 6c0 2.2-1.2 4.1-3 5.2V17H9v-2.8A6 6 0 0112 3zM9 21h6" },
   { href: "/calendar", label: "Economic Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
   { href: "/activity", label: "Activity Feed", icon: "M3 12h4l3-8 4 16 3-8h4" },

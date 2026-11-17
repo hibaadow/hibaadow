@@ -113,6 +113,25 @@ beyond a structural level (clamped to 0.8–3 ATR). Targets must reach ≥ 2R **
 | Supply & demand | fresh zone (base + ≥2-ATR impulse), first return with rejection, HTF alignment, room to the opposing level |
 | **Gold session model (XAU/USD only)** | London/NY opening windows, Asian-range sweep-and-reclaim or accepted breakout, USD strength and US10Y trend as confluence, round-number levels |
 
+## Chart Coach — analyse your own screenshots
+
+Upload up to four screenshots of your MT5 or TradingView chart (gold or forex) from your phone or computer. You don't
+need a broker connection; you place the trade yourself.
+
+1. **Claude reads the chart** (vision + a strict JSON schema): instrument, timeframe, readable price, structure and key
+   levels, and a proposed BUY / SELL / WAIT / NO TRADE with entry, stop-loss, take-profit, invalidation and uncertainties.
+   It is told never to guess numbers it can't read.
+2. **ATLAS verifies it deterministically**:
+   - Is it gold or forex? Anything else is refused.
+   - Does the screenshot's price match the **live** price? This catches old screenshots, the wrong symbol, or a misread scale.
+   - Are the stop and target on the correct sides, with ≥ 2:1 net reward:risk after spread, commission and slippage?
+   - Is there a news blackout? Is the session open, and is the live spread within limits?
+   - What lot size fits your balance and risk %, rounded down? ATLAS's own live analysis is shown as a second opinion.
+3. **Final verdict**: ATLAS can only *downgrade* the AI's suggestion (BUY → WAIT / NO TRADE), never upgrade it.
+
+Needs `ANTHROPIC_API_KEY`. Screenshots are not stored, only their SHA-256 hashes and the analysis. This is educational
+decision support, not financial advice.
+
 ## AI trading analyst
 
 Every proposal records: instrument, **BUY/SELL**, entry, stop-loss, take-profit (TP1/TP2), reward:risk (net),
@@ -197,6 +216,6 @@ pip-audit -r backend/requirements.txt && (cd frontend && npm audit --omit=dev)
 | Full candle history (instant strategy warm-up, backtests over any range) | MetaApi (MT5), OANDA, or the MT5 Windows bridge |
 | Demo account trading | MT5 demo account via **MetaApi (no Windows)**, OANDA practice account, or MT5 + Windows bridge |
 | Live account trading | live broker account + `ATLAS_LIVE_TRADING_ALLOWED=true` + admin arming |
-| AI commentary | `ANTHROPIC_API_KEY` |
+| Chart Coach (screenshot analysis) and AI commentary | `ANTHROPIC_API_KEY` |
 
 See [`docs/BROKERS.md`](docs/BROKERS.md) for step-by-step OANDA and MT5 setup.

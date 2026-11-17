@@ -306,6 +306,21 @@ class AuditLog(Base):
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
+class ScreenshotAnalysis(Base):
+    """Chart Coach result. Images are NOT stored — only their SHA-256 hashes."""
+
+    __tablename__ = "screenshot_analyses"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TS, default=utcnow, index=True)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    instrument: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    ai_recommendation: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    final: Mapped[str] = mapped_column(String(10))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_hashes: Mapped[list] = mapped_column(JSON, default=list)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 class Command(Base):
     """Queue of operator commands from the API to the trading worker."""
 
