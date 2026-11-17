@@ -168,8 +168,126 @@ def test_mt5_bridge_client(monkeypatch):
     assert a.environment == "demo" and a.equity == 5010
     rates = run(c.candles("XAUUSD", "5m", 1))
     assert len(rates) == 1 and rates[0].spread == pytest.approx(0.30)  # forming bar dropped; spread points → price
-    fill = run(c.market_order("XAUUSD", "sell", 0.05, 3810.0, 3780.0, "cid", 0.5))
+    fill = run(c.market_order("XAUUSD", "sell", 0.05, 3810.0, 3780.0, "cid", None, 5.0))  # 5 pips = $0.50 = 50 points
     assert sent["symbol"] == "XAUUSD.a" and sent["side"] == "sell" and sent["deviation"] == 50 and fill.broker_id == "78"
     trades = run(c.open_trades())
     assert [t.symbol for t in trades] == ["XAUUSD"]  # non gold/forex positions are ignored
+    get_settings.cache_clear()
+
+
+# ---------------------------------------------------------------- MetaApi (MT5 without Windows)
+@pytest.fixture
+def metaapi(monkeypatch):
+    monkeypatch.setenv("ATLAS_METAAPI_TOKEN", "meta-token")
+    monkeypatch.setenv("ATLAS_METAAPI_ACCOUNT_ID", "acc-1")
+    get_settings.cache_clear()
+    state = {"positions": [], "deals": [], "trades": [], "account_state": "DEPLOYED"}
+
+    def handler(req: httpx.Request):
+        assert req.headers["auth-token"] == "meta-token"
+        host, path = req.url.host, req.url.path
+        if host == "mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai":
+            return httpx.Response(200, json={"_id": "acc-1", "state": state["account_state"], "region": "london"})
+        assert host.endswith(".london.agiliumtrade.ai"), host  # region auto-detected
+        base = "/users/current/accounts/acc-1"
+        if path == base + "/account-information":
+            return httpx.Response(200, json={"broker": "Demo Broker", "currency": "USD", "server": "Demo-Server", "balance": 10000, "equity": 10012.5,
+                                             "margin": 120, "freeMargin": 9892.5, "leverage": 30, "type": "ACCOUNT_TRADE_MODE_DEMO", "platform": "mt5"})
+        if path.endswith("/specification"):
+            return httpx.Response(200, json={"symbol": "XAUUSD", "tickSize": 0.01, "contractSize": 100, "minVolume": 0.01, "volumeStep": 0.01})
+        if path.endswith("/current-price"):
+            return httpx.Response(200, json={"symbol": "XAUUSD", "bid": 3850.10, "ask": 3850.42, "time": "2026-11-17T10:00:00.000Z"})
+        if "/historical-market-data/" in path:
+            assert host.startswith("mt-market-data-client-api-v1.")
+            return httpx.Response(200, json=[  # newest first, like MetaApi; last one still forming
+                {"symbol": "XAUUSD", "timeframe": "5m", "time": "2099-01-01T00:00:00.000Z", "open": 1, "high": 1, "low": 1, "close": 1, "tickVolume": 1, "spread": 30},
+                {"symbol": "XAUUSD", "timeframe": "5m", "time": "2026-11-10T09:55:00.000Z", "open": 3849, "high": 3851, "low": 3848, "close": 3850, "tickVolume": 410, "spread": 32},
+                {"symbol": "XAUUSD", "timeframe": "5m", "time": "2026-11-10T09:50:00.000Z", "open": 3847, "high": 3849.5, "low": 3846, "close": 3849, "tickVolume": 380, "spread": 30}])
+        if path == base + "/positions":
+            return httpx.Response(200, json=state["positions"])
+        if path.startswith(base + "/history-deals/position/"):
+            return httpx.Response(200, json=state["deals"])
+        if path == base + "/trade":
+            body = json.loads(req.content)
+            state["trades"].append(body)
+            if body["actionType"] in ("ORDER_TYPE_BUY", "ORDER_TYPE_SELL"):
+                state["positions"].append({"id": "900", "type": "POSITION_TYPE_SELL" if body["actionType"] == "ORDER_TYPE_SELL" else "POSITION_TYPE_BUY",
+                                           "symbol": body["symbol"], "magic": body["magic"], "openPrice": 3850.08, "volume": body["volume"],
+                                           "stopLoss": body["stopLoss"], "takeProfit": body.get("takeProfit"), "clientId": body["clientId"],
+                                           "commission": -0.35, "unrealizedProfit": 0, "time": "2026-11-17T10:00:01.000Z"})
+                state["deals"] = [{"id": "d1", "entryType": "DEAL_ENTRY_IN", "type": "DEAL_TYPE_SELL", "price": 3850.08, "volume": body["volume"], "commission": -0.35}]
+                return httpx.Response(200, json={"numericCode": 10009, "stringCode": "TRADE_RETCODE_DONE", "message": "Request completed", "orderId": "901"})
+            if body["actionType"] == "POSITION_PARTIAL":
+                state["deals"].append({"id": "d2", "entryType": "DEAL_ENTRY_OUT", "type": "DEAL_TYPE_BUY", "price": 3830.0, "volume": body["volume"],
+                                       "profit": 100.4, "commission": -0.18, "swap": 0})
+                state["positions"][0]["volume"] = round(state["positions"][0]["volume"] - body["volume"], 2)
+                return httpx.Response(200, json={"numericCode": 10009, "stringCode": "TRADE_RETCODE_DONE", "orderId": "902", "positionId": "900"})
+            if body["actionType"] == "POSITION_CLOSE_ID":
+                state["deals"].append({"id": "d3", "entryType": "DEAL_ENTRY_OUT", "type": "DEAL_TYPE_BUY", "price": 3820.0, "volume": state["positions"][0]["volume"],
+                                       "profit": 150.2, "commission": -0.17, "swap": -0.3})
+                state["positions"] = []
+                return httpx.Response(200, json={"numericCode": 10009, "stringCode": "TRADE_RETCODE_DONE", "orderId": "903", "positionId": "900"})
+            if body["actionType"] == "POSITION_MODIFY":
+                return httpx.Response(200, json={"numericCode": 10016, "stringCode": "TRADE_RETCODE_INVALID_STOPS", "message": "Invalid stops"})
+        return httpx.Response(404, json={"error": "NotFound"})
+
+    def fake_http(self):
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(transport=httpx.MockTransport(handler), headers=self._headers)
+        return self._client
+
+    monkeypatch.setattr(ProviderClient, "_http", fake_http)
+    from atlas.brokers.metaapi import MetaApiClient
+    yield MetaApiClient(), state
+    get_settings.cache_clear()
+
+
+def test_metaapi_account_candles_and_prices(metaapi):
+    c, _ = metaapi
+    a = run(c.account())
+    assert a.environment == "demo" and a.equity == 10012.5 and c.region == "london"
+    cs = run(c.candles("XAUUSD", "5m", 10))
+    assert [x.close for x in cs] == [3849, 3850]                 # sorted ascending, forming bar dropped
+    assert cs[-1].spread == pytest.approx(0.32) and cs[-1].volume == 410  # spread points × tickSize
+    q = run(c.quotes(["XAUUSD"]))["XAUUSD"]
+    assert (q.bid, q.ask) == (3850.10, 3850.42)
+
+
+def test_metaapi_order_lifecycle_and_duplicates(metaapi):
+    from atlas.brokers.metaapi import short_client_id
+    c, state = metaapi
+    fill = run(c.market_order("XAUUSD", "sell", 0.05, 3860.0, 3830.0, "atlas-demo-XAUUSD-gold_s-1794902400", None, 5.0))
+    body = state["trades"][0]
+    assert body["actionType"] == "ORDER_TYPE_SELL" and body["volume"] == 0.05 and body["stopLoss"] == 3860.0 and body["takeProfit"] == 3830.0
+    assert len(body["clientId"]) <= 26 and body["clientId"] == short_client_id("atlas-demo-XAUUSD-gold_s-1794902400")
+    assert body["slippage"] == 50 and body["magic"] == c.magic       # 5 pips × $0.10 / 0.01 tick = 50 points
+    assert fill.broker_id == "900" and fill.price == 3850.08
+    with pytest.raises(BrokerError, match="duplicate"):
+        run(c.market_order("XAUUSD", "sell", 0.05, 3860.0, 3830.0, "atlas-demo-XAUUSD-gold_s-1794902400", None, 5.0))
+    trades = run(c.open_trades())
+    assert len(trades) == 1 and trades[0].side == "sell" and trades[0].symbol == "XAUUSD"
+    part = run(c.close_trade("900", "XAUUSD", 0.02))
+    assert part.lots == pytest.approx(0.02) and part.price == 3830.0 and part.realized_pnl == pytest.approx(100.4)
+    full = run(c.close_trade("900", "XAUUSD"))
+    assert full.price == 3820.0 and full.realized_pnl == pytest.approx(150.2)
+    det = run(c.trade_details("900"))
+    assert det["state"] == "CLOSED" and det["realized_pnl"] == pytest.approx(250.6)
+
+
+def test_metaapi_rejections_and_undeployed(metaapi, monkeypatch):
+    c, state = metaapi
+    with pytest.raises(BrokerError, match="INVALID_STOPS"):
+        run(c.modify_stop("900", "XAUUSD", 3840.0))
+    from atlas.brokers.metaapi import MetaApiClient
+    state["account_state"] = "UNDEPLOYED"
+    with pytest.raises(BrokerError, match="deploy"):
+        run(MetaApiClient().account())
+
+
+def test_metaapi_requires_credentials(monkeypatch):
+    monkeypatch.delenv("ATLAS_METAAPI_TOKEN", raising=False)
+    get_settings.cache_clear()
+    from atlas.brokers.metaapi import MetaApiClient
+    with pytest.raises(BrokerError, match="not configured"):
+        MetaApiClient()
     get_settings.cache_clear()

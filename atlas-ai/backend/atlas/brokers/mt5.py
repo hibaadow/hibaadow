@@ -82,9 +82,11 @@ class MT5Client:
                                    float(p["sl"]) or None, float(p["tp"]) or None, float(p.get("profit", 0)), p.get("comment"), str(p.get("time"))))
         return out
 
-    async def market_order(self, symbol, side, lots, stop_loss, take_profit, client_id, max_slippage_price=None) -> BrokerFill:
+    async def market_order(self, symbol, side, lots, stop_loss, take_profit, client_id, max_slippage_price=None,
+                           max_slippage_pips=None) -> BrokerFill:
         inst = get(symbol)
-        deviation = int(round(abs(max_slippage_price) / (inst.pip_size / 10))) if max_slippage_price else 20
+        point = 10 ** -inst.digits
+        deviation = int(round(max_slippage_pips * inst.pip_size / point)) if max_slippage_pips is not None else 20  # points
         try:
             d = await self.http.post("/order", {"symbol": self.sym(symbol), "side": side, "volume": lots, "sl": stop_loss, "tp": take_profit or 0,
                                                 "client_id": client_id[:31], "magic": self.magic, "deviation": deviation})

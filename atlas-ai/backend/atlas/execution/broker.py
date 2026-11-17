@@ -61,7 +61,7 @@ class BrokerExecutor:
         db.add(order)
         db.commit()  # persisted BEFORE sending: a crash can never cause a blind resend
         try:
-            fill = await self.broker.market_order(symbol, side, lots, stop, tp2 or tp1, coid, bound)
+            fill = await self.broker.market_order(symbol, side, lots, stop, tp2 or tp1, coid, bound, max_slippage_pips)
         except BrokerError as e:
             order.status, order.reason = "rejected", str(e)[:300]
             pos.status, pos.exit_reason = "cancelled", f"broker rejected: {str(e)[:200]}"

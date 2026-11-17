@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
             log.warning(msg)
     app.state.history = None
     s = get_settings()
-    if s.data_source in ("oanda", "mt5"):
+    if s.data_source in ("oanda", "mt5", "metaapi"):
         from ..agent import make_source
         try:
             app.state.history = make_source(s.data_source)

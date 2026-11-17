@@ -33,8 +33,8 @@ class Settings(BaseSettings):
 
     # Market data / broker selection: "public" (Swissquote public quotes, no credentials),
     # "oanda" (OANDA v20 REST) or "mt5" (MetaTrader 5 via the ATLAS MT5 bridge or native package).
-    data_source: Literal["public", "oanda", "mt5"] = "public"
-    broker: Literal["none", "oanda", "mt5"] = "none"
+    data_source: Literal["public", "oanda", "mt5", "metaapi"] = "public"
+    broker: Literal["none", "oanda", "mt5", "metaapi"] = "none"
     public_quotes_url: str = "https://forex-data-feed.swissquote.com"
     public_quote_interval_seconds: float = 10.0
     calendar_url: str = "https://nfs.faireconomy.media"
@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     mt5_bridge_token: SecretStr | None = None
     mt5_symbol_suffix: str = ""  # e.g. ".a" or "m" depending on the broker
     mt5_magic: int = 770077
+
+    # MetaTrader 5 WITHOUT Windows — via MetaApi (metaapi.cloud). The MT5 login/password are entered in the
+    # MetaApi web app; ATLAS stores only the MetaApi token + account id (environment only).
+    metaapi_token: SecretStr | None = None
+    metaapi_account_id: str | None = None
+    metaapi_region: str | None = None  # auto-detected from the account if empty
 
     # Optional AI commentary (Claude). Commentary never changes execution.
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
@@ -73,6 +79,10 @@ class Settings(BaseSettings):
     @property
     def oanda_configured(self) -> bool:
         return bool(self.oanda_token and self.oanda_account_id)
+
+    @property
+    def metaapi_configured(self) -> bool:
+        return bool(self.metaapi_token and self.metaapi_account_id)
 
     @property
     def mt5_configured(self) -> bool:

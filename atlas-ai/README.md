@@ -3,8 +3,8 @@
 ATLAS AI is a day-trading platform for **XAU/USD (gold)** and **forex** only. It analyses gold and ten
 currency pairs across 1m/5m/15m/1h/4h. Five confluence strategies feed an explainable AI analyst. A strict risk
 engine sizes positions from pip value, contract size and stop distance, and the agent trades a **paper account by
-default**. It can be connected to **OANDA** or **MetaTrader 5** demo accounts, and to live accounts only after
-explicit activation.
+default**. It can be connected to **MetaTrader 5** (via MetaApi — no Windows — or a Windows bridge) or **OANDA** demo accounts, and to live accounts only after
+explicit activation. MT5 works **without Windows** through MetaApi's cloud terminal (ideal for Mac users).
 
 > ATLAS does not trade cryptocurrency, indices, stocks, or any commodity other than gold. Every symbol outside the
 > 11 supported instruments is rejected by configuration, API, strategies and the MT5 bridge.
@@ -88,7 +88,8 @@ For the production topology, set `ATLAS_EMBEDDED_WORKER=false` on the API and ru
 |---|---|---|---|
 | **Swissquote public quote feed** | none | live bid/ask for all 11 instruments | ATLAS uses the median spread profile (conservative). Bars are **built from sampled quotes** (every 10 s) and stored, so history accumulates from first start: ~12 h before 5m strategies have 150 bars, ~2.5 days for the 1h trend filter. Not suitable for backtesting until weeks of bars exist. |
 | **OANDA v20** | API token + account id | bid/ask candles (M1–H4, years of history), live prices, account, execution | Practice (demo) host by default. |
-| **MetaTrader 5** | MT5 terminal + ATLAS bridge | broker candles (with spread), ticks, account, execution | Your broker's own prices and contract specs. |
+| **MetaTrader 5 via MetaApi** | MetaApi token + account id (MT5 login entered at MetaApi) | broker candles (with spread), prices, account, execution | **No Windows needed.** Your broker's own prices and contract specs. |
+| **MetaTrader 5 via Windows bridge** | MT5 terminal + ATLAS bridge on Windows | same as above | For users who run their own Windows terminal/VPS. |
 | **ForexFactory calendar export** | none | this week's economic events, impact, forecast/previous | Refreshed every 30 min. Central-bank decisions and speeches are detected. |
 | **FRED DGS10** | none | US 10-year Treasury yield (daily) | Gold macro context. |
 | Currency strength | — | derived from ATLAS's own FX quotes | Not an external index. |
@@ -193,8 +194,8 @@ pip-audit -r backend/requirements.txt && (cd frontend && npm audit --omit=dev)
 | Capability | Needs |
 |---|---|
 | Paper trading on live quotes, calendar, US10Y, dashboard | nothing |
-| Full candle history (instant strategy warm-up, backtests over any range) | OANDA token + account id, or MT5 bridge |
-| Demo account trading | OANDA practice account **or** MT5 demo account + bridge |
+| Full candle history (instant strategy warm-up, backtests over any range) | MetaApi (MT5), OANDA, or the MT5 Windows bridge |
+| Demo account trading | MT5 demo account via **MetaApi (no Windows)**, OANDA practice account, or MT5 + Windows bridge |
 | Live account trading | live broker account + `ATLAS_LIVE_TRADING_ALLOWED=true` + admin arming |
 | AI commentary | `ANTHROPIC_API_KEY` |
 

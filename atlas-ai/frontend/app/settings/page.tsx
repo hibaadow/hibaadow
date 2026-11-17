@@ -7,7 +7,7 @@ import { time } from "@/lib/format";
 import { usePoll } from "@/lib/live";
 
 type Cfg = Record<string, any>;
-type Broker = { data_source: string; broker: string; oanda_configured: boolean; oanda_environment: string; mt5_configured: boolean; live_trading_allowed: boolean };
+type Broker = { data_source: string; broker: string; oanda_configured: boolean; oanda_environment: string; mt5_configured: boolean; metaapi_configured: boolean; live_trading_allowed: boolean };
 type SettingsResp = { config: Cfg; strategies: string[]; instruments: { symbol: string; display: string; asset_class: string }[]; broker: Broker;
   demo_requirements: string[]; live_requirements: string[]; live_confirm_phrase: string };
 type Integration = { name: string; label: string; purpose: string; status: string; last_ok: string | null; last_error: string | null; latency_ms: number | null; requires_credentials: boolean; configured: boolean };
@@ -75,7 +75,8 @@ export default function Settings() {
             <div className="flex justify-between"><span>Data source</span><span className="num">{b.data_source}</span></div>
             <div className="flex justify-between"><span>Broker</span><span className="num">{b.broker}{b.broker === "oanda" ? ` (${b.oanda_environment})` : ""}</span></div>
             <div className="flex justify-between"><span>OANDA credentials</span>{b.oanda_configured ? <Chip tone="up">SET</Chip> : <Chip>NOT SET</Chip>}</div>
-            <div className="flex justify-between"><span>MT5 bridge</span>{b.mt5_configured ? <Chip tone="up">SET</Chip> : <Chip>NOT SET</Chip>}</div>
+            <div className="flex justify-between"><span>MT5 via MetaApi (no Windows)</span>{b.metaapi_configured ? <Chip tone="up">SET</Chip> : <Chip>NOT SET</Chip>}</div>
+            <div className="flex justify-between"><span>MT5 Windows bridge</span>{b.mt5_configured ? <Chip tone="up">SET</Chip> : <Chip>NOT SET</Chip>}</div>
             <div className="flex items-center justify-between pt-2 border-t border-line"><span>Global trading switch</span>
               <Toggle checked={cfg.trading_enabled} disabled={!me?.permissions.trade || (!admin && !cfg.trading_enabled)} onChange={(v) => act(() => post("/api/control/trading", { enabled: v }))} /></div>
             <div className="flex items-center justify-between"><span>Emergency stop</span>

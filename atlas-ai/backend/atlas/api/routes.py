@@ -259,7 +259,7 @@ async def candles(request: Request, symbol: str, tf: str = Query("5m"), limit: i
     s = get_settings()
     cs: list[C] = []
     src = s.data_source
-    if src in ("oanda", "mt5") and getattr(request.app.state, "history", None) is not None:
+    if src in ("oanda", "mt5", "metaapi") and getattr(request.app.state, "history", None) is not None:
         try:
             cs = await request.app.state.history.candles(sym, tf, limit)
         except Exception as e:  # noqa: BLE001
@@ -491,7 +491,7 @@ def risk_events(limit: int = Query(100, le=500), user: User = Depends(current_us
 def broker_status() -> dict:
     s = get_settings()
     return {"data_source": s.data_source, "broker": s.broker, "oanda_configured": s.oanda_configured, "oanda_environment": s.oanda_environment,
-            "mt5_configured": s.mt5_configured, "live_trading_allowed": s.live_trading_allowed}
+            "mt5_configured": s.mt5_configured, "metaapi_configured": s.metaapi_configured, "live_trading_allowed": s.live_trading_allowed}
 
 
 def mode_requirements(cfg: TradingConfig, target: str, db: Session) -> list[str]:
@@ -500,11 +500,14 @@ def mode_requirements(cfg: TradingConfig, target: str, db: Session) -> list[str]
     if target == "paper":
         return out
     if s.broker == "none":
-        out.append("no broker configured: set ATLAS_BROKER=oanda (with ATLAS_OANDA_TOKEN, ATLAS_OANDA_ACCOUNT_ID) or ATLAS_BROKER=mt5 (with ATLAS_MT5_BRIDGE_URL)")
+        out.append("no broker configured: set ATLAS_BROKER=metaapi (MT5 without Windows: ATLAS_METAAPI_TOKEN, ATLAS_METAAPI_ACCOUNT_ID), "
+                   "ATLAS_BROKER=oanda (ATLAS_OANDA_TOKEN, ATLAS_OANDA_ACCOUNT_ID) or ATLAS_BROKER=mt5 (ATLAS_MT5_BRIDGE_URL)")
     elif s.broker == "oanda" and not s.oanda_configured:
         out.append("OANDA credentials missing")
     elif s.broker == "mt5" and not s.mt5_configured:
         out.append("MT5 bridge not configured")
+    elif s.broker == "metaapi" and not s.metaapi_configured:
+        out.append("MetaApi token/account id missing")
     ba = setting(db, "broker_account")
     if s.broker != "none" and not ba:
         out.append("broker account not reachable yet (check credentials / bridge)")
@@ -711,7 +714,9 @@ def integrations(user: User = Depends(current_user), db: Session = Depends(get_d
         "public_quotes": ("Swissquote public quote feed", "Live XAU/USD & FX bid/ask without credentials; ATLAS builds sampled bars from it", False, True),
         "oanda": ("OANDA v20 REST", "Candles (bid/ask), live prices, demo/live execution", True, s.oanda_configured),
         "oanda_account": ("OANDA account", "Balance, equity, margin, open trades", True, s.oanda_configured),
-        "mt5_bridge": ("MetaTrader 5 (bridge)", "Candles, ticks, demo/live execution via your MT5 terminal", True, s.mt5_configured),
+        "metaapi": ("MetaTrader 5 via MetaApi (no Windows)", "MT5 candles, prices, demo/live execution through MetaApi's cloud terminal", True, s.metaapi_configured),
+        "metaapi_account": ("MetaTrader 5 account (MetaApi)", "Balance, equity, margin, positions", True, s.metaapi_configured),
+        "mt5_bridge": ("MetaTrader 5 (Windows bridge)", "Candles, ticks, demo/live execution via your own MT5 terminal", True, s.mt5_configured),
         "mt5_account": ("MetaTrader 5 account", "Balance, equity, margin, positions", True, s.mt5_configured),
         "forexfactory_calendar": ("Economic calendar (ForexFactory export)", "High-impact events & central-bank decisions; news blackout", False, True),
         "fred": ("FRED — US 10Y Treasury yield", "Daily DGS10 for gold macro context", False, True),

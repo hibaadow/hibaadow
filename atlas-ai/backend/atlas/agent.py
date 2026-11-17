@@ -61,6 +61,9 @@ def make_source(name: str):
     if name == "mt5":
         from .brokers.mt5 import MT5Client
         return MT5Client()
+    if name == "metaapi":
+        from .brokers.metaapi import MetaApiClient
+        return MetaApiClient()
     return PublicSource()
 
 
@@ -125,6 +128,9 @@ class TradingAgent:
             elif s.broker == "mt5" and s.mt5_configured:
                 from .brokers.mt5 import MT5Client
                 self._broker = self.md.source if isinstance(self.md.source, MT5Client) else MT5Client()
+            elif s.broker == "metaapi" and s.metaapi_configured:
+                from .brokers.metaapi import MetaApiClient
+                self._broker = self.md.source if isinstance(self.md.source, MetaApiClient) else MetaApiClient()
         return self._broker
 
     def executor_for(self, cfg: TradingConfig):
@@ -142,11 +148,13 @@ class TradingAgent:
             return []
         out = []
         if s.broker == "none":
-            out.append("no broker configured (ATLAS_BROKER=oanda|mt5)")
+            out.append("no broker configured (ATLAS_BROKER=oanda|metaapi|mt5)")
         if s.broker == "oanda" and not s.oanda_configured:
             out.append("OANDA token/account id missing")
         if s.broker == "mt5" and not s.mt5_configured:
             out.append("MT5 bridge URL missing")
+        if s.broker == "metaapi" and not s.metaapi_configured:
+            out.append("MetaApi token/account id missing")
         if cfg.mode == "live":
             if not s.live_trading_allowed:
                 out.append("ATLAS_LIVE_TRADING_ALLOWED is false")
@@ -206,7 +214,7 @@ class TradingAgent:
             except Exception as e:  # noqa: BLE001
                 self.last_error = f"fast loop: {type(e).__name__}: {e}"
                 log.exception("fast loop error")
-            interval = get_settings().public_quote_interval_seconds if self.md.venue == "public" else 3.0
+            interval = {"public": get_settings().public_quote_interval_seconds, "metaapi": 5.0}.get(self.md.venue, 3.0)
             await asyncio.sleep(max(0.5, interval - (time.time() - t0)))
 
     async def fast_tick(self, refresh: bool = True) -> None:

@@ -116,7 +116,8 @@ class OandaClient:
                                    float(t.get("unrealizedPL", 0)), (t.get("clientExtensions") or {}).get("id"), t.get("openTime")))
         return out
 
-    async def market_order(self, symbol, side, lots, stop_loss, take_profit, client_id, max_slippage_price=None) -> BrokerFill:
+    async def market_order(self, symbol, side, lots, stop_loss, take_profit, client_id, max_slippage_price=None,
+                           max_slippage_pips=None) -> BrokerFill:
         inst = get(symbol)
         units = round(lots * inst.contract_size) * (1 if side == "buy" else -1)
         order = {"type": "MARKET", "instrument": inst.oanda, "units": str(units), "timeInForce": "FOK", "positionFill": "DEFAULT",
