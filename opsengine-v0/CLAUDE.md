@@ -89,6 +89,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/checkpoints.py` | HMAC-signed, chained checkpoints of every audit log, kept outside the data folder |
 | `opsengine/backup.py` | Backups with manifest, verify, restore into an empty folder, prune |
 | `opsengine/gdpr.py` | Retention purge (`rules/retention.json`), subject access export, data inventory (`docs/data-inventory.json`) |
+| `docs/legal/` | DRAFT legal documents (DPA, notices, ROPA, DPIA, LIAs, breach procedure) awaiting an Irish solicitor; every file carries the draft banner |
 | `deploy/` | Dockerfile, docker-compose + Caddy (HTTPS), production settings, systemd nightly timer |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
