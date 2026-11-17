@@ -452,3 +452,34 @@ class NightlyAndDeploy(Tmp):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AuditFreeText(Tmp):
+    def test_free_text_numbers_and_unknown_names_never_enter_the_log(self):
+        e = Engine(BREMORE, state_dir=self.tmp, today=TODAY)
+        e.store.audit("human:Ops (SAMPLE) <ops@opsengine.example.ie>", "note_added", "ISS-0007",
+                      {"note": "Spoke to Andy K. on 087 123 4567, card SP-SAMPLE-70016, email andyk@mail.example.com",
+                       "file": "IMG_andy_card.jpg", "status": "sent", "count": 3, "when": "2026-11-11"})
+        raw = json.dumps(e.store.audit_rows(raw=True)[-1], ensure_ascii=False)
+        for leak in ("Andy", "087 123 4567", "SP-SAMPLE-70016", "andyk@", "IMG_andy", "ops@opsengine"):
+            self.assertNotIn(leak, raw)
+        row = e.store.audit_rows(raw=True)[-1]
+        stored = json.loads(row["payload"])
+        self.assertEqual((stored["status"], stored["count"], stored["when"], row["ref"]), ("sent", 3, "2026-11-11", "ISS-0007"))  # machine values stay readable
+        readable = e.store.audit_rows()[-1]
+        self.assertIn("Spoke to Andy K.", json.loads(readable["payload"])["note"])
+        self.assertTrue(e.store.verify_audit()[0])
+
+    def test_erasing_text_keeps_the_proof_and_tampering_is_caught(self):
+        e = Engine(BREMORE, state_dir=self.tmp, today=TODAY)
+        e.store.audit("engine", "note_added", "ISS-0007", {"note": "Nickname Smudge said his card is at home"})
+        self.assertTrue(e.store.verify_audit_text()[0])
+        self.assertEqual(e.store.erase_text(["Smudge"], "subject asked"), 1)
+        readable = json.loads(e.store.audit_rows()[-1]["payload"])
+        self.assertEqual(readable["note"], "[removed text]")
+        row = e.store.db.execute("SELECT * FROM audit_text WHERE text IS NULL").fetchone()
+        self.assertTrue(row["sha256"] and row["erased_at"])  # the hash and the erasure stay as evidence
+        self.assertTrue(e.store.verify_audit()[0])
+        e.store.audit("engine", "note_added", "ISS-0007", {"note": "Another free-text note"})
+        e.store.db.execute("UPDATE audit_text SET text='changed' WHERE text='Another free-text note'")
+        self.assertFalse(e.store.verify_audit_text()[0])

@@ -117,8 +117,8 @@
     },
     {
       "who": "Everyone above",
-      "data": "audit log entries: who did what and when. People appear only as tokens (⟪P-0007⟫); the token table is separate and deletable",
-      "where": "audit and people tables in every database",
+      "data": "audit log entries: who did what and when. The log itself holds only identifiers, dates, numbers and machine words; people appear as tokens (⟪P-0007⟫) and any free text (notes, reasons, subjects, file names, document numbers) as tokens (⟪T-00001⟫) kept with their SHA-256 in a separate, erasable table",
+      "where": "audit, people and audit_text tables in every database",
       "why": "tamper-evident record for audits and disputes",
       "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment; retention also under Art 17(3)(e) (legal claims)",
       "role": "processor / controller (accounts)",
