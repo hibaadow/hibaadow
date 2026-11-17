@@ -40,9 +40,15 @@ class Base(unittest.TestCase):
         e.advance()
         return e
 
-    def drafts(self, e):
-        return [s for s in e.store.steps(state="awaiting_approval") if s["approval_role"] == "safety_reviewer"
-                and s["action"] == "request_signature"]
+    def drafts(self, e, routine=True):
+        """Reviewer drafts. routine=True turns them into routine revisions (not missing or expired, medium), which a
+        plan limit can hold; the sample drafts are for missing documents, which are urgent and never held."""
+        out = [s for s in e.store.steps(state="awaiting_approval") if s["approval_role"] == "safety_reviewer"
+               and s["action"] == "request_signature"]
+        if routine:
+            for s in out:
+                e.store.update_issue(s["issue_id"], kind="content_gap", severity="medium")
+        return out
 
 
 class Limits(Base):
@@ -73,6 +79,35 @@ class Limits(Base):
         limits.set_overrides(e, {"reviews_per_month": 1, "extra_reviews_this_month": 1}, "Admin <admin@opsengine.example.ie>")
         e.approve(b["id"], REVIEWER)  # capacity added
         self.assertEqual(limits.usage(e)["reviews_per_month"]["used"], 2)
+
+    def test_urgent_safety_reviews_are_never_held(self):
+        e = self.engine(reviews_per_month=0)
+        d = self.drafts(e, routine=False)[0]  # a missing Safety Statement: could stop work
+        self.assertTrue(limits.is_urgent(e, d))
+        self.assertFalse(limits.is_held(e, d))
+        e.approve(d["id"], REVIEWER)
+        over = [a for a in e.store.audit_rows() if a["event"] == "review_over_allowance"]
+        self.assertTrue(over and '"billable_only_with_customer_agreement": true' in over[0]["payload"])
+
+    def test_held_review_is_announced_escalated_and_can_be_marked_urgent(self):
+        from datetime import timedelta
+        e = self.engine(reviews_per_month=0)
+        d = self.drafts(e)[0]
+        self.assertTrue(limits.is_held(e, d))
+        self.assertEqual([what for _, what in limits.hold_notices(e)][0], "held: customer, ops and reviewer told")
+        self.assertEqual(limits.hold_notices(e), [])  # once
+        names = {f.name for f in e.outbox.iterdir()}
+        self.assertIn(f"held-{d['id']}.md", names)
+        self.assertIn(f"held-{d['id']}-ops.md", names)
+        later = Engine(LIFFEY, state_dir=self.tmp / "state", today=TODAY + timedelta(days=limits.HOLD_ESCALATE_DAYS))
+        self.assertTrue(any("escalated" in what for _, what in limits.hold_notices(later)))
+        self.assertEqual(later.store.issue(d["issue_id"])["status"], "escalated")
+        with self.assertRaises(ValueError):
+            limits.mark_urgent(later, d["id"], "Gráinne", "")
+        limits.mark_urgent(later, d["id"], "Ciara Byrne <ciara@liffey-interiors.example.ie>", "main contractor needs it before Monday")
+        self.assertFalse(limits.is_held(later, later.store.step(d["id"])))
+        later.approve(d["id"], REVIEWER)
+        self.assertIn("urgent_review_requested", [a["event"] for a in later.store.audit_rows()])
 
     def test_notices_at_80_and_100_once_each(self):
         e = self.engine(reviews_per_month=2)
@@ -141,13 +176,20 @@ class AdminPage(Base):
         admin.get("/admin/plans")
         self.assertIn("Not saved", admin.flash(admin.post("/admin/plans/nonsense", {"workers": "5"})[1]))
 
-    def test_reviewer_queue_shows_the_hold(self):
+    def test_reviewer_queue_shows_the_hold_and_the_urgent_route(self):
         cid = "liffey_interiors"
-        limits.set_overrides(self.portal.engine(cid), {"reviews_per_month": 0}, "Admin <admin@opsengine.example.ie>")
+        e = self.portal.engine(cid)
+        limits.set_overrides(e, {"reviews_per_month": 0}, "Admin <admin@opsengine.example.ie>")
+        step = next(s for s in e.store.steps(state="awaiting_approval") if s["approval_role"] == "safety_reviewer")
+        e.store.update_issue(step["issue_id"], kind="content_gap", severity="medium")
         rev = Client(self.base)
         rev.login(DEMO["reviewer"])
-        page = rev.get(f"/c/{cid}/reviewer")
-        self.assertIn("stays in the queue until extra capacity is added", page.replace("&#x27;", "'"))
+        page = rev.get(f"/c/{cid}/reviewer").replace("&#x27;", "'")
+        self.assertIn("Held: the customer has used this month's review allowance", page)
+        self.assertIn("Mark urgent and review now", page)
+        self.assertIn("Urgent safety review: never held", page)  # the other drafts are for missing documents
+        rev.post(f"/c/{cid}/urgent-review", {"step": step["id"], "reason": "site start on Monday"})
+        self.assertFalse(limits.is_held(e, self.portal.engine(cid).store.step(step["id"])))
 
 
 if __name__ == "__main__":

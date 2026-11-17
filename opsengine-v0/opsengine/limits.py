@@ -131,13 +131,100 @@ def next_review_counts(engine, step_id):
     return previous != 1
 
 
+HOLD_ESCALATE_DAYS = 2
+
+
+def is_urgent(engine, step):
+    """Safety work a billing limit must never hold: the document is missing or expired and could stop work,
+    the issue is critical or high, or someone has marked this review urgent."""
+    issue = engine.store.issue(step["issue_id"]) or {}
+    req = engine.kb.requirements.get(issue.get("requirement"), {})
+    data = __import__("json").loads(issue.get("data") or "{}")
+    return bool(data.get("urgent_review") or issue.get("severity") in ("critical", "high")
+                or (req.get("blocks_site_access") and issue.get("kind") in ("missing", "expired")))
+
+
+def is_held(engine, step):
+    """True when a routine review is over the month's allowance and not urgent: it waits, visibly."""
+    if step["action"] != ROUTINE_REVIEW_ACTION or step["approval_role"] != "safety_reviewer" or step["state"] != "awaiting_approval":
+        return False
+    u = usage(engine)["reviews_per_month"]
+    over = u["allowance"] is not None and next_review_counts(engine, step["id"]) and u["used"] >= u["allowance"]
+    return bool(over) and not is_urgent(engine, step)
+
+
 def check_review_allowed(engine, step):
     if step["action"] != ROUTINE_REVIEW_ACTION or step["approval_role"] != "safety_reviewer":
         return
+    if is_held(engine, step):
+        raise LimitReached(f"{engine.customer.company['name']} has used all {usage(engine)['reviews_per_month']['allowance']} "
+                           "routine reviews in their plan this month. This draft stays in the queue, visible to everyone, until "
+                           "extra capacity is added, they upgrade, or someone marks it urgent.")
     u = usage(engine)["reviews_per_month"]
     if u["allowance"] is not None and next_review_counts(engine, step["id"]) and u["used"] >= u["allowance"]:
-        raise LimitReached(f"{engine.customer.company['name']} has used all {u['allowance']} routine reviews in their plan "
-                           "this month. This draft stays in the queue until extra capacity is added or they upgrade.")
+        # urgent safety work goes ahead over the allowance; the extra review is recorded for agreement, never auto-charged
+        engine.store.audit("limits", "review_over_allowance", step["id"], {"used": u["used"], "allowance": u["allowance"],
+                                                                           "billable_only_with_customer_agreement": True})
+
+
+def mark_urgent(engine, step_id, by, reason):
+    """Customer, ops or reviewer: this review can't wait for capacity. It is released from the hold at once."""
+    step = engine.store.step(step_id)
+    if not step or step["action"] != ROUTINE_REVIEW_ACTION or step["approval_role"] != "safety_reviewer":
+        raise ValueError("only a safety document review can be marked urgent")
+    if len((reason or "").strip()) < 5:
+        raise ValueError("say why it is urgent")
+    import json as _json
+    issue = engine.store.issue(step["issue_id"])
+    data = _json.loads(issue["data"] or "{}")
+    data["urgent_review"] = {"by": by, "reason": reason.strip()[:300], "on": engine.today.isoformat()}
+    engine.store.update_issue(issue["id"], data=_json.dumps(data))
+    engine.store.audit(f"human:{by}", "urgent_review_requested", step_id, {"reason": reason.strip()[:300]})
+
+
+def hold_notices(engine):
+    """Daily run: tell everyone the moment a review is held, and escalate it to ops after HOLD_ESCALATE_DAYS.
+    A held review is never silent and never dropped."""
+    out = []
+    owner = engine.customer.company["owner"]
+    for step in engine.store.steps(state="awaiting_approval"):
+        if not is_held(engine, step):
+            continue
+        since = (step["result"] or {}).get("awaiting_since") or engine.today.isoformat()
+        days = (engine.today - __import__("datetime").date.fromisoformat(since)).days
+        key = f"review_held:{step['id']}"
+        what = engine.approval_summary(step, {})
+        if not engine.store.setting(key):
+            engine.store.set_setting(key, engine.today.isoformat(), "limits")
+            body = (f"Hi {owner['name'].split()[0]}, this safety document is ready for review but you've used this month's "
+                    f"review allowance: {what}. It is waiting, not dropped. You can {offer(engine, 'reviews_per_month')}, "
+                    "or mark it urgent in the portal (or call us) and it will be reviewed straight away.")
+            _notice(engine, f"held-{step['id']}", owner["name"], "email", owner["email"], f"Safety review waiting: {what}", body, step)
+            _notice(engine, f"held-{step['id']}-ops", "Ops team and safety reviewer", "file", "-",
+                    f"Review held by plan limit: {step['id']}",
+                    f"{engine.customer.company['name']}: {what}. Held by the plan's review allowance. Contact the customer today; "
+                    "release it as urgent if it is safety-critical.", step)
+            engine.store.audit("limits", "review_held", step["id"], {"notified": ["customer", "ops", "safety_reviewer"]})
+            out.append((step["id"], "held: customer, ops and reviewer told"))
+        elif days >= HOLD_ESCALATE_DAYS and not engine.store.setting(key + ":escalated"):
+            engine.store.set_setting(key + ":escalated", engine.today.isoformat(), "limits")
+            _notice(engine, f"held-{step['id']}-escalated", "Ops team", "file", "-", f"Escalation: review held {days} days",
+                    f"{engine.customer.company['name']}: {what} has been held for {days} days. Decide today: add capacity "
+                    "with the customer's agreement, or release it as urgent.", step)
+            engine.store.update_issue(step["issue_id"], status="escalated")
+            engine.store.audit("limits", "review_hold_escalated", step["id"], {"days": days})
+            out.append((step["id"], f"held {days} days: escalated"))
+    return out
+
+
+def _notice(engine, name, to_name, channel, address, subject, body, step):
+    from . import delivery
+    to = {"name": to_name, "channel": channel, "address": address}
+    status = "internal" if channel == "file" else delivery.dispatch(engine.store, engine.customer, to, subject, body, step["issue_id"], step["id"])
+    engine.outbox.mkdir(parents=True, exist_ok=True)
+    path = engine.outbox / f"{name}.md"
+    path.write_text(f"# {subject}\n\n- To: {to_name} via {channel} ({address})\n- Delivery: {status}\n\n{body}\n", encoding="utf-8")
+    engine.store.log_comm("out", channel, to_name, address, subject, step["issue_id"], step["id"], status, str(path))
 
 
 def offer(engine, metric):
@@ -175,8 +262,9 @@ def notify(engine):
         else:
             keep = ("Every site and worker is still fully monitored and you'll still get every safety alert."
                     if m != "reviews_per_month" else
-                    "New drafts wait in the safety reviewer's queue until capacity is added. Nothing is approved automatically, "
-                    "and every compliance issue and safety alert stays visible.")
+                    "Urgent safety reviews (anything that could stop work) still go ahead. Other new drafts wait, visibly, in the "
+                    "safety reviewer's queue until capacity is added, and you can mark any of them urgent. Nothing is approved "
+                    "automatically, and every compliance issue and safety alert stays visible.")
             body = (f"Hi {owner['name'].split()[0]}, you've reached your plan's limit: {what}. {keep} "
                     f"To carry on as normal, you can {offer(engine, m)}. Reply or use the portal and we'll set it up.")
         subject = f"Your OpsEngine plan: {u['label']} at {level}%"

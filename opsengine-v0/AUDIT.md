@@ -119,6 +119,16 @@ do not deploy to live customers or switch the matching feature on.
 | Email and WhatsApp tested end to end | Not done | `EMAIL_MODE=outbox`, `WHATSAPP_MODE=queue`; nothing real is sent |
 | EU hosting, encrypted backups, restore drill, security review | Not done | Deployment files exist; image never built |
 
+## Update: release blockers addressed in #9 (17 November 2026)
+
+- **Review limits can't delay critical safety work.** Reviews of missing or expired documents that could stop
+  work, critical/high issues, and anything marked urgent are never held by a plan limit (the extra review is
+  recorded for the customer to agree, never charged automatically). A held routine review is announced at once
+  to the customer, ops and the reviewer, can be marked urgent by any of them, and escalates after 2 days.
+- **Audit log anonymisation no longer relies on known names.** Only identifiers, dates, numbers, hashes and
+  lowercase machine words stay in the log; all other text (including nicknames, card numbers, phone numbers and
+  file names) is held by token in a separate table with its SHA-256, so it can be erased while the proof stays.
+
 ## Update: subscription limits (17 November 2026)
 
 Workers, sites and routine safety reviews a month per plan, with notices at 80% and 100%. Workers and sites
