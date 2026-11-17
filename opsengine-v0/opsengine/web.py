@@ -730,7 +730,13 @@ def view_issue(portal, eng, cid, role, issue_id):
             bits.append(f'<a class="small" href="/c/{cid}/message?path={urllib.parse.quote(r["outbox"])}">view message</a>')
         if r.get("draft"):
             bits.append(f'<a class="small" href="/c/{cid}/message?path={urllib.parse.quote(r["draft"])}">view draft</a>')
-        if s["state"] == "awaiting_approval":
+        if s["state"] == "awaiting_approval" and limits.is_held(eng, s):
+            bits.append('<span class="small" style="color:var(--bad)">Waiting: this month\'s review allowance is used up. '
+                        'You and our team have been told.</span>'
+                        f'<form class="inline" method="post" action="/c/{cid}/urgent-review"><input type="hidden" name="step" value="{s["id"]}">'
+                        '<input name="reason" required minlength="5" placeholder="Why it can\'t wait" aria-label="Why it can\'t wait" size="18">'
+                        '<button class="ghost">It\'s urgent: review now</button></form>')
+        elif s["state"] == "awaiting_approval":
             bits.append(approve_buttons(cid, s, role, "Approve" if s["approval_role"] != "safety_reviewer" else "Release / sign off"))
         if s["state"] == "rejected" and s["approval_role"] == "safety_reviewer" and s["action"] == limits.ROUTINE_REVIEW_ACTION:
             bits.append(f'<span class="small" style="color:var(--bad)">declined: {e_(r.get("reason", ""))}</span>')
@@ -1027,10 +1033,15 @@ def view_reviewer(portal, eng, cid, role):
             if s["action"] == limits.ROUTINE_REVIEW_ACTION:
                 if not limits.next_review_counts(e, s["id"]):
                     note = '<span class="chip ok">Amended resubmission: included in the original review</span>'
-                try:
-                    limits.check_review_allowed(e, s)
-                except limits.LimitReached as exc:
-                    note, buttons = f'<span class="chip warn">{e_(str(exc))}</span>', ""
+                if limits.is_held(e, s):
+                    note = ('<span class="chip warn">Held: the customer has used this month\'s review allowance. It stays here, and '
+                            'the customer and ops team have been told. If it can\'t wait, mark it urgent.</span>'
+                            f'<form class="inline" method="post" action="/c/{c}/urgent-review"><input type="hidden" name="step" value="{s["id"]}">'
+                            '<input name="reason" required minlength="5" placeholder="Why it is urgent" aria-label="Why it is urgent" size="18">'
+                            '<button class="ghost">Mark urgent and review now</button></form>')
+                    buttons = ""
+                elif limits.is_urgent(e, s):
+                    note += '<span class="chip bad">Urgent safety review: never held by a plan limit</span>'
             items.append(f'<div class="row"><div><h3>{e_(e.approval_summary(s, prior))}</h3><div class="meta">{e_(e.customer.company["name"])} · {link}</div>{note}</div>'
                          f'<div class="actions">{buttons}</div></div>')
     appointed = service().get("safety_reviewer", {}).get("appointed")
@@ -1090,8 +1101,9 @@ def view_insights(portal, eng, cid, role):
 # ---------------- HTTP ----------------
 
 COOKIE = "opsengine_session"
-CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval"}
-STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate", "resubmit"}
+CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval", "urgent-review"}
+STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate", "resubmit",
+              "urgent-review"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1450,6 +1462,12 @@ class Handler(BaseHTTPRequestHandler):
                 except limits.LimitReached as exc:
                     return self.redirect(back, f"!{exc}")
                 return self.redirect(back, f"Approved all {len(steps)} by {user['name']}. Each one is recorded separately.")
+            if act == "urgent-review":
+                try:
+                    limits.mark_urgent(eng, f.get("step", ""), by, f.get("reason", ""))
+                except ValueError as exc:
+                    return self.redirect(back, f"!Not marked: {exc}.")
+                return self.redirect(back, "Marked urgent. The safety reviewer can review it now; the plan limit doesn't hold it.")
             if act == "resubmit":
                 try:
                     eng.resubmit_draft(f.get("issue", ""), by, f.get("note", "").strip() or "amended")
@@ -1458,10 +1476,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect(back, "Amended draft sent back to the safety reviewer (included in the original review).")
             if act in ("approve", "reject"):
                 step = eng.store.step(f["step"])
-                try:
-                    limits.check_review_allowed(eng, step) if step else None
-                except limits.LimitReached as exc:
-                    return self.redirect(back, f"!{exc}")
+                if step and limits.is_held(eng, step):
+                    return self.redirect(back, "!This review is held by the plan's allowance. Mark it urgent if it can't wait.")
                 if not step or ROLE_APPROVES[role] != step["approval_role"]:
                     return self.redirect(back, "!Only the right person can approve this.")
                 if act == "approve":
