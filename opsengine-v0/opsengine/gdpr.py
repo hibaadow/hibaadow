@@ -99,7 +99,9 @@ def purge(engine, apply=False, by="gdpr-purge"):
             w = engine.customer.workers[wid]
             name, phone = w.get("name", ""), w.get("phone", "")
             d = digits(phone)
-            engine.store.forget([name, name.replace(" ", "_"), name.replace(" ", "-"), w.get("email", ""), phone, d, "+" + d])
+            variants = [name, name.replace(" ", "_"), name.replace(" ", "-"), w.get("email", ""), phone, d, "+" + d]
+            engine.store.erase_text(variants + [x for x in w.get("also_known_as", [])], "leaver retention period passed")
+            engine.store.forget(variants)
         engine.store.audit(by, "personal_data_purged", engine.customer.company["id"],
                            {k: len(v) for k, v in plan.items() if k != "workers_to_remove_from_workers_json"} |
                            {"retention": {k: v for k, v in r.items() if not k.startswith("_") and k != "source"}})
