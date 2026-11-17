@@ -38,6 +38,19 @@
         "rules/main_contractors/northgate_build.json",
         "playbooks/playbooks.json"
       ]
+    },
+    {
+      "id": "r-7f11f093d88f",
+      "registered_on": "2026-11-17",
+      "note": "Pack formats with verified recipients (SAMPLE contractors). SAMPLE library, NOT checked by a competent person yet",
+      "sign_off": null,
+      "files": [
+        "rules/requirements.json",
+        "rules/main_contractors/glenmara_construction_sample.json",
+        "rules/main_contractors/harbour_construction.json",
+        "rules/main_contractors/northgate_build.json",
+        "playbooks/playbooks.json"
+      ]
     }
   ]
 }

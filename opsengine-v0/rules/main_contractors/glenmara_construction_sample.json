@@ -107,6 +107,15 @@
       "Reference"
     ],
     "file_naming": "{prefix}-{section}-{holder}-{type}{ext}",
-    "max_size_mb": 50
+    "max_size_mb": 50,
+    "verified_recipients": [
+      {
+        "method": "portal",
+        "destination": "supplychain-portal.glenmara-construction.example.ie",
+        "verified_by": "SAMPLE (fictional contractor: not a real verification)",
+        "verified_on": "2026-11-17",
+        "sample": true
+      }
+    ]
   }
 }

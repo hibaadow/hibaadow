@@ -232,7 +232,11 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Contractor packs:** a contractor's format lives in `rules/main_contractors/<id>.json` "pack" (sections,
   register columns, file naming, photos or not, size limit). Packs include only that contractor's sites and
   people (no leavers), list every gap on the cover (INCOMPLETE if anything could stop work), confirm rather
-  than attach `share_as: confirmation` documents, and carry a SHA-256 manifest. Exports are audited.
+  than attach `share_as: confirmation` documents, and carry a SHA-256 manifest. Sharing goes prepare ->
+  confirm -> download -> mark sent (`packs.prepare/confirm/download/mark_sent`): the destination must be on the
+  contractor's `verified_recipients` (SAMPLE verification never counts for a real customer); confirmation
+  shows recipient, destination and how many people's data it holds; links are secret, need sign-in to that
+  customer, expire after 72 hours and 3 downloads; every step is audited; copies go after `pack_files_days`.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

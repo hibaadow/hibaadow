@@ -78,6 +78,15 @@
       "Expiry"
     ],
     "file_naming": "{prefix}-{section}-{holder}-{type}{ext}",
-    "max_size_mb": 10
+    "max_size_mb": 10,
+    "verified_recipients": [
+      {
+        "method": "email",
+        "destination": "compliance@northgate-build.example.ie",
+        "verified_by": "SAMPLE (fictional contractor: not a real verification)",
+        "verified_on": "2026-11-17",
+        "sample": true
+      }
+    ]
   }
 }

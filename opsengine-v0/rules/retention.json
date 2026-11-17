@@ -15,5 +15,6 @@
     "directors_and_owners": "contract term + 6 years, deleted at the end of the contract",
     "subcontractor_contacts_and_documents": "engagement + 6 years (contract and Revenue)",
     "audit_log": "contract term + 6 years; people in it are tokens, and forgetting a person anonymises their entries"
-  }
+  },
+  "pack_files_days": 30
 }

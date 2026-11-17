@@ -6,8 +6,22 @@ What goes in: only the company, the workers on that contractor's sites (not leav
 subcontractors and equipment on those sites, and only the requirements that contractor needs.
 Gaps are listed, never left out: a pack with anything that could stop work is marked INCOMPLETE.
 Documents marked `share_as: confirmation` (written terms) are confirmed in the register, never attached.
-Every file has a SHA-256 in MANIFEST.json, and each export is audited."""
+Every file has a SHA-256 in MANIFEST.json, and each export is audited.
+
+Sharing safeguards (packs carry names, card numbers and photos):
+1. prepare(): builds the pack privately and records it; nothing can be downloaded yet. The recipient and
+   destination come only from the contractor's rules file, and must be on its `verified_recipients` list
+   (a real customer can't release a pack to an unverified or SAMPLE-verified recipient).
+2. confirm(): a signed-in person confirms, seeing the recipient, destination and how many people's data it
+   holds. Only then is a download link made: secret, for this customer's signed-in users only, expiring after
+   LINK_HOURS and MAX_DOWNLOADS downloads.
+3. download() and mark_sent() record who, when and to whom. mark_sent only accepts the verified destination.
+4. Every pack is checked to contain only this customer's people and files, and its copy is deleted after
+   `pack_files_days` (rules/retention.json) by the GDPR purge; the record of it stays."""
 import csv
+import hmac
+import secrets
+from datetime import datetime, timedelta, timezone
 import hashlib
 import io
 import json
@@ -18,6 +32,9 @@ from pathlib import Path
 
 from .labels import nice_date
 from .report import compliance_register
+
+LINK_HOURS = 72
+MAX_DOWNLOADS = 3
 
 STATUS = {"ok": "In order", "expiring": "In order (expires soon)", "missing": "Missing", "expired": "Expired",
           "incomplete": "Incomplete", "content_gap": "Needs revising", "out_of_use": "Out of use"}
@@ -138,3 +155,128 @@ def build(engine, mc_id, out_dir, site_id=None, by="engine"):
                                                     "size_mb": round(size_mb, 2), "too_big": bool(too_big)})
     return {"zip": zpath, "folder": folder, "items": len(rows), "gaps": len(gaps), "could_stop_work": len(blocking),
             "files": attached, "too_big": bool(too_big), "max_size_mb": spec.get("max_size_mb")}
+
+
+# ---------------- sharing safeguards ----------------
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def recipient(engine, mc_id):
+    """Where this contractor's packs go, and whether that destination is verified."""
+    mc = engine.kb.main_contractors.get(mc_id) or {}
+    sub = mc.get("submission", {})
+    method, dest = sub.get("method", ""), sub.get("to", "")
+    entry = next((v for v in (mc.get("pack") or {}).get("verified_recipients", [])
+                  if v.get("destination") == dest and v.get("method") == method), None)
+    real_customer = not engine.customer.company.get("sample")
+    verified = bool(entry) and not (real_customer and entry.get("sample"))
+    return {"name": mc.get("name", mc_id), "method": method, "destination": dest, "verified": verified,
+            "verified_by": (entry or {}).get("verified_by", ""), "verified_on": (entry or {}).get("verified_on", "")}
+
+
+def _record(engine, pack_id):
+    row = engine.store.db.execute("SELECT * FROM packs WHERE id=?", (pack_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def listing(engine):
+    return [dict(r) for r in engine.store.db.execute("SELECT * FROM packs ORDER BY id DESC")]
+
+
+def _check_scope(engine, folder):
+    """Nothing from another customer: every supporting file is one of this customer's evidence files."""
+    own = {hashlib.sha256(f.read_bytes()).hexdigest() for f in engine.evidence_dir.glob("*") if f.is_file()} \
+        if engine.evidence_dir.exists() else set()
+    for f in (folder / "documents").glob("*"):
+        if hashlib.sha256(f.read_bytes()).hexdigest() not in own:
+            raise ValueError("pack contains a file that isn't this customer's; nothing was released")
+
+
+def prepare(engine, mc_id, base_dir, site_id=None, by="engine"):
+    n = engine.store.db.execute("SELECT COUNT(*) FROM packs").fetchone()[0] + 1
+    pack_id = f"PK-{n:04d}"
+    built = build(engine, mc_id, Path(base_dir) / pack_id, site_id, by)
+    _check_scope(engine, built["folder"])
+    rcpt = recipient(engine, mc_id)
+    people = len({r["holder"] for r in rows_for(engine, mc_id, [site_id] if site_id else contractors_for(engine)[mc_id])
+                  if r["holder"] in engine.customer.workers})
+    rec = {"id": pack_id, "contractor": mc_id, "sites": json.dumps([site_id] if site_id else contractors_for(engine)[mc_id]),
+           "recipient": rcpt["name"], "method": rcpt["method"], "destination": rcpt["destination"], "verified": int(rcpt["verified"]),
+           "people": people, "files": built["files"], "items": built["items"], "gaps": built["gaps"],
+           "folder": str(built["folder"]), "zip": str(built["zip"]),
+           "zip_sha256": hashlib.sha256(Path(built["zip"]).read_bytes()).hexdigest(),
+           "prepared_by": by, "prepared_at": _now().isoformat(timespec="seconds"), "max_downloads": MAX_DOWNLOADS}
+    engine.store.db.execute(f"INSERT INTO packs ({', '.join(rec)}) VALUES ({', '.join('?' * len(rec))})", list(rec.values()))
+    engine.store.db.commit()
+    engine.store.audit(by, "pack_prepared", pack_id, {"contractor": mc_id, "destination": rcpt["destination"],
+                                                     "verified": rcpt["verified"], "people": people, "files": built["files"]})
+    return {**rec, "could_stop_work": built["could_stop_work"], "too_big": built["too_big"]}
+
+
+def confirm(engine, pack_id, by, confirmed_contractor, ticked):
+    """Explicit confirmation before anything can leave. Returns the one-time secret for the download link."""
+    rec = _record(engine, pack_id)
+    if not rec or rec["deleted_at"]:
+        raise ValueError("no such pack")
+    if rec["confirmed_at"]:
+        raise ValueError("this pack has already been confirmed; prepare a new one if you need another link")
+    if not ticked or confirmed_contractor != rec["contractor"]:
+        raise ValueError("confirm the recipient: tick the box for the contractor shown")
+    if not rec["verified"]:
+        raise ValueError(f"{rec['destination']} isn't a verified destination for {rec['recipient']}; "
+                         "an administrator must verify it with the contractor first")
+    secret = secrets.token_hex(32)
+    expires = (_now() + timedelta(hours=LINK_HOURS)).isoformat(timespec="seconds")
+    engine.store.db.execute("UPDATE packs SET confirmed_by=?, confirmed_at=?, token_hash=?, expires_at=? WHERE id=?",
+                            (by, _now().isoformat(timespec="seconds"), hashlib.sha256(secret.encode()).hexdigest(), expires, pack_id))
+    engine.store.db.commit()
+    engine.store.audit(by, "pack_confirmed", pack_id, {"recipient": rec["recipient"], "destination": rec["destination"],
+                                                      "people": rec["people"], "expires": expires})
+    return secret
+
+
+def download(engine, pack_id, secret, by):
+    """The zip, for a signed-in user of this customer holding the link. Every download is recorded."""
+    rec = _record(engine, pack_id)
+    if not rec or rec["deleted_at"] or not rec["token_hash"]:
+        raise ValueError("this pack isn't available")
+    if not hmac.compare_digest(hashlib.sha256((secret or "").encode()).hexdigest(), rec["token_hash"]):
+        engine.store.audit(by, "pack_download_refused", pack_id, {"reason": "wrong link"})
+        raise ValueError("this link isn't valid")
+    if rec["expires_at"] < _now().isoformat(timespec="seconds"):
+        raise ValueError("this link has expired; prepare a new pack")
+    if rec["downloads"] >= rec["max_downloads"]:
+        raise ValueError(f"this link has been used {rec['max_downloads']} times; prepare a new pack")
+    data = Path(rec["zip"]).read_bytes()
+    if hashlib.sha256(data).hexdigest() != rec["zip_sha256"]:
+        raise ValueError("the pack file has changed since it was prepared; prepare a new one")
+    engine.store.db.execute("UPDATE packs SET downloads=downloads+1 WHERE id=?", (pack_id,))
+    engine.store.db.commit()
+    engine.store.audit(by, "pack_downloaded", pack_id, {"download": rec["downloads"] + 1, "of": rec["max_downloads"]})
+    return Path(rec["zip"]).name, data
+
+
+def mark_sent(engine, pack_id, by, sent_to):
+    rec = _record(engine, pack_id)
+    if not rec or not rec["confirmed_at"]:
+        raise ValueError("confirm the pack before recording it as sent")
+    if (sent_to or "").strip().lower() != rec["destination"].lower():
+        raise ValueError(f"it can only be sent to the verified destination: {rec['destination']}")
+    engine.store.db.execute("UPDATE packs SET sent_by=?, sent_at=?, sent_to=? WHERE id=?",
+                            (by, _now().isoformat(timespec="seconds"), rec["destination"], pack_id))
+    engine.store.db.commit()
+    engine.store.audit(by, "pack_sent", pack_id, {"recipient": rec["recipient"], "to": rec["destination"], "method": rec["method"]})
+
+
+def expired_copies(engine, days, today):
+    """Pack copies older than `days` (records are kept)."""
+    cutoff = (datetime.combine(today, datetime.min.time(), timezone.utc) - timedelta(days=days)).isoformat()
+    return [r for r in listing(engine) if not r["deleted_at"] and r["prepared_at"] < cutoff]
+
+
+def delete_copy(engine, rec, by):
+    shutil.rmtree(Path(rec["zip"]).parent, ignore_errors=True)  # the pack's own folder: copy and zip
+    engine.store.db.execute("UPDATE packs SET deleted_at=?, token_hash=NULL WHERE id=?", (_now().isoformat(timespec="seconds"), rec["id"]))
+    engine.store.db.commit()
+    engine.store.audit(by, "pack_deleted", rec["id"], {"reason": "retention"})

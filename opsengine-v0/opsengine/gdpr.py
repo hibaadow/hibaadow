@@ -87,12 +87,17 @@ def purge(engine, apply=False, by="gdpr-purge"):
         if c["issue_id"] in old_issues and c["outbox"] and Path(c["outbox"]).is_file():
             plan["message_files"].append(c["outbox"])
     plan["message_files"] = sorted(set(plan["message_files"]))
+    from . import packs
+    expired = packs.expired_copies(engine, r.get("pack_files_days", 30), today)
+    plan["pack_copies"] = [x["id"] for x in expired]
     if apply:
         for f in plan["review_uploads"] + plan["leaver_evidence_files"] + plan["message_files"]:
             Path(f).unlink(missing_ok=True)
         for phone in plan["leaver_contact_prefs"]:
             engine.store.db.execute("DELETE FROM contact_prefs WHERE address=?", (phone,))
         engine.store.db.commit()
+        for rec in expired:
+            packs.delete_copy(engine, rec, by)
         for doc_id in plan["leaver_documents"]:
             engine.store.redact_document(doc_id, KEEP_ON_REDACT, by, "leaver retention period passed")
         for wid in plan["leaver_people_forgotten"]:

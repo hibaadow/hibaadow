@@ -79,6 +79,15 @@
       "Expiry"
     ],
     "file_naming": "{holder_name}_{type}{ext}",
-    "max_size_mb": 25
+    "max_size_mb": 25,
+    "verified_recipients": [
+      {
+        "method": "portal",
+        "destination": "supplier-portal.harbour.example.ie",
+        "verified_by": "SAMPLE (fictional contractor: not a real verification)",
+        "verified_on": "2026-11-17",
+        "sample": true
+      }
+    ]
   }
 }
