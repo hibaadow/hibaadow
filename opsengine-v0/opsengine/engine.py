@@ -273,6 +273,8 @@ class Engine:
         s = self.store.step(step_id)
         if not s or s["state"] != "awaiting_approval":
             raise ValueError(f"{step_id} is not awaiting approval")
+        from .limits import check_review_allowed
+        check_review_allowed(self, s)  # a routine review over the plan's allowance waits; never auto-released
         self.store.update_step(step_id, state="pending", approved_by=by, approved_at=now_iso())
         self.store.audit(f"human:{by}", "approved", step_id, {"role": s["approval_role"]})
         return self._advance_issue(s["issue_id"])
@@ -288,9 +290,27 @@ class Engine:
         s = self.store.step(step_id)
         if not s or s["state"] != "awaiting_approval":
             raise ValueError(f"{step_id} is not awaiting approval")
+        from .limits import check_review_allowed
+        check_review_allowed(self, s)
         self.store.update_step(step_id, state="rejected", result=json.dumps({"rejected_by": by, "reason": reason}))
         self.store.update_issue(s["issue_id"], status="escalated")
         self.store.audit(f"human:{by}", "rejected", step_id, {"reason": reason})
+
+    def resubmit_draft(self, issue_id, by, note):
+        """After the safety reviewer declines a draft: redo it with their reason and send it back for review.
+        The first resubmission is included in the original review (it doesn't use the plan's allowance)."""
+        steps = self.store.steps(issue_id)
+        review = next((s for s in steps if s["action"] == "request_signature" and s["approval_role"] == "safety_reviewer"
+                       and s["state"] == "rejected"), None)
+        draft = next((s for s in steps if s["action"] == "draft_document"), None)
+        if not review or not draft:
+            raise ValueError(f"{issue_id} has no declined draft to resubmit")
+        reason = (review["result"] or {}).get("reason", "")
+        self.store.update_step(draft["id"], state="pending", result=json.dumps({"retry_reason": reason, "amendment_note": note}))
+        self.store.update_step(review["id"], state="pending", approved_by=None, approved_at=None, result=None)
+        self.store.update_issue(issue_id, status="in_progress")
+        self.store.audit(f"human:{by}", "draft_resubmitted", issue_id, {"declined_for": reason, "note": note})
+        return self._advance_issue(issue_id)
 
     # ---------------- inbound proof ----------------
     def store_evidence(self, doc, file_path=None):

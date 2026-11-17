@@ -48,26 +48,36 @@ def active_workers(customer):
     return sum(1 for w in customer.workers.values() if not w.get("left_on"))
 
 
-def customer_plan(customer, prices=None):
-    """The customer's plan and monthly bill (excluding VAT)."""
+def customer_plan(customer, prices=None, extras=None):
+    """The customer's plan and monthly bill (excluding VAT). `extras` comes from limits.extras when an engine
+    is at hand (it includes administrator changes); otherwise company.json "plan"."""
     prices = prices or load()
     chosen = customer.company.get("plan") or {}
+    ex = extras or {"extra_worker_blocks": chosen.get("extra_worker_blocks", 0) or 0,
+                    "extra_sites": chosen.get("extra_sites", 0) or 0, "extra_site_eur": chosen.get("extra_site_eur")}
     p = plan(chosen.get("id"), prices)
-    extras = []
-    if p:
-        sites = len(customer.sites)
-        if p.get("sites_included") and sites > p["sites_included"]:
-            each = chosen.get("extra_site_eur")
-            extras.append({"name": f"{sites - p['sites_included']} additional site(s)",
-                           "monthly_eur": each * (sites - p["sites_included"]) if each else None,
-                           "price": f"{money_(each)} a month each" if each else "€30–€50 a month each, agreed with you"})
-        blocks = chosen.get("extra_worker_blocks") or 0
-        if blocks:
-            extras.append({"name": f"{blocks * 25} additional workers", "monthly_eur": 100 * blocks, "price": f"€100 a month per 25"})
-    known = p and p["monthly_eur"] is not None and all(x["monthly_eur"] is not None for x in extras)
-    total = (p["monthly_eur"] + sum(x["monthly_eur"] for x in extras)) if known else None
-    return {"plan": p, "extras": extras, "monthly_total_eur": total, "vat": prices["vat"],
+    items = []
+    if p and ex["extra_sites"]:
+        each = ex["extra_site_eur"] or default_site_eur(prices)
+        items.append({"name": f"{ex['extra_sites']} additional site(s)", "monthly_eur": each * ex["extra_sites"],
+                      "price": f"{money_(each)} a month each"})
+    if p and ex["extra_worker_blocks"]:
+        blocks = ex["extra_worker_blocks"]
+        items.append({"name": f"{blocks * 25} additional workers", "monthly_eur": 100 * blocks, "price": "€100 a month per 25"})
+    total = (p["monthly_eur"] + sum(x["monthly_eur"] for x in items)) if p and p["monthly_eur"] is not None else None
+    return {"plan": p, "extras": items, "monthly_total_eur": total, "vat": prices["vat"],
             "onboarding_eur": (p or {}).get("onboarding_eur"), "agreed": chosen.get("agreed_monthly_eur")}
+
+
+def default_site_eur(prices=None):
+    prices = prices or load()
+    return next(a["monthly_eur"] for a in prices["add_ons"] if a["id"] == "extra_site")
+
+
+def is_specialist(document_type, prices=None):
+    """Routine reviews of RAMS and Safety Statements are never specialist work."""
+    prices = prices or load()
+    return document_type not in prices["routine_reviews_never_specialist"]
 
 
 def money_(v):
@@ -83,12 +93,10 @@ def fit_problems(engine, prices=None):
     if not p:
         return [f"No plan recorded. Suggested by size: {suggested(active_workers(c), prices)['name']}."]
     out = []
-    workers = active_workers(c)
-    allowed = (p["workers_max"] or 10 ** 6) + 25 * ((c.company.get("plan") or {}).get("extra_worker_blocks") or 0)
-    if workers > allowed:
-        nxt = suggested(workers, prices)
-        out.append(f"{workers} workers is more than {p['name']} covers ({allowed}). Options: {nxt['name']} "
-                   f"({money_(nxt['monthly_eur']) if nxt['monthly_eur'] else 'custom'} a month) or additional 25-worker blocks at €100 a month.")
+    from .limits import offer, usage
+    for m, u in usage(engine).items():
+        if u["level"] in ("at", "over"):
+            out.append(f"{u['used']} of {u['allowance']} {u['label']} ({u['level']} the limit): {offer(engine, m)}.")
     have = included(p["id"], prices)
     used = set()
     if len(c.sites) > 1:
@@ -101,7 +109,7 @@ def fit_problems(engine, prices=None):
         used.add("corrective_actions")
     for f in sorted(used - set(have)):
         up = first_plan_with(f, prices)
-        if f == "multiple_sites" and p.get("sites_included"):
-            continue  # covered by the additional-site add-on
+        if f == "multiple_sites":
+            continue  # sites are counted against the plan's site limit instead
         out.append(f"Uses {included(up['id'], prices)[f].lower()}, which is in {up['name']}, not {p['name']}.")
     return out

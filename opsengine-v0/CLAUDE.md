@@ -210,7 +210,17 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   Scale €999 a month (1–10, 11–30, 31–75, 76–150 workers), Enterprise custom; onboarding fee equals one
   month; all excluding VAT. Each customer's plan is `company.json` "plan" (`id`, `extra_worker_blocks`,
   `extra_site_eur`). `pricing.fit_problems` tells our team (ops Insights) when a customer outgrows their
-  plan or uses features from a higher one; it never stops work. Revenue figures are staff-only.
+  plan or uses features from a higher one. Revenue figures are staff-only. Extra sites default to €40.
+- **Subscription limits** (`opsengine/limits.py`): workers, sites and routine safety reviews a month per plan
+  (Starter 10/1/5, Growth 30/3/15, Business 75/10/40, Scale 150/25/100, Enterprise custom). Notices at 80%
+  and 100% (once a month each). Limits must never stop monitoring, hide an issue, silence a safety alert or
+  approve anything: workers and sites over the limit stay fully monitored; a routine review over the
+  allowance waits in the reviewer queue (`LimitReached`) until an admin adds capacity. One amended
+  resubmission (`Engine.resubmit_draft`) is included in a draft's original review. Ordinary RAMS and
+  Safety Statement reviews are never specialist work. Admins change limits at `/admin/plans` (audited).
+- **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
+  the photo reader is validated, claim the rules are approved, claim safety reviews run before
+  `service.json` has an appointed reviewer, or send real messages before email/WhatsApp are tested.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

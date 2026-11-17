@@ -26,7 +26,7 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import approval_links, auth, config, delivery, inbound, llm, scheduler, whatsapp
+from . import approval_links, auth, config, delivery, inbound, limits, llm, scheduler, whatsapp
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
@@ -252,7 +252,8 @@ def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
         demo = (f'<span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>'
                 f'<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>'
                 '<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form>')
-    admin = '<a class="small" href="/admin/users" style="color:inherit">Users</a>' if user["role"] == "admin" else ""
+    admin = ('<a class="small" href="/admin/users" style="color:inherit">Users</a>'
+             '<a class="small" href="/admin/plans" style="color:inherit">Plans</a>') if user["role"] == "admin" else ""
     who = (f'<span class="small">{e_(user["name"])} · {e_(ROLE_LABELS[user["role"]])}</span>{admin}'
            '<a class="small" href="/account/password" style="color:inherit">Password</a>'
            '<form method="post" action="/logout"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Sign out</button></form>')
@@ -310,6 +311,45 @@ def view_password(portal, csrf, forced=False, error=None, user=None):
 <label for="new">New password (12+ characters)<input id="new" name="new" type="password" autocomplete="new-password" minlength="12" required></label>
 <label for="again">New password again<input id="again" name="again" type="password" autocomplete="new-password" minlength="12" required></label>
 <button>Change password</button></form>{codes}{'' if forced else '<a href="/">Back</a>'}</section>""", portal), csrf)
+
+
+def view_plans(portal, csrf, flash=None):
+    """Administrators: plan limits for everyone, and each customer's custom limits and extra capacity."""
+    from . import pricing
+    prices = pricing.load()
+    over = limits.plan_limit_overrides(portal.state)
+    fl = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
+    plan_rows = []
+    for x in prices["plans"]:
+        lim = {**(x.get("limits") or {}), **over.get(x["id"], {})}
+        inputs = "".join(f'<td><input name="{m}" type="number" min="0" max="100000" value="{e_(str(lim.get(m, "")))}" aria-label="{e_(x["name"])} {m}" style="width:7em"></td>'
+                         for m in limits.METRICS)
+        plan_rows.append(f'<tr><td><form id="p-{x["id"]}" method="post" action="/admin/plans/{x["id"]}"></form>{e_(x["name"])}</td>'
+                         + inputs.replace("<input ", f'<input form="p-{x["id"]}" ') +
+                         f'<td><button form="p-{x["id"]}" class="ghost">Save</button></td></tr>')
+    cust = []
+    for cid in portal.customers:
+        e = portal.engine(cid)
+        o, ex, u = limits.overrides(e), limits.extras(e), limits.usage(e)
+        plan = (e.customer.company.get("plan") or {}).get("id", "none")
+        used = " · ".join(f'{v["used"]}/{v["allowance"] if v["allowance"] is not None else "custom"} {k.replace("_per_month", "")}' for k, v in u.items())
+        field = lambda name, label, val: (f'<label>{label}<input name="{name}" type="number" min="0" step="any" value="{e_(str(val if val is not None else ""))}" '
+                                          f'style="width:7em"></label>')
+        cust.append(f'<div class="card"><h3>{e_(e.customer.company["name"])} · {e_(plan)}</h3><p class="small">Usage: {e_(used)}</p>'
+                    f'<form method="post" action="/admin/plans/customer/{cid}" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end">'
+                    f'{field("workers", "Custom workers limit", o.get("workers"))}{field("sites", "Custom sites limit", o.get("sites"))}'
+                    f'{field("reviews_per_month", "Custom reviews a month", o.get("reviews_per_month"))}'
+                    f'{field("extra_worker_blocks", "Extra 25-worker blocks", ex["extra_worker_blocks"])}{field("extra_sites", "Extra sites", ex["extra_sites"])}'
+                    f'{field("extra_site_eur", "Extra site price € (enterprise)", ex["extra_site_eur"])}'
+                    f'{field("extra_reviews_this_month", "Extra reviews this month", ex["extra_reviews"])}'
+                    '<button class="ghost">Save</button></form>'
+                    '<p class="small muted">Only add paid capacity once the customer has agreed to the charge.</p></div>')
+    heads = "".join(f"<th>{h}</th>" for h in ("Plan", "Workers", "Sites", "Reviews a month", ""))
+    return with_csrf(bare_page("Plans and limits", f"""<section><h1>Plans and limits</h1>{fl}
+<p class="note">Changes apply straight away and are recorded in the audit log. Limits never stop monitoring, hide issues,
+silence safety alerts or approve anything; a review over the allowance waits in the queue.</p>
+<div class="tbl"><table><thead><tr>{heads}</tr></thead><tbody>{''.join(plan_rows)}</tbody></table></div></section>
+<section><h2>Customers</h2>{''.join(cust)}<a href="/">Back</a></section>""", portal).replace("max-width:460px", "max-width:960px"), csrf)
 
 
 def view_users(portal, me, csrf, flash=None, shown=None):
@@ -495,7 +535,10 @@ def view_how(portal, eng, cid, role):
     "How long your workers' data is kept (we suggest periods; you choose)."])}
 <p class="small">You stay the employer and the contractor, with the legal duties that come with that. We help you meet them; we don't take them over.</p></div>
 <div class="card"><h3>A qualified person signs off</h3>{li([
-    f"Safety Statements, method statements (RAMS) and high-risk corrective actions are released only by {rev['name']}, {rev['qualification']}.",
+    (f"Safety Statements, method statements (RAMS) and high-risk corrective actions are released only by {rev['name']}, {rev['qualification']}."
+     if rev.get("appointed") else
+     "Safety Statements, method statements (RAMS) and high-risk corrective actions are released only by a named, qualified safety reviewer. "
+     "That reviewer hasn't been appointed yet, so safety reviews aren't running yet."),
     "Training, inspections and repairs are done by qualified providers. We never mark them done without their proof.",
     "Translated safety content is checked by a native speaker before it's used."])}</div>
 <div class="card"><h3>We never</h3>{li([
@@ -535,7 +578,7 @@ def view_costs(eng, svc):
     """Your plan and bill, every plan side by side, and what is charged separately. All excluding VAT."""
     from . import pricing
     prices = pricing.load()
-    mine = pricing.customer_plan(eng.customer, prices)
+    mine = pricing.customer_plan(eng.customer, prices, limits.extras(eng))
     p = mine["plan"]
     price = lambda v: f"{money(v)} a month" if v is not None else "Custom pricing"
     if p:
@@ -549,13 +592,21 @@ def view_costs(eng, svc):
     else:
         plan_card = '<div class="card"><h3>Your plan</h3><p>Not set yet. Our team will agree it with you.</p></div>'
     rows = []
+    meters = "".join(
+        f'<div class="kpi"><b>{u["used"]} of {u["allowance"] if u["allowance"] is not None else "custom"}</b><span>{e_(u["label"])}'
+        f'{" (" + str(u["percent"]) + "%)" if u["percent"] is not None else ""}'
+        f'{"<br><b>At your limit: " + e_(limits.offer(eng, m)) + "</b>" if u["level"] in ("at", "over") else ""}</span></div>'
+        for m, u in limits.usage(eng).items())
     for x in prices["plans"]:
         size = f'{x["workers_min"]}–{x["workers_max"]} workers' if x["workers_max"] else f'{x["workers_min"] - 1}+ workers'
         prev = "" if x is prices["plans"][0] or not x.get("includes_previous", True) else \
             f'Everything in {prices["plans"][prices["plans"].index(x) - 1]["name"]}, plus: '
         onboarding = money(x["onboarding_eur"]) if x["onboarding_eur"] else "Quoted"
+        lim = x.get("limits")
+        caps = (f'{lim["workers"]} workers, {lim["sites"]} site{"s" if lim["sites"] != 1 else ""}, '
+                f'{lim["reviews_per_month"]} routine reviews a month') if lim else "Custom limits"
         rows.append(f'<tr{" style=\"font-weight:600\"" if p and x["id"] == p["id"] else ""}><td>{e_(x["name"])}</td><td>{e_(size)}</td>'
-                    f'<td>{e_(price(x["monthly_eur"]))}</td><td>{e_(onboarding)}</td>'
+                    f'<td>{e_(price(x["monthly_eur"]))}</td><td>{e_(onboarding)}</td><td class="small">{e_(caps)}</td>'
                     f'<td class="small">{e_(prev + ", ".join(x["features"].values()))}</td></tr>')
     addons = "".join(f'<tr><td>{e_(a["name"])}{"<div class=small>" + e_(a["note"]) + "</div>" if a.get("note") else ""}</td>'
                      f'<td>{e_(a["price"])}</td></tr>' for a in prices["add_ons"])
@@ -564,7 +615,12 @@ def view_costs(eng, svc):
 <div class="card"><h3>Courses, inspections and repairs</h3><p><b>Paid to the provider, at their price</b></p>
 <p class="small">They're charged separately from your subscription, and only once you've approved them. Every approval shows the provider's price on its own line. {e_(fee_line(svc)[0].upper() + fee_line(svc)[1:])}.</p></div></div>
 <p><b>Included in every plan:</b> {e_("; ".join(prices.get("included_in_every_plan", [])))}. OpsEngine itself never signs off safety documents: a competent person does.</p>
-<h3 style="margin-top:16px">All plans</h3><div style="overflow-x:auto"><table><thead><tr><th>Plan</th><th>For</th><th>Monthly</th><th>Onboarding</th><th>Includes</th></tr></thead>
+<h3 style="margin-top:16px">Your usage</h3><div class="kpis">{meters}</div>
+<p class="small">We tell you at 80% and at 100%. At a limit we offer an upgrade or extra capacity. {e_(prices["limits_notes"]["at_limit"])}</p>
+<h3 style="margin-top:16px">Specialist safety work, quoted separately</h3>
+<p class="small">Ordinary reviews of RAMS and Safety Statements are never specialist work. Specialist work is quoted before it starts, and only goes ahead with your OK:</p>
+<ul>{"".join(f"<li>{e_(x)}</li>" for x in prices["specialist_safety_work"])}</ul>
+<h3 style="margin-top:16px">All plans</h3><div style="overflow-x:auto"><table><thead><tr><th>Plan</th><th>For</th><th>Monthly</th><th>Onboarding</th><th>Limits</th><th>Includes</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div>
 <h3 style="margin-top:16px">Extras</h3><div style="overflow-x:auto"><table><thead><tr><th>Service</th><th>Price</th></tr></thead><tbody>{addons}</tbody></table></div>
 <p class="small muted">{e_(prices["separate_charges"])}</p></section>"""
@@ -676,6 +732,12 @@ def view_issue(portal, eng, cid, role, issue_id):
             bits.append(f'<a class="small" href="/c/{cid}/message?path={urllib.parse.quote(r["draft"])}">view draft</a>')
         if s["state"] == "awaiting_approval":
             bits.append(approve_buttons(cid, s, role, "Approve" if s["approval_role"] != "safety_reviewer" else "Release / sign off"))
+        if s["state"] == "rejected" and s["approval_role"] == "safety_reviewer" and s["action"] == limits.ROUTINE_REVIEW_ACTION:
+            bits.append(f'<span class="small" style="color:var(--bad)">declined: {e_(r.get("reason", ""))}</span>')
+            if role == "ops":
+                bits.append(f'<form class="inline" method="post" action="/c/{cid}/resubmit"><input type="hidden" name="issue" value="{e_(i["id"])}">'
+                            '<input name="note" required placeholder="What was amended" aria-label="What was amended" size="18">'
+                            '<button class="ghost">Resubmit amended draft</button></form>')
         steps.append(f'<li class="{cls}"><div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center">{" ".join(bits)}</div></li>')
     comms = "".join(f'<tr><td class="mono">{e_(c["ts"][:16])}</td><td>{"→" if c["direction"] == "out" else "←"} {e_(c["to_name"] or "")}</td>'
                     f'<td>{e_(c["channel"] or "")}</td><td>{e_(c["subject"])}</td><td class="small">{e_(eng.kb.wording.delivery(c["status"]))}</td></tr>'
@@ -932,9 +994,20 @@ def view_reviewer(portal, eng, cid, role):
             prior = {p["action"]: p["result"] for p in e.store.steps(s["issue_id"]) if p["state"] in DONE and p["result"]}
             draft = (prior.get("draft_document") or {}).get("draft")
             link = f'<a href="/c/{c}/message?path={urllib.parse.quote(draft)}">Read the draft</a>' if draft else f'<a href="/c/{c}/issue/{s["issue_id"]}">See the evidence</a>'
-            items.append(f'<div class="row"><div><h3>{e_(e.approval_summary(s, prior))}</h3><div class="meta">{e_(e.customer.company["name"])} · {link}</div></div>'
-                         f'<div class="actions">{approve_buttons(c, s, role, "Release / sign off")}</div></div>')
-    return (f'<section><h1>For the safety reviewer</h1><p class="muted">Drafted Safety Statements and RAMS, and high-risk corrective actions, '
+            note, buttons = "", approve_buttons(c, s, role, "Release / sign off")
+            if s["action"] == limits.ROUTINE_REVIEW_ACTION:
+                if not limits.next_review_counts(e, s["id"]):
+                    note = '<span class="chip ok">Amended resubmission: included in the original review</span>'
+                try:
+                    limits.check_review_allowed(e, s)
+                except limits.LimitReached as exc:
+                    note, buttons = f'<span class="chip warn">{e_(str(exc))}</span>', ""
+            items.append(f'<div class="row"><div><h3>{e_(e.approval_summary(s, prior))}</h3><div class="meta">{e_(e.customer.company["name"])} · {link}</div>{note}</div>'
+                         f'<div class="actions">{buttons}</div></div>')
+    appointed = service().get("safety_reviewer", {}).get("appointed")
+    warn = "" if appointed else ('<div class="flash err">No named, qualified safety reviewer is appointed yet (data/service.json). '
+                                 'Safety reviews are not operational: nothing here may be released to a real customer.</div>')
+    return (f'<section>{warn}<h1>For the safety reviewer</h1><p class="muted">Drafted Safety Statements and RAMS, and high-risk corrective actions, '
             f'wait here for a competent person. OpsEngine never releases or signs these off itself.</p>'
             f'<div class="list">{"".join(items) or "<p class=muted>Nothing waiting for review.</p>"}</div></section>')
 
@@ -960,7 +1033,7 @@ def plans_card(portal):
     rows, total, notes = [], 0, []
     for c in portal.customers:
         e = portal.engine(c)
-        mine = pricing.customer_plan(e.customer, prices)
+        mine = pricing.customer_plan(e.customer, prices, limits.extras(e))
         name = mine["plan"]["name"] if mine["plan"] else "No plan"
         amount = mine["monthly_total_eur"]
         total += amount or 0
@@ -989,7 +1062,7 @@ def view_insights(portal, eng, cid, role):
 
 COOKIE = "opsengine_session"
 CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval"}
-STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate"}
+STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate", "resubmit"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1152,6 +1225,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_html(view_password(p, s["csrf"], forced=bool(user["must_change"]), user=user))
             if user["must_change"]:
                 return self.redirect("/account/password")
+            if parts == ["admin", "plans"]:
+                if user["role"] != "admin":
+                    return self.redirect(self.home_for(user) or "/", "!Only admins can change plans and limits.")
+                return self.send_html(view_plans(p, s["csrf"], q.get("flash", [None])[0]))
             if parts == ["admin", "users"]:
                 if user["role"] != "admin":
                     return self.redirect(self.home_for(user) or "/", "!Only admins can manage users.")
@@ -1289,6 +1366,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect(self.home_for(user) or "/", "Password changed. Other sessions were signed out.")
             if user["must_change"]:
                 return self.redirect("/account/password")
+            if parts[:2] == ["admin", "plans"]:
+                if user["role"] != "admin":
+                    p.accounts.audit(f"user:{user['id']}", "access_denied", user["id"], {"area": "plans"})
+                    return self.redirect(self.home_for(user) or "/", "!Only admins can change plans and limits.")
+                by = auth.identity(user)
+                try:
+                    if len(parts) == 3:
+                        limits.set_plan_limits(p.state, parts[2], f, by, p.accounts.audit)
+                    elif len(parts) == 4 and parts[2] == "customer" and parts[3] in p.customers:
+                        limits.set_overrides(p.engine(parts[3]), f, by)
+                        p.accounts.audit(by, "customer_limits_changed", parts[3], {k: v for k, v in f.items() if k != "csrf"})
+                    else:
+                        return self.redirect("/admin/plans", "!Unknown plan or customer.")
+                except ValueError as exc:
+                    return self.redirect("/admin/plans", f"!Not saved: {exc}")
+                return self.redirect("/admin/plans", "Saved.")
             if parts[:2] == ["admin", "users"]:
                 return self.admin_users(user, parts[2:], f, s["csrf"])
             home = self.home_for(user) or "/"
@@ -1321,10 +1414,23 @@ class Handler(BaseHTTPRequestHandler):
                 steps = [eng.store.step(x) for x in f["steps"].split(",") if x]
                 if not steps or any(not st or ROLE_APPROVES[role] != st["approval_role"] for st in steps):
                     return self.redirect(back, "!Only the right person can approve these.")
-                eng.approve_group([st["id"] for st in steps], by)
+                try:
+                    eng.approve_group([st["id"] for st in steps], by)
+                except limits.LimitReached as exc:
+                    return self.redirect(back, f"!{exc}")
                 return self.redirect(back, f"Approved all {len(steps)} by {user['name']}. Each one is recorded separately.")
+            if act == "resubmit":
+                try:
+                    eng.resubmit_draft(f.get("issue", ""), by, f.get("note", "").strip() or "amended")
+                except ValueError as exc:
+                    return self.redirect(back, f"!{exc}")
+                return self.redirect(back, "Amended draft sent back to the safety reviewer (included in the original review).")
             if act in ("approve", "reject"):
                 step = eng.store.step(f["step"])
+                try:
+                    limits.check_review_allowed(eng, step) if step else None
+                except limits.LimitReached as exc:
+                    return self.redirect(back, f"!{exc}")
                 if not step or ROLE_APPROVES[role] != step["approval_role"]:
                     return self.redirect(back, "!Only the right person can approve this.")
                 if act == "approve":

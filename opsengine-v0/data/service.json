@@ -15,6 +15,7 @@
   },
   "safety_reviewer": {
     "name": "Our safety reviewer (SAMPLE: to be named)",
-    "qualification": "Chartered safety practitioner (SAMPLE: to be confirmed)"
+    "qualification": "Chartered safety practitioner (SAMPLE: to be confirmed)",
+    "appointed": false
   }
 }

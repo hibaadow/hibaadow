@@ -233,6 +233,8 @@ def run_customer(folder, state_dir=None, today=None):
     advanced = engine.advance()
     retried = delivery.retry_due(engine.store, engine.customer)
     requests = send_approval_requests(engine)
+    from .limits import notify as usage_notices
+    notices = usage_notices(engine)
     chased = chase_stalled(engine)
     overdue = chase_overdue_actions(engine)
     followed = follow_up_appointments(engine)
@@ -243,7 +245,7 @@ def run_customer(folder, state_dir=None, today=None):
                "escalated": [ref for ref, what in chased if what.startswith("escalated")],
                "overdue_actions": [ref for ref, _ in overdue],
                "appointments_followed_up": [ref for ref, _ in followed],
-               "approval_requests_sent": len(requests), "messages_retried": len(retried),
+               "approval_requests_sent": len(requests), "usage_notices": [f"{m} {lvl}%" for m, lvl in notices], "messages_retried": len(retried),
                "approvals_waiting": len(engine.approval_queue()),
                "reviews_waiting": len(engine.review_queue())}
     engine.store.audit("scheduler", "daily_run_finished", summary["customer"], summary)

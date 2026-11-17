@@ -105,6 +105,28 @@ nightly deletion stays off until a solicitor confirms.
 
 **Tests:** 7 new tests in `tests/test_ops.py`, for 213 in total.
 
+## Release status (17 November 2026): not production-ready
+
+Opening pull requests does not mean the product is ready for production. Until each item below is done,
+do not deploy to live customers or switch the matching feature on.
+
+| Dependency | Status | Effect until done |
+| --- | --- | --- |
+| Photo reader validated on real documents (Phase 1, needs the API key) | Not started | Mock mode only; every real photo goes to a person |
+| Rules library checked and signed off by a competent person | Not done (r-035c75be5ab8 unsigned) | `OPSENGINE_REQUIRE_SIGNED_RULES=true` refuses to run in production |
+| Named, qualified safety reviewer appointed | Not done (`data/service.json` appointed: false) | Portal says safety reviews are not operational |
+| Irish data protection solicitor approves retention and the legal drafts | Not done | Automatic deletion stays off (`solicitor_confirmed: false`) |
+| Email and WhatsApp tested end to end | Not done | `EMAIL_MODE=outbox`, `WHATSAPP_MODE=queue`; nothing real is sent |
+| EU hosting, encrypted backups, restore drill, security review | Not done | Deployment files exist; image never built |
+
+## Update: subscription limits (17 November 2026)
+
+Workers, sites and routine safety reviews a month per plan, with notices at 80% and 100%. Workers and sites
+over the limit stay fully monitored and our team follows up; a review over the allowance waits visibly in
+the reviewer's queue until an administrator adds capacity or the customer upgrades. Nothing is approved
+automatically. One amended resubmission is included in a draft's original review (new: `resubmit_draft`).
+Administrators change limits at `/admin/plans`. Extra sites default to €40 a month. **Tests:** 231.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

@@ -89,16 +89,18 @@ class Pricing(unittest.TestCase):
         self.assertEqual(pricing.customer_plan(e.customer)["monthly_total_eur"], 399)
         self.assertEqual(pricing.fit_problems(e), [])
         big = self.customer("growth", workers=40)
-        self.assertTrue(any("40 workers" in n and "Business" in n for n in pricing.fit_problems(big)))
+        self.assertTrue(any("40 of 30 workers" in n and "Business" in n for n in pricing.fit_problems(big)))
         extra = self.customer("growth", workers=40, extra_worker_blocks=1)
         self.assertEqual(pricing.customer_plan(extra.customer)["monthly_total_eur"], 499)
         self.assertEqual(pricing.fit_problems(extra), [])
 
     def test_starter_flags_growth_features_in_use(self):
         from opsengine import pricing
-        e = self.customer("starter", extra_site_eur=40)
-        bill = pricing.customer_plan(e.customer)
-        self.assertEqual(bill["monthly_total_eur"], 239)  # €199 + one extra site at the agreed €40
+        e = self.customer("starter")
+        self.assertEqual(pricing.customer_plan(e.customer)["monthly_total_eur"], 199)  # extra sites only once agreed
+        self.assertTrue(any("2 of 1 sites" in n and "€40" in n for n in pricing.fit_problems(e)))
+        paid = self.customer("starter", extra_sites=1)
+        self.assertEqual(pricing.customer_plan(paid.customer)["monthly_total_eur"], 239)  # €199 + one site at the default €40
         notes = " ".join(pricing.fit_problems(e))
         for feature in ("subcontractor compliance tracking", "inspection and booking requests", "provider comparisons"):
             self.assertIn(feature, notes)
