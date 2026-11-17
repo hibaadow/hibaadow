@@ -7,7 +7,7 @@ const fs = require('fs');
   const p = await b.newPage({ viewport: { width: 1080, height: 1920 } });
   p.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log('console:', m.text().slice(0, 300)); });
   p.on('pageerror', e => console.log('pageerror:', e.message));
-  await p.goto('http://localhost:8765/index.html?render=1');
+  await p.goto('http://localhost:8765/index.html?render=1' + (process.env.EP ? '&ep=' + process.env.EP : ''));
   await p.waitForFunction(() => window.EPISODE && window.EPISODE.ready, null, { timeout: 120000 });
   await p.evaluate(() => document.fonts.ready);
   const shots = [];

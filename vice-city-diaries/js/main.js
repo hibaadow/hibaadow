@@ -17,7 +17,8 @@ const RENDER = params.has('render');
 const QUALITY = RENDER ? 1 : Math.min(1, parseFloat(params.get('q') || (matchMedia('(max-width: 800px)').matches ? '0.5' : '0.75')));
 if (RENDER) document.body.classList.add('render');
 
-const TL = await (await fetch('data/timeline.json')).json();
+const EP = String(params.get('ep') || window.EP || '1'), E2 = EP === '2';
+const TL = await (await fetch(E2 ? 'data/timeline_ep2.json' : 'data/timeline.json')).json();
 
 // ---------------------------------------------------------------- helpers
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -718,7 +719,7 @@ const sweepB = new THREE.PointLight(0xff3d9a, 0, 10, 1.4); DRIVE.add(sweepB);
 const sweepC = new THREE.PointLight(0x22d6ff, 0, 10, 1.4); DRIVE.add(sweepC);
 
 // distance travelled by the hero car in the drive set (integral of its speed)
-function speedAt(t) { if (t < 44.6) return 0; if (t < 47) return lerp(0, 24, ease(prog(t, 44.6, 47))); if (t < 83.5) return 24; return lerp(24, 36, ease(prog(t, 83.5, 86))); }
+function speedAt(t) { if (E2) return t < 12.9 ? 32 : lerp(32, 0, ease(prog(t, 12.9, 15.8))); if (t < 44.6) return 0; if (t < 47) return lerp(0, 24, ease(prog(t, 44.6, 47))); if (t < 83.5) return 24; return lerp(24, 36, ease(prog(t, 83.5, 86))); }
 const DIST = (() => { const a = new Float32Array(DUR * 60 + 2); for (let i = 1; i < a.length; i++) a[i] = a[i - 1] + speedAt(i / 60) / 60; return a; })();
 const distAt = t => { const f = clamp(t, 0, DUR) * 60, i = Math.floor(f); return lerp(DIST[i], DIST[Math.min(i + 1, DIST.length - 1)], f - i); };
 function updateDrive(t) {
@@ -735,6 +736,78 @@ function updateDrive(t) {
   const np2 = ((d * 0.65 + 17) % 52 + 52) % 52;
   sweepC.position.set(-6, 2.5, -np2 + 26); sweepC.intensity = 12 * Math.exp(-((np2 - 26) ** 2) / 30);
 }
+
+// ================================================================ EPISODE 2 sets (all procedural, original)
+// overpass hiding spot (drive set, around the car's parking place)
+const overpass = new THREE.Group(); DRIVE.add(overpass);
+{
+  const conc = new THREE.MeshStandardMaterial({ color: 0x4a4752, roughness: 0.9 });
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(46, 1.4, 16), conc); deck.position.set(2, 7.2, 0); overpass.add(deck);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(46, 0.25, 0.3), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.4, 0.6) })); lip.position.set(2, 6.45, 8.1); overpass.add(lip);
+  for (const x of [-11, 3.4, 12.6]) for (const z of [-6, 6]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 7, 18), conc); p.position.set(x, 3.5, z); overpass.add(p); }
+  const sodium = new THREE.PointLight(0xff9a40, 3, 14, 1.4); sodium.position.set(8, 6, 3); overpass.add(sodium);
+  const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.3), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.8, 0.7) })); bulb.position.set(8, 6.4, 3); overpass.add(bulb);
+}
+// construction-zone cones + barrier (drive set)
+const cones = [];
+const conesG = new THREE.Group(); DRIVE.add(conesG);
+{
+  const cm = new THREE.MeshStandardMaterial({ color: 0xff5a14, roughness: 0.5, emissive: 0x3a0e00 }), wm = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4 });
+  for (let i = 0; i < 9; i++) {
+    const c = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 16), cm); body.position.y = 0.4; c.add(body);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.165, 0.1, 16), wm); band.position.y = 0.45; c.add(band);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.45), cm); base.position.y = 0.025; c.add(base);
+    conesG.add(c); cones.push({ c, z0: -22 - i * 3.2, x: 3.6 + (i % 2) * 0.25 });
+  }
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.12), new THREE.MeshStandardMaterial({ map: canvasTex(256, 48, (g) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#fff' : '#ff3d14'; g.beginPath(); g.moveTo(i * 36 - 20, 48); g.lineTo(i * 36 + 16, 0); g.lineTo(i * 36 + 52, 0); g.lineTo(i * 36 + 16, 48); g.fill(); } }), roughness: 0.5 }));
+  bar.position.y = 0.9; const barG = new THREE.Group(); barG.add(bar); conesG.add(barG); cones.push({ c: barG, z0: -44, x: 6.2, bar: true });
+}
+// USB drive with a red tag, at the bottom of the bag
+const usb = new THREE.Group();
+{
+  const b = new THREE.Mesh(new RoundedBoxGeometry(0.058, 0.012, 0.022, 2, 0.004), new THREE.MeshStandardMaterial({ color: 0x111116, metalness: 0.6, roughness: 0.3 })); usb.add(b);
+  const k = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.005, 0.012), new THREE.MeshStandardMaterial({ color: 0xc8c8d0, metalness: 1, roughness: 0.2 })); k.position.x = 0.035; usb.add(k);
+  const tag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.002, 0.02), new THREE.MeshStandardMaterial({ color: 0xd0141e, roughness: 0.6, emissive: 0x300000 })); tag.position.set(-0.048, 0, 0.004); tag.rotation.y = 0.3; usb.add(tag);
+  usb.position.set(0.02, 0.07, 0.01); bag.add(usb); usb.visible = false;
+}
+// the marina at midnight (city coast)
+const MAR = v3(258, 0, 300);
+const marina = new THREE.Group(); scene.add(marina);
+const marinaLights = [];
+{
+  const wood = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g) => { g.fillStyle = '#3b2c22'; g.fillRect(0, 0, 256, 256); for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#43322a' : '#35281f'; g.fillRect(0, i * 16, 256, 14); g.fillStyle = '#1c140f'; g.fillRect(0, i * 16 + 14, 256, 2); } }), roughness: 0.85 });
+  wood.map.wrapS = wood.map.wrapT = THREE.RepeatWrapping; wood.map.repeat.set(1, 10);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(80, 0.35, 8), wood); deck.material.map.repeat.set(1, 1); deck.position.set(MAR.x + 40, 1.0, MAR.z); marina.add(deck);
+  const pm = new THREE.MeshStandardMaterial({ color: 0x2a221c, roughness: 0.9 });
+  for (let x = 0; x <= 80; x += 6) for (const z of [-4, 4]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 3.2, 8), pm); p.position.set(MAR.x + x, 0.4, MAR.z + z); marina.add(p); }
+  const lot = new THREE.Mesh(new THREE.PlaneGeometry(60, 36), M.road); lot.rotation.x = -Math.PI / 2; lot.position.set(MAR.x - 30, 0.06, MAR.z); marina.add(lot);
+  for (let i = 0; i < 4; i++) {
+    const x = MAR.x + 6 + i * 20, z = MAR.z + (i % 2 ? 3.6 : -3.6);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.6, 6), M.pole); pole.position.set(x, 3.0, z); marina.add(pole);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), M.lamp); bulb.position.set(x, 4.85, z); marina.add(bulb);
+    if (i < 3) { const L = new THREE.PointLight(0xffb36a, 7, 16, 1.4); L.position.set(x, 4.6, z); marina.add(L); marinaLights.push(L); }
+  }
+  // moored boats (simple original hulls)
+  const hullShape = new THREE.Shape(); hullShape.moveTo(-5, -1.3); hullShape.lineTo(3, -1.3); hullShape.quadraticCurveTo(5.5, -1.0, 6, 0); hullShape.quadraticCurveTo(5.5, 1.0, 3, 1.3); hullShape.lineTo(-5, 1.3); hullShape.closePath();
+  const hullGeo = new THREE.ExtrudeGeometry(hullShape, { depth: 1.3, bevelEnabled: true, bevelSize: 0.15, bevelThickness: 0.15, bevelSegments: 2 }); hullGeo.rotateX(-Math.PI / 2);
+  const white = new THREE.MeshStandardMaterial({ color: 0xd8dbe2, roughness: 0.35 }), dark = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.3, metalness: 0.4 });
+  marina.userData.boats = [];
+  [[14, -9, 0], [34, 9.5, 1], [52, -9.5, 2], [70, 9, 0]].forEach(([x, z, k]) => {
+    const b = new THREE.Group(); b.position.set(MAR.x + x, -0.4, MAR.z + z); b.rotation.y = z > 0 ? Math.PI : 0;
+    const hull = new THREE.Mesh(hullGeo, white); b.add(hull);
+    const cab = new THREE.Mesh(new RoundedBoxGeometry(4, 1.2, 2.1, 2, 0.2), white); cab.position.set(-0.8, 1.9, 0); b.add(cab);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(4.05, 0.45, 2.15), dark); win.position.set(-0.8, 2.05, 0); b.add(win);
+    if (k !== 2) { const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 8, 6), white); mast.position.set(0.5, 5.5, 0); b.add(mast); }
+    const nav = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(k ? 0.4 : 3, k ? 3 : 0.4, 0.4) })); nav.position.set(5.6, 1.4, 0); b.add(nav);
+    marina.add(b); marina.userData.boats.push(b);
+  });
+}
+marina.visible = false;
+// the man on the pier (original character, seen mostly in silhouette)
+const man = makeHuman({ skin: 0x8f6d5a, jacket: 0x0b0b0e, jacketRough: 0.4, shirt: 0x15151a, pants: 0x0b0b0e, shoes: 0x060606,
+  hair: 0x0c0a09, hairStyle: 'short', lips: 0x6e4a40, eyes: 0x1a120c, chestW: 0.4, scale: 1.08 });
+scene.add(man.root); man.root.visible = false;
 
 // ---------------------------------------------------------------- post
 const composer = new EffectComposer(renderer);
@@ -798,8 +871,9 @@ function luciaBalcony(t, mode) {
   setPose(lucia, base);
 }
 
+const shot1 = (...a) => { if (!E2) shot(...a); };
 // 0) AERIAL — the city that never sleeps
-shot(0, 6.6, (t, u) => {
+shot1(0, 6.6, (t, u) => {
   const p = V(v3(-420, 300, 420), v3(30, 120, 120), ease(u));
   const tgt = V(v3(0, 40, -40), v3(HERO.x, BALC_Y, HERO.z), ease(u));
   look(p, tgt, lerp(55, 42, u));
@@ -807,7 +881,7 @@ shot(0, 6.6, (t, u) => {
   setFace(lucia, { blink: blinkAt(t, 0.2) });
 });
 // 1) Balcony, over the shoulder, city below
-shot(6.6, 9.6, (t, u) => {
+shot1(6.6, 9.6, (t, u) => {
   const b = BALC();
   luciaBalcony(t, 'rail');
   setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.3 });
@@ -816,7 +890,7 @@ shot(6.6, 9.6, (t, u) => {
   look(cam.add(handheld(t)), hd.clone().addScaledVector(dir, 40).addScaledVector(perp, -6).add(v3(0, -11, 0)), 46);
 }, { tin: 'whip' });
 // 2) Lucia front, takes a cigarette but doesn't light it
-shot(9.6, 12.1, (t, u) => {
+shot1(9.6, 12.1, (t, u) => {
   const b = BALC();
   const cu = prog(t, 9.9, 11.4);
   luciaBalcony(t, { cig: cu });
@@ -826,7 +900,7 @@ shot(9.6, 12.1, (t, u) => {
   look(v3(b.x - 5.1, b.y + 1.65, b.z + 1.0).add(handheld(t)), head.clone().add(v3(0, -0.08, 0)), lerp(30, 26, u));
 }, { tin: 'cut' });
 // 3) The phone on the table lights up
-shot(12.1, 14.6, (t, u) => {
+shot1(12.1, 14.6, (t, u) => {
   const b = BALC(); const tb = balcony.userData.table;
   luciaBalcony(t, { cig: 1 });
   const tw = new THREE.Vector3(); tb.getWorldPosition(tw);
@@ -837,7 +911,7 @@ shot(12.1, 14.6, (t, u) => {
   look(v3(tw.x - 0.25, tw.y + 1.05, tw.z + 0.45), v3(tw.x - 0.1, tw.y + 0.75, tw.z + 0.12), 30);
 }, { tin: 'cut' });
 // 4) On the call
-shot(14.6, 19.3, (t, u) => {
+shot1(14.6, 19.3, (t, u) => {
   const b = BALC();
   luciaBalcony(t, { phone: ease(prog(t, 14.6, 15.1)) });
   attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]); setPhone('incall', t - 14.6);
@@ -846,7 +920,7 @@ shot(14.6, 19.3, (t, u) => {
   const head = new THREE.Vector3(); lucia.J.head.getWorldPosition(head);
   look(v3(b.x - 5.2, b.y + 1.62, b.z + 2.6 - u * 0.3).add(handheld(t)), head.clone().add(v3(0, -0.04, 0)), 28);
 }, { tin: 'cut' });
-shot(19.3, 23.5, (t, u) => {
+shot1(19.3, 23.5, (t, u) => {
   const b = BALC();
   luciaBalcony(t, { phone: 1 });
   attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]); setPhone('incall', t - 14.6);
@@ -857,13 +931,13 @@ shot(19.3, 23.5, (t, u) => {
   look(v3(b.x - 3.4 + u * 0.15, b.y + 1.6, b.z - 0.9).add(handheld(t)), head.clone().add(v3(0, -0.02, 0)), 24);
 }, { tin: 'cut' });
 // 5) POV: down to the street
-shot(23.5, 24.4, (t, u) => {
+shot1(23.5, 24.4, (t, u) => {
   const b = BALC();
   luciaBalcony(t, { phone: 1 });
   look(v3(b.x - 4.4, b.y + 1.6, b.z + 1.2), v3(b.x - 30, 0, b.z + 8 - u * 6), lerp(38, 30, u));
 }, { tin: 'cut' });
 // 6) "Then I guess you should come find me." — hangs up
-shot(24.4, 27.8, (t, u) => {
+shot1(24.4, 27.8, (t, u) => {
   const b = BALC();
   const down = ease(prog(t, 26.5, 27.3));
   luciaBalcony(t, { phone: 1 - down });
@@ -882,7 +956,7 @@ function carArrive(t) {
   car.position.set(c.x - 1.6, 0, z); car.rotation.set(0, Math.PI, 0);
   car.userData.wheels.forEach(w => (w.rotation.x = -z * 1.4));
 }
-shot(27.8, 31.6, (t, u) => {
+shot1(27.8, 31.6, (t, u) => {
   hide(lucia.root); show(jason.root);
   carArrive(t);
   placeInCar(t);
@@ -890,7 +964,7 @@ shot(27.8, 31.6, (t, u) => {
   look(v3(c.x - 6.5, 0.7, c.z - 6 + u * 2).add(handheld(t, 0.6)), v3(car.position.x, 0.9, car.position.z), lerp(34, 30, u));
 }, { tin: 'whip', world: 'city' });
 // Lucia walks out to the car and gets in
-shot(31.6, 35.4, (t, u) => {
+shot1(31.6, 35.4, (t, u) => {
   show(lucia.root);
   const c = CURB();
   car.position.set(c.x - 1.6, 0, c.z + 4); car.rotation.set(0, Math.PI, 0);
@@ -922,52 +996,54 @@ function placeInCar(t, opts = {}) {
     const pl = P.sit(); pl.hipY = 0.45; pl.shL = [-0.55, 0, 0.1]; pl.elL = -0.9; pl.shR = [-0.55, 0, -0.1]; pl.elR = -0.9; setPose(lucia, pl);
   }
 }
+const carLat = t => E2 ? 6.6 * ease(prog(t, 12.9, 14.9)) : 0;
+const carYaw = t => E2 ? Math.PI - 0.42 * Math.sin(Math.PI * prog(t, 12.9, 15.1)) : Math.PI;
 function inCar(t, inside = true) {
   show(lucia.root, jason.root, car, interior);
   car.userData.cabin.visible = !inside; car.userData.tail.visible = !inside;
-  car.position.set(DRIVE.position.x, 0, DRIVE.position.z); car.rotation.set(0, Math.PI, 0);
-  updateDrive(t);
+  car.position.set(DRIVE.position.x + carLat(t), 0, DRIVE.position.z); car.rotation.set(0, carYaw(t), 0);
+  updateDrive(t); interior.add(bag);
   car.userData.wheels.forEach(w => (w.rotation.x = distAt(t) * 2.8));
   placeInCar(t);
   bag.position.set(-0.42, 0.62, 0.2); bag.rotation.set(0, 0.2, 0);
 }
 const carPt = (x, y, z) => v3(x, y, z).applyQuaternion(car.quaternion).add(car.position);
-shot(35.4, 38.7, (t, u) => {        // two-shot through the windscreen
+shot1(35.4, 38.7, (t, u) => {        // two-shot through the windscreen
   inCar(t);
   jason.J.head.rotation.y = -0.45 * ease(prog(t, 35.5, 36.0));
   talk(jason, 'jason', t, { brow: 0.4, look: [-0.6, 0] }); talk(lucia, 'lucia', t, { brow: -0.3, look: [-0.3, 0] });
   look(carPt(0, 1.26, 1.45).add(handheld(t, 0.4)), carPt(0, 1.12, -0.2), lerp(74, 68, u));
 }, { tin: 'dip', world: 'drive' });
-shot(38.7, 41.2, (t, u) => {        // Lucia, over Jason's shoulder
+shot1(38.7, 41.2, (t, u) => {        // Lucia, over Jason's shoulder
   inCar(t);
   lucia.J.head.rotation.y = 0.45; jason.J.head.rotation.y = -0.5;
   talk(lucia, 'lucia', t, { brow: -0.4, look: [0.5, 0] }); talk(jason, 'jason', t, {});
   look(carPt(0.62, 1.22, 0.12).add(handheld(t, 0.5)), headOf(lucia).add(v3(0, -0.03, 0)), 28);
 }, { tin: 'cut', world: 'drive' });
-shot(41.2, 42.4, (t, u) => {        // Jason: "What did you do?"
+shot1(41.2, 42.4, (t, u) => {        // Jason: "What did you do?"
   inCar(t);
   jason.J.head.rotation.y = -0.55; lucia.J.head.rotation.y = 0.4;
   talk(jason, 'jason', t, { brow: 0.6, look: [-0.5, 0] });
   look(carPt(-0.55, 1.22, 0.25).add(handheld(t, 0.5)), headOf(jason).add(v3(0, -0.03, 0)), 28);
 }, { tin: 'cut', world: 'drive' });
-shot(42.4, 45.0, (t, u) => {        // Lucia looks ahead
+shot1(42.4, 45.0, (t, u) => {        // Lucia looks ahead
   inCar(t);
   lucia.J.head.rotation.y = lerp(0.4, 0, ease(prog(t, 43.6, 44.4))); jason.J.head.rotation.y = -0.5;
   talk(lucia, 'lucia', t, { brow: -0.5, look: [0, 0] });
   look(carPt(-0.2, 1.25, 1.0).add(handheld(t, 0.4)), headOf(lucia).add(v3(0, -0.03, 0)), lerp(26, 23, u));
 }, { tin: 'cut', world: 'drive' });
-shot(45.0, 47.3, (t, u) => {        // exterior: the car speeds away
+shot1(45.0, 47.3, (t, u) => {        // exterior: the car speeds away
   inCar(t, false);
   const d0 = distAt(45.0), d = distAt(t);
   look(v3(DRIVE.position.x + 4.2, 0.9, DRIVE.position.z + 4 + (d - d0)), carPt(0, 0.7, 0), lerp(42, 34, u));
 }, { tin: 'whip', world: 'drive' });
-shot(47.3, 52.4, (t, u) => {        // "Lucia, what's in the bag?"
+shot1(47.3, 52.4, (t, u) => {        // "Lucia, what's in the bag?"
   inCar(t);
   jason.J.head.rotation.y = -0.4 * (Math.sin(t * 0.9) > -0.2 ? 1 : 0.3); lucia.J.head.rotation.y = -0.6;  // she looks out of her window
   talk(jason, 'jason', t, { brow: 0.5, look: [-0.6, 0] }); talk(lucia, 'lucia', t, { brow: -0.4, look: [-0.6, 0] });
   look(carPt(0.03, 1.26, 1.45).add(handheld(t, 0.5)), carPt(-0.02, 1.12, -0.2), lerp(72, 64, u));
 }, { tin: 'cut', world: 'drive' });
-shot(52.4, 55.6, (t, u) => {        // the bag opens: cash and a phone
+shot1(52.4, 55.6, (t, u) => {        // the bag opens: cash and a phone
   inCar(t);
   lucia.J.head.rotation.x = 0.5; lucia.J.head.rotation.y = 0;
   const open = ease(prog(t, 52.7, 54.0));
@@ -977,13 +1053,13 @@ shot(52.4, 55.6, (t, u) => {        // the bag opens: cash and a phone
   const bp = carPt(-0.42, 0.78, 0.2);
   look(v3(bp.x, bp.y + 0.55 - u * 0.1, bp.z).add(carPt(0, 0, 0.18).sub(car.position)), bp, lerp(42, 34, u));
 }, { tin: 'cut', world: 'drive' });
-shot(55.6, 57.3, (t, u) => {
+shot1(55.6, 57.3, (t, u) => {
   inCar(t); bag.userData.cash.position.y = 0.22;
   jason.J.head.rotation.y = -0.55;
   talk(jason, 'jason', t, { brow: 0.8, look: [-0.5, -0.2] });
   look(carPt(-0.5, 1.2, 0.3).add(handheld(t, 0.5)), headOf(jason).add(v3(0, -0.03, 0)), 27);
 }, { tin: 'cut', world: 'drive' });
-shot(57.3, 61.2, (t, u) => {
+shot1(57.3, 61.2, (t, u) => {
   inCar(t); bag.userData.cash.position.y = 0.22;
   lucia.J.head.rotation.y = lerp(0.1, 0.45, ease(prog(t, 57.3, 58)));
   talk(lucia, 'lucia', t, { brow: -0.2, smirk: ease(prog(t, 59.8, 60.8)) * 0.8, look: [0.5, 0] });
@@ -992,38 +1068,38 @@ shot(57.3, 61.2, (t, u) => {
 // --- SUV
 function suvAt(t) {
   roadFill2.position.set(2, 6, 0);
-  const gap = t < 61 ? 400 : t < 70 ? lerp(300, 60, ease(prog(t, 61, 70))) : lerp(60, 11, ease(prog(t, 70, 84)));
-  suv.position.set(DRIVE.position.x + 1.2 * Math.sin(t * 0.7), 0, DRIVE.position.z + gap); suv.rotation.set(0, Math.PI, 0);
+  const gap = E2 ? (t < 12.9 ? 11 + 1.5 * Math.sin(t * 0.8) : 11 + 1.5 * Math.sin(12.9 * 0.8) - (32 * (t - 12.9) - (distAt(t) - distAt(12.9)))) : t < 61 ? 400 : t < 70 ? lerp(300, 60, ease(prog(t, 61, 70))) : lerp(60, 11, ease(prog(t, 70, 84)));
+  suv.position.set(DRIVE.position.x + (E2 ? 0.5 : 1.2) * Math.sin(t * 0.7), 0, DRIVE.position.z + gap); suv.rotation.set(0, Math.PI, 0);
   suv.userData.wheels.forEach(w => (w.rotation.x = t * 30));
   roadFill2.position.set(suv.position.x - DRIVE.position.x + 2, 6, gap * 0.5 + 4);
   return gap;
 }
-shot(61.2, 64.9, (t, u) => {        // through the rear window: headlights appear
+shot1(61.2, 64.9, (t, u) => {        // through the rear window: headlights appear
   inCar(t); bag.userData.cash.position.y = 0.22; show(suv); suvAt(t);
   look(carPt(0, 1.25, 0.6), carPt(0, 1.05, -8), 32);
 }, { tin: 'cut', world: 'drive' });
-shot(64.9, 68.6, (t, u) => {        // rear-view mirror + Jason
+shot1(64.9, 68.6, (t, u) => {        // rear-view mirror + Jason
   inCar(t); show(suv); const gap = suvAt(t);
   drawMirror(clamp(1 - gap / 260) * 1.2 + 0.25, t);
   jason.J.head.rotation.x = -0.1; jason.J.head.rotation.y = -0.1;
   talk(jason, 'jason', t, { brow: 0.9, look: [-0.2, 0.5] });
   look(carPt(0.12, 1.27, 0.5).add(handheld(t, 0.4)), carPt(0.02, 1.33, 0.82), lerp(36, 30, u));
 }, { tin: 'cut', world: 'drive' });
-shot(68.6, 71.2, (t, u) => {        // Lucia turns around
+shot1(68.6, 71.2, (t, u) => {        // Lucia turns around
   inCar(t); show(suv); suvAt(t);
   const turn = ease(prog(t, 68.7, 69.8));
   lucia.J.spine.rotation.y = turn * 0.7; lucia.J.head.rotation.y = turn * 1.0; lucia.J.head.rotation.x = -0.05;
   setFace(lucia, { blink: blinkAt(t, 0.2), brow: 0.3 * turn, look: [0.6 * turn, 0] });
   look(carPt(0.05, 1.28, -0.85).add(handheld(t, 0.6)), headOf(lucia).add(v3(0, -0.02, 0)), 34);
 }, { tin: 'cut', world: 'drive' });
-shot(71.2, 75.5, (t, u) => {        // exterior chase
+shot1(71.2, 75.5, (t, u) => {        // exterior chase
   inCar(t); show(suv); suvAt(t);
   inCar(t, false);
   const gap = suvAt(t);
   const p = carPt(1.6 - u * 0.8, 1.9 + u * 0.3, -gap - 7.5);
   look(p.add(handheld(t, 1.4)), carPt(0, 0.9, 0), lerp(30, 26, u));
 }, { tin: 'whip', world: 'drive' });
-shot(75.5, 80.6, (t, u) => {        // the message
+shot1(75.5, 80.6, (t, u) => {        // the message
   inCar(t); show(suv); suvAt(t);
   const pu = ease(prog(t, 75.5, 76.1));
   scene.add(phone);
@@ -1036,20 +1112,219 @@ shot(75.5, 80.6, (t, u) => {        // the message
   const nrm = v3(0, 0, 1).applyQuaternion(phone.quaternion);
   look(ph.clone().add(nrm.multiplyScalar(lerp(0.3, 0.24, u))).add(v3(0, 0.0, 0)), ph, 38);
 }, { tin: 'cut', world: 'drive' });
-shot(80.6, 84.0, (t, u) => {        // "Keep driving."
+shot1(80.6, 84.0, (t, u) => {        // "Keep driving."
   inCar(t); show(suv); suvAt(t);
   attach(phone, lucia.J.handR, v3(0, -0.07, 0.04), [-0.4, 0, 0]); setPhone('off', t);
   lucia.J.head.rotation.y = ease(prog(t, 80.7, 81.5)) * 0.5;
   talk(lucia, 'lucia', t, { brow: -0.6, look: [0.7, 0] });
   look(carPt(0.58, 1.22, 0.25).add(handheld(t, 0.4)), headOf(lucia).add(v3(0, -0.03, 0)), lerp(26, 20, u));
 }, { tin: 'cut', world: 'drive' });
-shot(84.0, 86.6, (t, u) => {        // the car pulls away, the SUV right behind
+shot1(84.0, 86.6, (t, u) => {        // the car pulls away, the SUV right behind
   inCar(t); show(suv); suvAt(t);
   inCar(t, false);
   const gap = suvAt(t);
   look(carPt(-2.5, 4.5 + u * 4, -gap - 14 - u * 8), carPt(0, 0.6, 6), lerp(34, 40, u));
 }, { tin: 'whip', world: 'drive' });
-shot(86.6, 90.01, () => { look(v3(0, 1, 0), v3(0, 1, -1), 40); }, { tin: 'cut', black: true });
+shot1(86.6, 90.01, () => { look(v3(0, 1, 0), v3(0, 1, -1), 40); }, { tin: 'cut', black: true });
+
+// ================================================================ EPISODE 2 shots
+const shot2 = (...a) => { if (E2) shot(...a); };
+function luciaSit(u = 0, holdUp = 0, armsDown = false) {               // passenger pose; u raises the right hand to the ear, holdUp to chest height
+  const pl = P.sit(); pl.hipY = 0.45; pl.shL = [-0.55, 0, 0.1]; pl.elL = -0.9;
+  pl.shR = [lerp(-0.55, -1.1, u), 0, lerp(-0.1, -0.55, u)]; pl.elR = lerp(-0.9, -2.3, u); pl.handR = [0, lerp(0, 0.8, u), 0];
+  pl.shL = [-0.55 - holdUp * 0.42, 0, 0.1 - holdUp * 0.32]; pl.elL = -0.9 - holdUp * 0.7; pl.handL = [0, -holdUp * 0.9, 0];
+  if (armsDown) { pl.shL = [-0.15, 0, 0.32]; pl.elL = -0.25; pl.shR = [-0.15, 0, -0.32]; pl.elR = -0.25; }
+  setPose(lucia, pl);
+}
+function dark2() { car.userData.headlight.visible = false; car.userData.tail.visible = false; roadFill.intensity = 5; overpass.visible = true; }
+function suvCrawl(t) {                               // the SUV searching, slowly, on the road beside the overpass
+  show(suv); const z = lerp(70, -50, prog(t, 21, 33));
+  suv.position.set(DRIVE.position.x - 3, 0, DRIVE.position.z + z); suv.rotation.set(0, Math.PI, 0);
+  suv.userData.wheels.forEach(w => (w.rotation.x = -z * 2.8));
+  sweepA.position.set(-3, 1.2, z - 5); sweepA.color.set(0xe8eeff); sweepA.intensity = 30; sweepA.distance = 26;
+  return z;
+}
+function updateCones(t) {
+  show(conesG); const d0 = distAt(11.5), d = distAt(t), cx = carLat(t);
+  for (const k of cones) {
+    let z = k.z0 + (d - d0), x = k.x, y = 0, rx = 0, rz = 0;
+    // contact when the cone reaches the car's nose while the car is in its lane
+    let tc = -1; for (let s = 11.5; s <= t; s += 1 / 30) { if (k.z0 + (distAt(s) - d0) > -2.4 && Math.abs(carLat(s) - k.x) < 1.6) { tc = s; break; } }
+    if (tc > 0) {
+      const tau = t - tc, zc = k.z0 + (distAt(tc) - d0);
+      x += (k.bar ? 1.5 : 2.6) * tau + (k.x - carLat(tc)) * 0.5; y = Math.max(0, 4.5 * tau - 4.9 * tau * tau) * (k.bar ? 0.6 : 1);
+      z = zc - 9 * tau + (d - distAt(tc)) * 0.9; rx = tau * 9; rz = tau * 6;
+    }
+    k.c.position.set(x, y, z); k.c.rotation.set(rx, 0, rz);
+  }
+}
+// cold open: the chase continues
+shot2(0, 4.6, (t, u) => {
+  inCar(t, false); const gap = suvAt(t);
+  look(carPt(1.6 - u * 0.6, 1.9 + u * 0.4, -gap - 7.5).add(handheld(t, 1.4)), carPt(0, 0.9, 0), lerp(30, 27, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(4.6, 8.0, (t, u) => {          // "Next exit. Take it."
+  inCar(t); show(suv); suvAt(t);
+  lucia.J.head.rotation.y = lerp(0.5, 0.15, ease(prog(t, 6.6, 7.4)));
+  talk(lucia, 'lucia', t, { brow: -0.6, look: [0.6, 0] }); talk(jason, 'jason', t, {});
+  look(carPt(0.6, 1.22, 0.18).add(handheld(t, 0.7)), headOf(lucia).add(v3(0, -0.03, 0)), 26);
+}, { tin: 'cut', world: 'drive' });
+shot2(8.0, 10.7, (t, u) => {         // Jason: "That's not an exit..."
+  inCar(t); show(suv); suvAt(t);
+  jason.J.head.rotation.y = -0.5 * (1 - ease(prog(t, 9.4, 10.0)));
+  talk(jason, 'jason', t, { brow: 0.9, look: [-0.5, 0] });
+  look(carPt(-0.55, 1.22, 0.25).add(handheld(t, 0.7)), headOf(jason).add(v3(0, -0.03, 0)), 27);
+}, { tin: 'cut', world: 'drive' });
+shot2(10.7, 12.6, (t, u) => {        // "Take it."
+  inCar(t); show(suv); suvAt(t);
+  lucia.J.head.rotation.y = 0.5;
+  talk(lucia, 'lucia', t, { brow: -0.8, look: [0.7, 0] });
+  look(carPt(0.58, 1.22, 0.24).add(handheld(t, 0.5)), headOf(lucia).add(v3(0, -0.02, 0)), lerp(22, 18, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(12.6, 16.4, (t, u) => {        // the swerve through the construction zone; the SUV overshoots
+  inCar(t, false); show(suv); suvAt(t); updateCones(t);
+  look(v3(DRIVE.position.x + 13 - u * 2, 3.2 + u, DRIVE.position.z - 26).add(handheld(t, 1.2)), carPt(-1.0, 0.8, 1.5), lerp(40, 34, u));
+}, { tin: 'whip', world: 'drive' });
+// hiding under the overpass, lights off
+shot2(16.4, 20.6, (t, u) => {
+  inCar(t, false); dark2();
+  look(v3(DRIVE.position.x + 7.6 - u * 0.5, 1.5, DRIVE.position.z + 14 - u * 2), carPt(0, 0.9, 0), lerp(44, 38, u));
+}, { tin: 'dip', world: 'drive' });
+shot2(20.6, 24.6, (t, u) => {        // they hold their breath; light sweeps across their faces
+  inCar(t); dark2(); suvCrawl(t);
+  const duck = ease(prog(t, 20.8, 21.6));
+  lucia.J.spine.rotation.x = 0.12 * duck; jason.J.spine.rotation.x = 0.1 * duck;
+  lucia.J.head.rotation.y = -0.5; jason.J.head.rotation.y = -0.4;
+  talk(jason, 'jason', t, { brow: 0.8, look: [-0.7, 0] }); talk(lucia, 'lucia', t, { brow: 0.2, look: [-0.8, 0] });
+  look(carPt(0.03, 1.24, 1.45).add(handheld(t, 0.3)), carPt(-0.02, 1.1, -0.2), lerp(72, 66, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(24.6, 28.4, (t, u) => {        // "People who don't forget."
+  inCar(t); dark2(); suvCrawl(t);
+  lucia.J.head.rotation.y = lerp(-0.5, 0.3, ease(prog(t, 24.8, 25.6)));
+  talk(lucia, 'lucia', t, { brow: -0.5, look: [lerp(-0.8, 0.5, ease(prog(t, 24.8, 25.6))), 0] });
+  look(carPt(0.6, 1.22, 0.2).add(handheld(t, 0.3)), headOf(lucia).add(v3(0, -0.03, 0)), lerp(24, 20, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(28.4, 33.0, (t, u) => {        // the SUV crawls past and moves on
+  inCar(t, false); dark2(); suvCrawl(t);
+  look(v3(DRIVE.position.x + 9.6, 1.05, DRIVE.position.z - 3.2), suv.position.clone().add(v3(0, 1.1, 0)), 36);
+}, { tin: 'cut', world: 'drive' });
+// the burner rings
+shot2(33.0, 36.4, (t, u) => {        // the burner buzzes in the bag; she lifts it
+  inCar(t); dark2();
+  const pick = ease(prog(t, 34.4, 35.6)); luciaSit(0, pick * 0.85);
+  const buzz = Math.sin(t * 90) * 0.004 * (Math.sin(t * 6) > 0 ? 1 : 0);
+  if (pick > 0) { attach(phone, lucia.J.handL, v3(buzz, -0.08, 0.03), [0.6, Math.PI, 0]); }
+  else { scene.add(phone); phone.position.copy(carPt(-0.42 + buzz, 0.87, 0.24)); phone.quaternion.copy(car.quaternion).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0.3))); }
+  setPhone('call', t);
+  lucia.J.head.rotation.x = 0.35 * (1 - pick * 0.5);
+  setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.3, look: [0, -0.8] });
+  look(carPt(-0.22, 1.32, 0.9).add(handheld(t, 0.3)), carPt(-0.42, 0.98, 0.18), lerp(42, 36, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(36.4, 41.2, (t, u) => {        // "You can keep running, Lucia. But he can't."
+  inCar(t); dark2(); luciaSit(ease(prog(t, 36.4, 36.9)));
+  attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]); setPhone('incall', t - 36.4);
+  setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.5, look: [0.3, 0] });
+  lucia.J.head.rotation.y = lerp(0, 0.45, ease(prog(t, 39.6, 40.4)));
+  look(carPt(0.6, 1.22, 0.18).add(handheld(t, 0.4)), headOf(lucia).add(v3(0, -0.03, 0)), lerp(27, 23, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(41.2, 43.5, (t, u) => {        // Jason doesn't know what was said
+  inCar(t); dark2(); luciaSit(1); attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]);
+  jason.J.head.rotation.y = -0.55;
+  setFace(jason, { blink: blinkAt(t, 0.6), brow: 0.6, look: [-0.5, 0] });
+  look(carPt(-0.55, 1.22, 0.25).add(handheld(t, 0.4)), headOf(jason).add(v3(0, -0.03, 0)), 27);
+}, { tin: 'cut', world: 'drive' });
+shot2(43.5, 46.0, (t, u) => {        // "Leave him out of this."
+  inCar(t); dark2(); luciaSit(1); attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]); setPhone('incall', t - 36.4);
+  lucia.J.head.rotation.y = 0.1;
+  talk(lucia, 'lucia', t, { brow: -0.9, look: [0.2, 0] });
+  look(carPt(0.58, 1.22, 0.24).add(handheld(t, 0.4)), headOf(lucia).add(v3(0, -0.02, 0)), lerp(21, 18, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(46.0, 52.0, (t, u) => {        // "Midnight. The old marina..." — she hangs up
+  inCar(t); dark2();
+  const down = ease(prog(t, 50.4, 51.2)); luciaSit(1 - down);
+  if (down < 0.6) { attach(phone, lucia.J.handR, v3(0.0, -0.08, 0.03), [0.1, Math.PI / 2, 0]); setPhone('incall', t - 36.4); } else setPhone('off', t);
+  lucia.J.head.rotation.y = 0;
+  setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.4 - 0.3 * down, look: [0, -0.2] });
+  look(carPt(-0.2, 1.25, 1.0).add(handheld(t, 0.3)), headOf(lucia).add(v3(0, -0.04, 0)), lerp(27, 22, u));
+}, { tin: 'cut', world: 'drive' });
+// the truth
+shot2(52.0, 56.0, (t, u) => {        // "Lucia. What is really in that bag?"
+  inCar(t); dark2(); luciaSit(0);
+  jason.J.head.rotation.y = -0.5; lucia.J.head.rotation.y = lerp(0, 0.35, ease(prog(t, 54.6, 55.4)));
+  talk(jason, 'jason', t, { brow: 0.6, look: [-0.6, 0] }); setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.3, look: [0.3, -0.3] });
+  look(carPt(0.03, 1.25, 1.45).add(handheld(t, 0.4)), carPt(-0.02, 1.1, -0.2), lerp(70, 60, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(56.0, 60.4, (t, u) => {        // from the bottom of the bag: a drive with a red tag
+  inCar(t); dark2();
+  const up = ease(prog(t, 56.3, 57.6)); luciaSit(0, up);
+  if (up > 0.15) { attach(usb, lucia.J.handL, v3(0, -0.085, 0.03), [0, 0, Math.PI / 2]); show(usb); }
+  lucia.J.head.rotation.x = 0.3; lucia.J.head.rotation.y = -0.1;
+  talk(lucia, 'lucia', t, { brow: -0.5, look: [0, -0.7] });
+  look(carPt(-0.2, 1.3, 0.9).add(handheld(t, 0.3)), carPt(-0.4, 1.06, 0.15), lerp(38, 32, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(60.4, 63.4, (t, u) => {        // "Then what is it?"
+  inCar(t); dark2(); luciaSit(0);
+  jason.J.head.rotation.y = -0.55; jason.J.head.rotation.x = 0.15;
+  talk(jason, 'jason', t, { brow: 0.7, look: [-0.5, -0.3] });
+  look(carPt(-0.55, 1.22, 0.25).add(handheld(t, 0.4)), headOf(jason).add(v3(0, -0.03, 0)), 27);
+}, { tin: 'cut', world: 'drive' });
+shot2(63.4, 68.0, (t, u) => {        // "Every name they ever paid."
+  inCar(t); dark2(); const up = ease(prog(t, 63.5, 64.4)); luciaSit(0, up);
+  attach(usb, lucia.J.handL, v3(0, -0.085, 0.03), [0, 0, Math.PI / 2]); show(usb);
+  lucia.J.head.rotation.y = lerp(0, 0.4, ease(prog(t, 66.0, 66.8))); lucia.J.head.rotation.x = 0.12 * (1 - ease(prog(t, 66.0, 66.8)));
+  talk(lucia, 'lucia', t, { brow: -0.6, look: [0.2, -0.4 * (1 - ease(prog(t, 66.0, 66.8)))] });
+  look(carPt(0.55, 1.16, 0.32).add(handheld(t, 0.3)), headOf(lucia).add(v3(0, -0.15, 0.05)), lerp(36, 31, u));
+}, { tin: 'cut', world: 'drive' });
+shot2(68.0, 71.0, (t, u) => {        // "Then they're never letting us go."
+  inCar(t); dark2(); luciaSit(0, 1); attach(usb, lucia.J.handL, v3(0, -0.085, 0.03), [0, 0, Math.PI / 2]); show(usb);
+  jason.J.head.rotation.y = -0.2; jason.J.spine.rotation.x = 0.06;
+  talk(jason, 'jason', t, { brow: 0.4, look: [-0.2, 0] });
+  look(carPt(-0.5, 1.21, 0.3 + u * 0.05).add(handheld(t, 0.3)), headOf(jason).add(v3(0, -0.03, 0)), lerp(26, 22, u));
+}, { tin: 'cut', world: 'drive' });
+// the marina, midnight
+function marinaCar(t) {
+  show(marina, car, interior, suv); marina.visible = true;
+  const u = ease(prog(t, 71.0, 75.2)), x = lerp(MAR.x - 90, MAR.x - 9, u);
+  car.position.set(x, 0, MAR.z - 1.2); car.rotation.set(0, Math.PI / 2, 0);
+  car.userData.wheels.forEach(w => (w.rotation.x = x * 2.8));
+  interior.add(bag); bag.position.set(-0.42, 0.62, 0.2); bag.rotation.set(0, 0.2, 0);
+  placeInCar(t);
+  suv.position.set(MAR.x + 72, 1.18, MAR.z); suv.rotation.set(0, -Math.PI / 2, 0);
+  suvLight.intensity = 30; suvLight.distance = 140; marinaLights.forEach(L => (L.intensity = 14));
+  marina.userData.boats.forEach((b, i) => { b.position.y = -0.4 + Math.sin(t * 0.9 + i * 1.7) * 0.06; b.rotation.z = Math.sin(t * 0.7 + i) * 0.015; });
+  scene.fog.density = 0.011;
+  man.root.visible = true; place(man, v3(MAR.x + 68.6, 1.18, MAR.z + 0.3), -Math.PI / 2); setPose(man, P.stand(t, 0.8));
+  man.root.visible = t > 82.9;
+}
+shot2(71.0, 75.4, (t, u) => {
+  marinaCar(t); car.userData.cabin.visible = true; car.userData.tail.visible = true; hide(interior);
+  const p = V(v3(MAR.x - 40, 24, MAR.z - 46), v3(MAR.x - 22, 5, MAR.z - 14), ease(u));
+  look(p, V(v3(MAR.x + 30, 1, MAR.z), v3(MAR.x - 2, 1.4, MAR.z), ease(u)), lerp(44, 38, u));
+}, { tin: 'dip' });
+shot2(75.4, 79.4, (t, u) => {        // "This is a bad idea." / "It's the only one we've got."
+  marinaCar(t); car.userData.cabin.visible = false; car.userData.tail.visible = false;
+  lucia.J.head.rotation.y = t < 77.4 ? 0 : 0.4; jason.J.head.rotation.y = t < 77.4 ? 0 : -0.35;
+  talk(jason, 'jason', t, { brow: 0.6, look: [0, 0] }); talk(lucia, 'lucia', t, { brow: -0.4, look: [t < 77.4 ? 0 : 0.6, 0] });
+  look(carPt(0.03, 1.25, 1.45).add(handheld(t, 0.3)), carPt(-0.02, 1.1, -0.2), lerp(68, 60, u));
+}, { tin: 'cut' });
+shot2(79.4, 83.0, (t, u) => {        // she walks down the pier into the headlights
+  marinaCar(t); car.userData.cabin.visible = true; car.userData.tail.visible = true;
+  const w = prog(t, 79.4, 83.0), x = lerp(MAR.x + 50, MAR.x + 55.5, w);
+  place(lucia, v3(x, 1.18, MAR.z - 0.4), Math.PI / 2); setPose(lucia, P.walk(w * 10));
+  attach(bag, lucia.J.handR, v3(0, -0.12, 0), [0, Math.PI / 2, 0]); bag.scale.setScalar(1);
+  setFace(lucia, { blink: blinkAt(t, 0.2), brow: -0.5 });
+  look(v3(x - 5.5, 1.9, MAR.z - 1.3).add(handheld(t, 0.6)), v3(x + 12, 1.4, MAR.z), 36);
+}, { tin: 'cut' });
+shot2(83.0, 86.6, (t, u) => {        // a man steps into the light: "Hello, Lucia."
+  marinaCar(t); car.userData.cabin.visible = true;
+  const x = MAR.x + 55.5;
+  place(lucia, v3(x, 1.18, MAR.z - 0.4), Math.PI / 2); setPose(lucia, P.stand(t));
+  attach(bag, lucia.J.handR, v3(0, -0.12, 0), [0, Math.PI / 2, 0]);
+  const step = ease(prog(t, 83.0, 84.2));
+  place(man, v3(MAR.x + 69.4 - step * 1.4, 1.18, MAR.z + 0.3), -Math.PI / 2); setPose(man, step < 1 ? P.walk(step * 4) : P.stand(t, 0.8));
+  look(V(v3(x - 2.2, 1.65, MAR.z - 1.5), v3(x - 1.6, 1.62, MAR.z - 1.3), u), v3(MAR.x + 68, 1.8, MAR.z + 0.1), lerp(26, 20, u));
+}, { tin: 'cut' });
+shot2(86.6, 90.01, () => { look(v3(0, 1, 0), v3(0, 1, -1), 40); }, { tin: 'cut', black: true });
 
 // ---------------------------------------------------------------- overlay (2D, drawn onto the final canvas)
 function subtitleAt(t) { for (const l of TL.lines) if (t >= l.start - 0.05 && t < l.start + l.dur + 0.35) return l; return null; }
@@ -1063,7 +1338,7 @@ function drawOverlay(t, shotFade) {
     const a = clamp(prog(t, 0.6, 1.4)) * (1 - prog(t, 4.6, 5.6));
     g.save(); g.globalAlpha = a; g.textAlign = 'center';
     g.font = '400 92px Anton, Impact, sans-serif'; g.fillStyle = '#fff'; g.shadowColor = 'rgba(255,61,127,.9)'; g.shadowBlur = 30; g.fillText('THE VICE CITY DIARIES', W / 2, 330);
-    g.shadowBlur = 0; g.font = '700 30px Inter, sans-serif'; g.fillStyle = '#ffd1e3'; g.fillText('EPISODE 1 · THE GIRL WHO HAD NOTHING TO LOSE', W / 2, 390);
+    g.shadowBlur = 0; g.font = '700 30px Inter, sans-serif'; g.fillStyle = '#ffd1e3'; g.fillText(E2 ? 'EPISODE 2 · NOWHERE TO RUN' : 'EPISODE 1 · THE GIRL WHO HAD NOTHING TO LOSE', W / 2, 390);
     g.font = '500 20px Inter, sans-serif'; g.fillStyle = 'rgba(255,255,255,.6)'; g.fillText('UNOFFICIAL FAN-MADE ANIMATION', W / 2, 430);
     g.restore();
   }
@@ -1076,7 +1351,7 @@ function drawOverlay(t, shotFade) {
     g.font = `${vo ? 'italic ' : ''}700 50px Inter, sans-serif`;
     const lines = wrapText(g, l.text, 900);
     const y0 = H - 330 - (lines.length - 1) * 62;
-    if (!vo) { g.font = '800 26px Inter, sans-serif'; g.fillStyle = l.speaker === 'caller' ? '#ff5470' : (l.speaker === 'jason' ? '#7fd6ff' : '#ffc6dd'); g.fillText(l.name, W / 2, y0 - 58); }
+    if (!vo) { g.font = '800 26px Inter, sans-serif'; g.fillStyle = (l.speaker === 'caller' || l.speaker === 'man') ? '#ff5470' : (l.speaker === 'jason' ? '#7fd6ff' : '#ffc6dd'); g.fillText(l.name, W / 2, y0 - 58); }
     g.font = `${vo ? 'italic ' : ''}700 50px Inter, sans-serif`; g.lineJoin = 'round';
     lines.forEach((ln, i) => { g.strokeStyle = 'rgba(0,0,0,.85)'; g.lineWidth = 10; g.strokeText(ln, W / 2, y0 + i * 62); g.fillStyle = '#fff'; g.fillText(ln, W / 2, y0 + i * 62); });
     g.restore();
@@ -1102,10 +1377,14 @@ function renderAt(t) {
   // defaults each frame
   show(lucia.root, car, interior); hide(suv); jason.root.visible = true;
   lucia.J.spine.rotation.set(0, 0, 0);
-  if (s.t0 < 12.1 || (s.t0 >= 27.8 && s.t0 < 75.5)) { scene.add(phone); phone.position.set(0, -50, 0); }
+  if (E2 || s.t0 < 12.1 || (s.t0 >= 27.8 && s.t0 < 75.5)) { scene.add(phone); phone.position.set(0, -50, 0); }
+  hide(marina, man.root, overpass, conesG, usb); bag.add(usb); usb.position.set(0.02, 0.07, 0.01); usb.rotation.set(0, 0, 0);
+  roadFill.intensity = 40; scene.fog.density = 0.0016; suvLight.intensity = 25; suvLight.distance = 60; sweepA.color.set(0xffd6a0); sweepA.distance = 9;
+  car.userData.headlight.visible = true; car.userData.tail.visible = true; interior.add(bag);
+  if (E2) { bag.userData.cash.position.set(0, 0.2, 0); bag.userData.cash.rotation.set(0, 0, 0); bag.userData.flaps.forEach(f => { f.rotation.x = 0; f.position.y = 0.245; }); }
   updateTraffic(t); roadFill2.position.set(2, 6, 204);
   updatePalms(boulevardPalms, t);
-  if (s.t0 < 27.8) { car.position.set(0, -50, 0); jason.root.visible = false; }
+  if (!E2 && s.t0 < 27.8) { car.position.set(0, -50, 0); jason.root.visible = false; }
   setFace(jason, { blink: blinkAt(t, 0.6) });
   s.fn(t, u);
   { let d = 9; for (const h of [lucia, jason]) if (h.root.visible) d = Math.min(d, camera.position.distanceTo(headOf(h)));
@@ -1132,7 +1411,7 @@ window.EPISODE = { duration: DUR, ready: true };
 
 // ---------------------------------------------------------------- playback (browser)
 if (!RENDER) {
-  const audio = new Audio(window.AUDIO_SRC || 'audio/soundtrack.m4a'); audio.preload = 'auto';
+  const audio = new Audio(window.AUDIO_SRC || (E2 ? 'audio/soundtrack_ep2.m4a' : 'audio/soundtrack.m4a')); audio.preload = 'auto';
   const startEl = document.getElementById('start'), bar = document.querySelector('#prog > div'), status = document.getElementById('status');
   let playing = false, t0 = 0, clockStart = 0;
   const now = () => (audio.readyState >= 2 && !audio.paused ? audio.currentTime : (performance.now() - clockStart) / 1000 + t0);

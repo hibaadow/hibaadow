@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   page.on('pageerror', e => console.error('pageerror:', e.message));
-  await page.goto(`http://localhost:${port}/index.html?render=1`);
+  await page.goto(`http://localhost:${port}/index.html?render=1${process.env.EP ? "&ep=" + process.env.EP : ""}`);
   await page.waitForFunction(() => window.EPISODE && window.EPISODE.ready, null, { timeout: 120000 });
   await page.evaluate(() => document.fonts.ready);
   const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'mjpeg', '-i', '-',
