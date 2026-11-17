@@ -638,6 +638,20 @@ def cmd_deliveries(args):
         print(f"{failed} message(s) could not be delivered; their issues are escalated for the ops team.")
 
 
+def cmd_pack(args):
+    from . import packs
+    e = _engine(args)
+    if not args.contractor:
+        for mc, sites in packs.contractors_for(e).items():
+            print(f"  {mc}: sites {', '.join(sites)}")
+        return
+    r = packs.build(e, args.contractor, args.out, args.site, by="cli")
+    print(f"Pack written: {r['zip']}")
+    print(f"  {r['items']} items, {r['gaps']} outstanding ({r['could_stop_work']} could stop work), {r['files']} supporting file(s)")
+    if r["too_big"]:
+        print(f"  Warning: larger than this contractor's {r['max_size_mb']} MB limit.")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="opsengine", description="Compliance operations engine v0")
     p.add_argument("--today", help="override today's date (YYYY-MM-DD)")
@@ -712,6 +726,7 @@ def main(argv=None):
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("deliveries", cmd_deliveries, customer=False); sp.add_argument("--retry", action="store_true")
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
+    sp = add("pack", cmd_pack); sp.add_argument("--contractor"); sp.add_argument("--site"); sp.add_argument("--out", default="packs")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

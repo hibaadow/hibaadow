@@ -42,9 +42,9 @@ e_ = html.escape
 
 VIEW_ROLE = {"customer": "customer", "ops": "ops", "admin": "ops", "reviewer": "reviewer"}
 TABS = {"customer": {"home", "issues", "issue", "people", "subcontractors", "equipment", "documents", "actions",
-                     "bookings", "messages", "message", "report", "how", "settings"},
+                     "bookings", "messages", "message", "report", "how", "settings", "pack"},
         "ops": {"ops", "issues", "issue", "bookings", "providers", "documents", "actions", "messages", "message", "insights",
-                "home", "people", "subcontractors", "equipment", "report", "how", "settings"},
+                "home", "people", "subcontractors", "equipment", "report", "how", "settings", "pack"},
         "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message"}}
 
 
@@ -825,6 +825,20 @@ def doc_reference(doc):
     return "On file"
 
 
+def pack_links(eng, cid):
+    from . import packs
+    rows = []
+    for mc_id, sites in packs.contractors_for(eng).items():
+        mc = eng.kb.main_contractors.get(mc_id, {"name": mc_id})
+        sub = mc.get("submission", {})
+        how = {"portal": "upload to their supplier portal", "email": "email to"}.get(sub.get("method"), "send to")
+        rows.append(f'<div class="row"><div><h3>{e_(mc["name"])}</h3><div class="meta">{e_(", ".join(eng.customer.sites[s]["name"] for s in sites))} · '
+                    f'{e_(how)} {e_(sub.get("to", ""))}</div></div><div class="actions"><a class="button" href="/c/{cid}/pack?mc={e_(mc_id)}">Download pack</a></div></div>')
+    return ('<section><h2>Main contractor packs</h2><p class="note">Each pack is in that contractor\'s own format: their sections, '
+            'their register columns and their file names. Anything missing is listed on the cover, never left out.</p>'
+            f'<div class="list">{"".join(rows) or "<p class=muted>No main contractors yet.</p>"}</div></section>')
+
+
 def view_documents(portal, eng, cid, role):
     samples = "".join(
         f'<form class="card" method="post" action="/c/{cid}/upload"><img class="photo" alt="{e_(label)}" src="/file?path={urllib.parse.quote(str(p))}">'
@@ -849,7 +863,7 @@ def view_documents(portal, eng, cid, role):
 <label>&nbsp;<button>Upload</button></label></form>
 <h2>Or try a sample photo</h2><div class="grid">{samples}</div></section>
 <section><h2>On file</h2><div class="tbl"><table><thead><tr><th>Who</th><th>Document</th><th>Reference</th><th>Expires / issued</th><th>Versions</th><th>File</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table></div></section>"""
+<tbody>{''.join(rows)}</tbody></table></div></section>{pack_links(eng, cid)}"""
 
 
 def view_actions(portal, eng, cid, role):
@@ -1274,6 +1288,21 @@ class Handler(BaseHTTPRequestHandler):
                     body = f'<p class="flash err">No issue {e_(parts[3])} for this customer.</p><a href="/c/{cid}/issues">See all issues ›</a>'
                 else:
                     body = view_issue(p, eng, cid, role, parts[3])
+            elif tab == "pack":
+                from . import packs
+                try:
+                    built = packs.build(eng, q.get("mc", [""])[0], p.state / cid / "packs", q.get("site", [None])[0],
+                                        by=f"human:{auth.identity(user)}")
+                except ValueError as exc:
+                    return self.redirect(f"/c/{cid}/documents", f"!{exc}.")
+                data = built["zip"].read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Disposition", f'attachment; filename="{built["zip"].name}"')
+                self.send_header("Content-Length", str(len(data)))
+                self.security_headers()
+                self.end_headers()
+                return self.wfile.write(data)
             elif tab == "message":
                 path = q.get("path", [""])[0]
                 body = view_message(p, eng, cid, role, path) if p.safe_file(path, user) else '<p class="flash err">Message not found.</p>'

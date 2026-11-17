@@ -12,9 +12,101 @@
     "manual_handling"
   ],
   "field_minimums": {
-    "employers_liability": {"limit_eur": 13000000},
-    "public_liability": {"limit_eur": 13000000},
-    "professional_indemnity": {"limit_eur": 1000000}
+    "employers_liability": {
+      "limit_eur": 13000000
+    },
+    "public_liability": {
+      "limit_eur": 13000000
+    },
+    "professional_indemnity": {
+      "limit_eur": 1000000
+    }
   },
-  "submission": {"method": "portal", "to": "supplychain-portal.glenmara-construction.example.ie"}
+  "submission": {
+    "method": "portal",
+    "to": "supplychain-portal.glenmara-construction.example.ie"
+  },
+  "pack": {
+    "_about": "SAMPLE pack format modelled on the SAMPLE prequalification form sections.",
+    "format": "zip",
+    "file_prefix": "GLN",
+    "include_photos": true,
+    "sections": [
+      {
+        "code": "A",
+        "title": "Company details",
+        "requirements": [
+          "company_details",
+          "safety_certification",
+          "accident_incident_history",
+          "trade_references",
+          "tax_clearance"
+        ]
+      },
+      {
+        "code": "B",
+        "title": "Insurance",
+        "requirements": [
+          "employers_liability",
+          "public_liability",
+          "professional_indemnity"
+        ]
+      },
+      {
+        "code": "C",
+        "title": "Safety management",
+        "requirements": [
+          "safety_statement",
+          "rams"
+        ]
+      },
+      {
+        "code": "D",
+        "title": "Operatives' cards and training",
+        "requirements": [
+          "safe_pass",
+          "cscs_scaffolding",
+          "cscs_excavator",
+          "cscs_dumper",
+          "cscs_slinger_signaller",
+          "manual_handling",
+          "site_induction",
+          "written_terms"
+        ]
+      },
+      {
+        "code": "E",
+        "title": "Subcontractors",
+        "requirements": [
+          "subcontractor_public_liability",
+          "subcontractor_employers_liability",
+          "subcontractor_tax_clearance",
+          "subcontractor_safety_statement",
+          "subcontractor_operative_register"
+        ]
+      },
+      {
+        "code": "F",
+        "title": "Plant and equipment",
+        "requirements": [
+          "lifting_equipment_examination",
+          "lifting_accessories_examination",
+          "plant_service",
+          "fire_extinguisher_service",
+          "electrical_installation_inspection",
+          "portable_tools_test"
+        ]
+      }
+    ],
+    "register_columns": [
+      "Section",
+      "Requirement",
+      "Name",
+      "Status",
+      "Expiry",
+      "Reference"
+    ],
+    "file_naming": "{prefix}-{section}-{holder}-{type}{ext}",
+    "max_size_mb": 50
+  }
 }
