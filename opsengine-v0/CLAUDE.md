@@ -80,6 +80,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/whatsapp.py` | Meta Cloud API: send text/template, webhook signature, parse, media download |
 | `opsengine/inbound.py` | Inbound email (.eml folder or IMAP) and WhatsApp photos -> photo reader, routed by sender and `[ISS-0007]` |
 | `opsengine/approval_links.py` | One-time approval links for customer approvals (money and commitments) |
+| `opsengine/console.py` | Cross-customer operations console: every queue across all customers, most urgent first (read-only) |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Portal (stdlib): customer, ops and safety reviewer views on the real engine, behind sign-in |
@@ -251,5 +252,5 @@ per customer falling**. When adding features, ask whether they remove human work
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall
    (e.g. chase after 2 days, escalate after 5).
 5. **Approval channel (built for email, Phase 3):** one-tap approve/decline links for customer approvals.
-6. **Multi-customer ops console** for the internal team (queues across customers).
+6. **Multi-customer ops console (built: `console.py`, "All customers" tab).**
 7. **Main contractor pack export** in each contractor's required format.

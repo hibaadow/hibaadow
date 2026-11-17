@@ -44,8 +44,8 @@ VIEW_ROLE = {"customer": "customer", "ops": "ops", "admin": "ops", "reviewer": "
 TABS = {"customer": {"home", "issues", "issue", "people", "subcontractors", "equipment", "documents", "actions",
                      "bookings", "messages", "message", "report", "how", "settings"},
         "ops": {"ops", "issues", "issue", "bookings", "providers", "documents", "actions", "messages", "message", "insights",
-                "home", "people", "subcontractors", "equipment", "report", "how", "settings"},
-        "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message"}}
+                "home", "people", "subcontractors", "equipment", "report", "how", "settings", "console"},
+        "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message", "console"}}
 
 
 class Portal:
@@ -235,10 +235,10 @@ def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
                          ("equipment", "Equipment"), ("documents", "Documents"), ("actions", "Corrective actions"),
                          ("bookings", "Bookings"), ("messages", "Messages"), ("report", "Weekly report"),
                          ("settings", "Approvals"), ("how", "How it works")],
-            "ops": [("ops", "Ops queue"), ("issues", "Issues"), ("bookings", "Bookings"), ("providers", "Providers"),
+            "ops": [("console", "All customers"), ("ops", "Ops queue"), ("issues", "Issues"), ("bookings", "Bookings"), ("providers", "Providers"),
                     ("documents", "Documents"), ("actions", "Corrective actions"), ("messages", "Messages"), ("insights", "Insights"),
                     ("how", "How it works")],
-            "reviewer": [("reviewer", "To review"), ("actions", "Corrective actions"), ("documents", "Documents")]}[role]
+            "reviewer": [("console", "All customers"), ("reviewer", "To review"), ("actions", "Corrective actions"), ("documents", "Documents")]}[role]
     nav = "".join(f'<a class="{"on" if t == tab else ""}" href="/c/{cid}/{t}">{label}</a>' for t, label in tabs)
     pick = ""
     if role != "customer" and len(names) > 1:  # staff can move between customers; customers never see others
@@ -947,6 +947,35 @@ def type_options(eng, chosen=None):
                    for t in CARD_TYPES)
 
 
+def view_console(portal, eng, cid, role, q=None):
+    """Every queue across every customer, most urgent first. Links go to the customer's own pages."""
+    from . import console
+    q = q or {}
+    engines = {c: portal.engine(c) for c in portal.customers}
+    rows = console.items(engines, role)
+    pick_q, pick_c = q.get("queue", [""])[0], q.get("customer", [""])[0]
+    counts = console.counts(rows)
+    shown = [r for r in rows if (not pick_q or r["queue"] == pick_q) and (not pick_c or r["customer_id"] == pick_c)]
+    chips = " · ".join(f'<a href="/c/{cid}/console?queue={k}">{"<b>" if k == pick_q else ""}{e_(label)} ({counts[k]}){"</b>" if k == pick_q else ""}</a>'
+                       for k, label in console.QUEUES.items() if counts[k] or k == pick_q)
+    cust = " · ".join(f'<a href="/c/{cid}/console?customer={c}{"&queue=" + pick_q if pick_q else ""}">{e_(e.customer.company["name"])}</a>'
+                      for c, e in engines.items())
+    body = "".join(
+        f'<tr><td>{pill(r["severity"])}</td><td>{e_(console.QUEUES[r["queue"]])}</td><td>{e_(r["customer"])}</td>'
+        f'<td><a href="{e_(r["link"])}">{e_(r["title"])}</a>{"<div class=small>" + e_(r["detail"]) + "</div>" if r["detail"] else ""}</td>'
+        f'<td class="mono">{r["age_days"]}d</td></tr>' for r in shown[:300])
+    return f"""<section><h1>All customers</h1>
+<p class="note">Every queue across every customer, most urgent first. Act on each item from the customer's own page.</p>
+<div class="kpis"><div class="kpi"><b>{len(rows)}</b><span>items in all queues</span></div>
+<div class="kpi"><b>{counts["stops_work"]}</b><span>could stop work</span></div>
+<div class="kpi"><b>{counts["safety_reviews"]}</b><span>safety reviews waiting</span></div>
+<div class="kpi"><b>{counts["photo_checks"]}</b><span>documents to check</span></div></div>
+<p>{chips or "Nothing waiting."} {'· <a href="/c/' + cid + '/console">Show all</a>' if pick_q or pick_c else ''}</p><p class="small">Customer: {cust}</p>
+<div class="tbl"><table><thead><tr><th>Priority</th><th>Queue</th><th>Customer</th><th>Item</th><th>Waiting</th></tr></thead>
+<tbody>{body or '<tr><td colspan="5" class="muted">Nothing here.</td></tr>'}</tbody></table></div>
+{'<p class="small muted">Showing the first 300.</p>' if len(shown) > 300 else ''}</section>"""
+
+
 def view_ops(portal, eng, cid, role):
     parts = []
     for c in portal.customers:
@@ -1267,6 +1296,8 @@ class Handler(BaseHTTPRequestHandler):
                      "providers": view_providers, "insights": view_insights, "how": view_how, "settings": view_settings}
             if tab in views:
                 body = views[tab](p, eng, cid, role)
+            elif tab == "console":
+                body = view_console(p, eng, cid, role, q)
             elif tab == "issues":
                 body = view_issues(p, eng, cid, role, q)
             elif tab == "issue" and len(parts) == 4:
