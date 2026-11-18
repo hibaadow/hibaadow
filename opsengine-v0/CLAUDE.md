@@ -81,6 +81,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/inbound.py` | Inbound email (.eml folder or IMAP) and WhatsApp photos -> photo reader, routed by sender and `[ISS-0007]` |
 | `opsengine/approval_links.py` | One-time approval links for customer approvals (money and commitments) |
 | `opsengine/packs.py` | Main contractor compliance pack (zip) in each contractor's format (`pack` in their rules file) |
+| `opsengine/console.py` | Cross-customer operations console: every queue across all customers, most urgent first (read-only) |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Portal (stdlib): customer, ops and safety reviewer views on the real engine, behind sign-in |
@@ -90,6 +91,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/checkpoints.py` | HMAC-signed, chained checkpoints of every audit log, kept outside the data folder |
 | `opsengine/backup.py` | Backups with manifest, verify, restore into an empty folder, prune |
 | `opsengine/gdpr.py` | Retention purge (`rules/retention.json`), subject access export, data inventory (`docs/data-inventory.json`) |
+| `docs/legal/` | DRAFT legal documents (DPA, notices, ROPA, DPIA, LIAs, breach procedure) awaiting an Irish solicitor; every file carries the draft banner |
 | `deploy/` | Dockerfile, docker-compose + Caddy (HTTPS), production settings, systemd nightly timer |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
@@ -226,6 +228,10 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   to the customer, ops and reviewer, and escalate after 2 days (`limits.hold_notices`). One amended
   resubmission (`Engine.resubmit_draft`) is included in a draft's original review. Ordinary RAMS and
   Safety Statement reviews are never specialist work. Admins change limits at `/admin/plans` (audited).
+- **Challenges** (`opsengine/challenges.py`): anyone can dispute a status (portal "Challenge it", or a worker
+  replying WRONG/CHALLENGE on WhatsApp). A person on the ops team always decides, within 5 days (overdue ones
+  escalate). The issue stays visible and still counts; only reminders pause. Upheld needs a corrected record
+  that goes through `engine.ingest` checks; never resolve an issue on a challenge alone.
 - **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
   the photo reader is validated, claim the rules are approved, claim safety reviews run before
   `service.json` has an appointed reviewer, or send real messages before email/WhatsApp are tested.
@@ -267,5 +273,5 @@ per customer falling**. When adding features, ask whether they remove human work
 4. **Scheduler (v0 done: `scheduler.py`):** daily `scan` + `advance` per customer, reminders when waiting steps stall
    (e.g. chase after 2 days, escalate after 5).
 5. **Approval channel (built for email, Phase 3):** one-tap approve/decline links for customer approvals.
-6. **Multi-customer ops console** for the internal team (queues across customers).
+6. **Multi-customer ops console (built: `console.py`, "All customers" tab).**
 7. **Main contractor pack export (built: `packs.py`, `pack` command, Documents page).** Real contractors' formats still to be captured from their forms.

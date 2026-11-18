@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS packs (
     prepared_by TEXT, prepared_at TEXT, confirmed_by TEXT, confirmed_at TEXT, token_hash TEXT, expires_at TEXT,
     downloads INTEGER DEFAULT 0, max_downloads INTEGER, sent_by TEXT, sent_at TEXT, sent_to TEXT, deleted_at TEXT
 );
+CREATE TABLE IF NOT EXISTS challenges (
+    id TEXT PRIMARY KEY, issue_id TEXT, holder TEXT, raised_by TEXT, channel TEXT, reason TEXT, status TEXT,
+    due_on TEXT, decided_by TEXT, decided_at TEXT, decision_note TEXT, created_at TEXT
+);
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
 );

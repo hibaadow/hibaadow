@@ -132,6 +132,15 @@
       "lawful_basis": "Legal obligation (Safe Pass, CSCS, inductions) and legitimate interests (Art 6(1)(f)) for the rest; needs a written legitimate interests assessment",
       "role": "processor (disclosure by the customer to the contractor, an independent controller)",
       "retention": "copies deleted pack_files_days after preparing (30); the record of each pack kept with the audit log"
+    },
+    {
+      "who": "Workers and customer contacts",
+      "data": "challenges to a compliance status: who raised it, their reason, the decision and its reason",
+      "where": "state/<id>/state.db challenges",
+      "why": "let people dispute a status and have a person review it (Art 22 safeguard)",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "processor",
+      "retention": "as the issue it relates to"
     }
   ],
   "special_category": {
