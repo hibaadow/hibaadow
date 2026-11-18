@@ -55,6 +55,10 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE TABLE IF NOT EXISTS contact_prefs (
     address TEXT PRIMARY KEY, channel TEXT, opted_out_at TEXT, last_inbound_at TEXT
 );
+CREATE TABLE IF NOT EXISTS challenges (
+    id TEXT PRIMARY KEY, issue_id TEXT, holder TEXT, raised_by TEXT, channel TEXT, reason TEXT, status TEXT,
+    due_on TEXT, decided_by TEXT, decided_at TEXT, decision_note TEXT, created_at TEXT
+);
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
 );

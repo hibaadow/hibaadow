@@ -26,7 +26,7 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import approval_links, auth, config, delivery, inbound, limits, llm, scheduler, whatsapp
+from . import approval_links, auth, challenges, config, delivery, inbound, limits, llm, scheduler, whatsapp
 from .actions import provider_problems
 from .engine import DONE, Engine
 from .knowledge import ROOT, LANGUAGE_NAMES
@@ -493,7 +493,8 @@ def issue_row(eng, cid, i, extra=""):
     who = eng.customer.holder_name(i["holder"])
     return (f'<div class="row"><a href="/c/{cid}/issue/{i["id"]}"><h3>{e_(title_of(eng, i))}</h3>'
             f'<div class="meta">{e_(who)} · {e_(where_it_stands(eng, i))} · <span class="mono">{i["id"]}</span></div></a>'
-            f'<div class="actions">{pill(i["severity"])}{extra}</div></div>')
+            f'<div class="actions">{pill(i["severity"])}'
+            f'{"<span class=\"chip warn\">Challenged</span>" if challenges.open_for(eng.store, i["id"]) else ""}{extra}</div></div>')
 
 
 def setup_progress(eng):
@@ -757,6 +758,15 @@ def view_issue(portal, eng, cid, role, issue_id):
             img = f'<img class="photo" alt="Evidence photo" src="/file?path={urllib.parse.quote(str(eng.evidence_dir / ev["stored_as"]))}">'
         fields = " · ".join(f"{k}: {v}" for k, v in eng.kb.wording.visible_fields(proof))
         proof_html = f'<section><h2>Proof on file</h2><div class="card"><b>{e_(eng.kb.requirements.get(proof["type"], {}).get("name", "Document"))}</b><span class="small">{e_(fields)}</span>{img}</div></section>'
+    said = challenges.summary(eng, i["id"])
+    challenge_html = f'<div class="flash">{e_(said)}</div>' if said else ""
+    if i["status"] != "resolved" and not challenges.open_for(eng.store, i["id"]) and role in ("customer", "ops"):
+        challenge_html += (f'<details><summary>Is this status wrong? Challenge it</summary>'
+                           f'<form class="form" method="post" action="/c/{cid}/challenge"><input type="hidden" name="issue" value="{i["id"]}">'
+                           '<label>What\'s wrong?<input name="reason" required minlength="5" maxlength="1000" '
+                           'placeholder="e.g. his Safe Pass was renewed last week"></label><label>&nbsp;<button>Send to a person to check</button></label></form>'
+                           '<p class="small muted">A person on our team checks every challenge and replies within 5 days. '
+                           'The issue stays visible meanwhile, and reminders about it pause.</p></details>')
     corrective = ""
     if i["requirement"] == "corrective_action":
         corrective = (f'<div class="card"><span>Owner: <b>{e_(eng.customer.holder_name(data.get("owner")))}</b> · Due <b>{e_(nice_date(data["due"]) if data.get("due") else "")}</b></span>'
@@ -766,7 +776,7 @@ def view_issue(portal, eng, cid, role, issue_id):
                       f'<label>&nbsp;<button>Send evidence</button></label></form></div>')
     return f"""<section><a href="/c/{cid}/issues">‹ All issues</a><div class="actions">{pill(i['severity'])}<span class="mono">{i['id']}</span>
 <span class="chip {'ok' if i['status'] == 'resolved' else 'warn'}">{e_(eng.kb.wording.issue_status(i['status']))}</span></div>
-<h1>{e_(title_of(eng, i))}</h1><p class="muted">{e_(eng.customer.holder_name(i['holder']))} · {e_(eng.kb.requirements[i['requirement']]['name'])} · {e_(where_it_stands(eng, i))}</p>{corrective}</section>
+<h1>{e_(title_of(eng, i))}</h1><p class="muted">{e_(eng.customer.holder_name(i['holder']))} · {e_(eng.kb.requirements[i['requirement']]['name'])} · {e_(where_it_stands(eng, i))}</p>{corrective}{challenge_html}</section>
 <section><h2>What's been done</h2><ol class="timeline">{''.join(steps)}</ol></section>{proof_html}
 <section><h2>Messages</h2><div class="tbl"><table><thead><tr><th>When</th><th>Who</th><th>Channel</th><th>Subject</th><th>Delivery</th></tr></thead><tbody>{comms}</tbody></table></div></section>
 <p class="small muted">{len(h['audit'])} audit entries recorded for this issue.</p>"""
@@ -953,6 +963,22 @@ def type_options(eng, chosen=None):
                    for t in CARD_TYPES)
 
 
+def challenge_cards(e, c):
+    cards = []
+    for ch in challenges.listing(e.store, challenges.OPEN):
+        issue = e.store.issue(ch["issue_id"]) if ch["issue_id"] else None
+        what = f'<a href="/c/{c}/issue/{ch["issue_id"]}">{e_(title_of(e, issue))}</a>' if issue else "No single issue matched: contact them"
+        cards.append(f'<div class="card"><div class="actions"><b class="mono">{ch["id"]}</b><span>{e_(e.customer.holder_name(ch["holder"]) if ch["holder"] else "")}</span>'
+                     f'<span class="chip warn">decide by {e_(nice_date(ch["due_on"]))}</span></div><p>{what}</p><p>"{e_(ch["reason"])}" ({e_(ch["channel"])})</p>'
+                     f'<form class="form" method="post" action="/c/{c}/decide-challenge"><input type="hidden" name="id" value="{ch["id"]}">'
+                     '<label>Reason for the decision<input name="note" required minlength="5"></label>'
+                     f'<label>Corrected record (if upheld)<select name="type"><option value="">none</option>{type_options(e, issue["requirement"] if issue else None)}</select></label>'
+                     '<label>Number<input name="number"></label><label>Expiry<input type="date" name="expires"></label>'
+                     '<label>&nbsp;<span class="actions"><button name="decision" value="upheld">Uphold</button>'
+                     '<button class="ghost" name="decision" value="not_upheld">Not upheld</button></span></label></form></div>')
+    return (f'<h3>Challenges to decide ({len(cards)})</h3>' + "".join(cards)) if cards else ""
+
+
 def view_ops(portal, eng, cid, role):
     parts = []
     for c in portal.customers:
@@ -979,7 +1005,7 @@ def view_ops(portal, eng, cid, role):
         parts.append(f"""<section><h2>{e_(name)}</h2>
 <div class="kpis"><div class="kpi"><b>{metrics(e)['automation_rate']}%</b><span>of actions done without a person</span></div><div class="kpi"><b>{len(reviews)}</b><span>photos to check</span></div><div class="kpi"><b>{len(esc)}</b><span>escalated issues</span></div>
 <div class="kpi"><b>{len(blocked)}</b><span>blocked steps</span></div><div class="kpi"><b>{len(waiting_customer)}</b><span>waiting on the customer</span></div></div>
-{''.join(rv)}<div class="list">{''.join(issue_row(e, c, i) for i in esc[:10])}</div></section>""")
+{''.join(rv)}{challenge_cards(e, c)}<div class="list">{''.join(issue_row(e, c, i) for i in esc[:10])}</div></section>""")
     sim = []
     for p in (sorted((portal.customers[cid] / "incoming").glob("*.json")) if portal.demo else []):
         doc = json.loads(p.read_text(encoding="utf-8"))
@@ -1072,9 +1098,9 @@ def view_insights(portal, eng, cid, role):
 # ---------------- HTTP ----------------
 
 COOKIE = "opsengine_session"
-CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval", "urgent-review"}
+CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval", "challenge", "urgent-review"}
 STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate", "resubmit",
-              "urgent-review"}
+              "challenge", "decide-challenge", "urgent-review"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1431,6 +1457,28 @@ class Handler(BaseHTTPRequestHandler):
                 except limits.LimitReached as exc:
                     return self.redirect(back, f"!{exc}")
                 return self.redirect(back, f"Approved all {len(steps)} by {user['name']}. Each one is recorded separately.")
+            if act == "challenge":
+                try:
+                    ch = challenges.raise_challenge(eng, f.get("issue", ""), by, f.get("reason", ""))
+                except ValueError as exc:
+                    return self.redirect(back, f"!Not sent: {exc}.")
+                return self.redirect(back, f"Challenge {ch} sent. A person will check it and reply within {challenges.RESPOND_DAYS} days.")
+            if act == "decide-challenge":
+                if role != "ops":
+                    return self.redirect(back, "!Only our ops team decides challenges.")
+                ch = challenges.get(eng.store, f.get("id", ""))
+                doc = None
+                if f.get("decision") == "upheld" and f.get("type") and ch:
+                    doc = {"id": f"d-{f['type']}-{ch['holder']}-{ch['id'].lower()}", "type": f["type"], "holder": ch["holder"] or "company",
+                           "number": f.get("number", ""), "expires": f.get("expires", ""), "corrected_by_challenge": ch["id"]}
+                    issue = eng.store.issue(ch["issue_id"]) if ch["issue_id"] else None
+                    if issue and issue["context"]:
+                        doc["context"] = issue["context"]
+                try:
+                    challenges.decide(eng, f.get("id", ""), by, f.get("decision") == "upheld", f.get("note", ""), doc)
+                except ValueError as exc:
+                    return self.redirect(back, f"!Not decided: {exc}.")
+                return self.redirect(back, "Decided. The customer has been told the outcome and the reason.")
             if act == "urgent-review":
                 try:
                     limits.mark_urgent(eng, f.get("step", ""), by, f.get("reason", ""))
