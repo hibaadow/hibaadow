@@ -11,5 +11,83 @@
   "submission": {
     "method": "portal",
     "to": "supplier-portal.harbour.example.ie"
+  },
+  "pack": {
+    "_about": "SAMPLE pack format for a supplier portal upload.",
+    "format": "zip",
+    "file_prefix": "HBR",
+    "include_photos": true,
+    "sections": [
+      {
+        "code": "1",
+        "title": "Insurances",
+        "requirements": [
+          "employers_liability",
+          "public_liability",
+          "professional_indemnity"
+        ]
+      },
+      {
+        "code": "2",
+        "title": "Safety documents",
+        "requirements": [
+          "safety_statement",
+          "rams",
+          "company_details",
+          "safety_certification",
+          "accident_incident_history",
+          "trade_references",
+          "tax_clearance"
+        ]
+      },
+      {
+        "code": "3",
+        "title": "Workforce",
+        "requirements": [
+          "safe_pass",
+          "cscs_scaffolding",
+          "cscs_excavator",
+          "cscs_dumper",
+          "cscs_slinger_signaller",
+          "manual_handling",
+          "site_induction",
+          "written_terms"
+        ]
+      },
+      {
+        "code": "4",
+        "title": "Subcontractors and plant",
+        "requirements": [
+          "subcontractor_public_liability",
+          "subcontractor_employers_liability",
+          "subcontractor_tax_clearance",
+          "subcontractor_safety_statement",
+          "subcontractor_operative_register",
+          "lifting_equipment_examination",
+          "lifting_accessories_examination",
+          "plant_service",
+          "fire_extinguisher_service",
+          "electrical_installation_inspection",
+          "portable_tools_test"
+        ]
+      }
+    ],
+    "register_columns": [
+      "Requirement",
+      "Name",
+      "Status",
+      "Expiry"
+    ],
+    "file_naming": "{holder_name}_{type}{ext}",
+    "max_size_mb": 25,
+    "verified_recipients": [
+      {
+        "method": "portal",
+        "destination": "supplier-portal.harbour.example.ie",
+        "verified_by": "SAMPLE (fictional contractor: not a real verification)",
+        "verified_on": "2026-11-17",
+        "sample": true
+      }
+    ]
   }
 }

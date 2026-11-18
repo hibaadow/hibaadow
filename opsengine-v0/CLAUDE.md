@@ -80,6 +80,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/whatsapp.py` | Meta Cloud API: send text/template, webhook signature, parse, media download |
 | `opsengine/inbound.py` | Inbound email (.eml folder or IMAP) and WhatsApp photos -> photo reader, routed by sender and `[ISS-0007]` |
 | `opsengine/approval_links.py` | One-time approval links for customer approvals (money and commitments) |
+| `opsengine/packs.py` | Main contractor compliance pack (zip) in each contractor's format (`pack` in their rules file) |
 | `opsengine/console.py` | Cross-customer operations console: every queue across all customers, most urgent first (read-only) |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
@@ -116,6 +117,7 @@ python -m opsengine nightly --backup-to DIR --checkpoint-file FILE   # productio
 python -m opsengine backup make|verify|restore ; checkpoint write|verify ; rules status|register|sign-off
 python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
 python -m opsengine inbound-email --dir FOLDER | --imap ; deliveries [--retry]   # Phase 3 messaging
+python -m opsengine pack --customer <folder> [--contractor <id> --site s1 --out DIR]   # contractor pack
 python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
@@ -233,6 +235,14 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
   the photo reader is validated, claim the rules are approved, claim safety reviews run before
   `service.json` has an appointed reviewer, or send real messages before email/WhatsApp are tested.
+- **Contractor packs:** a contractor's format lives in `rules/main_contractors/<id>.json` "pack" (sections,
+  register columns, file naming, photos or not, size limit). Packs include only that contractor's sites and
+  people (no leavers), list every gap on the cover (INCOMPLETE if anything could stop work), confirm rather
+  than attach `share_as: confirmation` documents, and carry a SHA-256 manifest. Sharing goes prepare ->
+  confirm -> download -> mark sent (`packs.prepare/confirm/download/mark_sent`): the destination must be on the
+  contractor's `verified_recipients` (SAMPLE verification never counts for a real customer); confirmation
+  shows recipient, destination and how many people's data it holds; links are secret, need sign-in to that
+  customer, expire after 72 hours and 3 downloads; every step is audited; copies go after `pack_files_days`.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from
@@ -264,4 +274,4 @@ per customer falling**. When adding features, ask whether they remove human work
    (e.g. chase after 2 days, escalate after 5).
 5. **Approval channel (built for email, Phase 3):** one-tap approve/decline links for customer approvals.
 6. **Multi-customer ops console (built: `console.py`, "All customers" tab).**
-7. **Main contractor pack export** in each contractor's required format.
+7. **Main contractor pack export (built: `packs.py`, `pack` command, Documents page).** Real contractors' formats still to be captured from their forms.

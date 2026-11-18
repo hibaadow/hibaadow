@@ -125,6 +125,15 @@
       "retention": "contract term + 6 years; forgetting a person's tokens anonymises their entries"
     },
     {
+      "who": "Workers, subcontractor contacts",
+      "data": "main contractor packs: names, card and policy numbers, photos of cards, plus a record of who prepared, confirmed, downloaded and sent each pack and to whom",
+      "where": "state/<id>/packs/ (copies) and state/<id>/state.db packs (records)",
+      "why": "give main contractors the proof of compliance they require",
+      "lawful_basis": "Legal obligation (Safe Pass, CSCS, inductions) and legitimate interests (Art 6(1)(f)) for the rest; needs a written legitimate interests assessment",
+      "role": "processor (disclosure by the customer to the contractor, an independent controller)",
+      "retention": "copies deleted pack_files_days after preparing (30); the record of each pack kept with the audit log"
+    },
+    {
       "who": "Workers and customer contacts",
       "data": "challenges to a compliance status: who raised it, their reason, the decision and its reason",
       "where": "state/<id>/state.db challenges",

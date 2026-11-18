@@ -42,9 +42,9 @@ e_ = html.escape
 
 VIEW_ROLE = {"customer": "customer", "ops": "ops", "admin": "ops", "reviewer": "reviewer"}
 TABS = {"customer": {"home", "issues", "issue", "people", "subcontractors", "equipment", "documents", "actions",
-                     "bookings", "messages", "message", "report", "how", "settings"},
+                     "bookings", "messages", "message", "report", "how", "settings", "pack", "pack-download"},
         "ops": {"ops", "issues", "issue", "bookings", "providers", "documents", "actions", "messages", "message", "insights",
-                "home", "people", "subcontractors", "equipment", "report", "how", "settings", "console"},
+                "home", "people", "subcontractors", "equipment", "report", "how", "settings", "console", "pack", "pack-download"},
         "reviewer": {"reviewer", "actions", "documents", "issue", "issues", "message", "console"}}
 
 
@@ -841,6 +841,67 @@ def doc_reference(doc):
     return "On file"
 
 
+def pack_links(eng, cid):
+    from . import packs
+    rows = []
+    for mc_id, sites in packs.contractors_for(eng).items():
+        r = packs.recipient(eng, mc_id)
+        how = {"portal": "Upload to their supplier portal", "email": "Email to"}.get(r["method"], "Send to")
+        rows.append(f'<form class="row" method="post" action="/c/{cid}/pack-prepare"><input type="hidden" name="mc" value="{e_(mc_id)}">'
+                    f'<div><h3>{e_(r["name"])}</h3><div class="meta">{e_(", ".join(eng.customer.sites[s]["name"] for s in sites))} · '
+                    f'{e_(how)} <b>{e_(r["destination"])}</b> · {"verified destination" if r["verified"] else "destination NOT verified"}</div></div>'
+                    '<div class="actions"><button class="ghost">Prepare pack</button></div></form>')
+    history = "".join(
+        f'<tr><td class="mono"><a href="/c/{cid}/pack?id={x["id"]}">{x["id"]}</a></td><td>{e_(x["recipient"])}</td><td>{e_(x["destination"])}</td>'
+        f'<td>{e_(x["prepared_by"])}</td><td>{e_("confirmed by " + x["confirmed_by"] if x["confirmed_by"] else "not confirmed")}</td>'
+        f'<td>{x["downloads"]}</td><td>{e_(("sent " + x["sent_at"][:10]) if x["sent_at"] else "")}{" · copy deleted" if x["deleted_at"] else ""}</td></tr>'
+        for x in packs.listing(eng)[:20])
+    return ('<section><h2>Main contractor packs</h2><p class="note">Packs contain names, card numbers and photos. You\'ll see exactly '
+            'who a pack is for and confirm it before a download link is made. Links work only for your signed-in team, '
+            f'expire after {packs.LINK_HOURS} hours and {packs.MAX_DOWNLOADS} downloads, and every step is recorded.</p>'
+            f'<div class="list">{"".join(rows) or "<p class=muted>No main contractors yet.</p>"}</div>'
+            + (f'<div class="tbl"><table><thead><tr><th>Pack</th><th>For</th><th>Destination</th><th>Prepared by</th><th>Confirmed</th>'
+               f'<th>Downloads</th><th>Sent</th></tr></thead><tbody>{history}</tbody></table></div>' if history else "") + "</section>")
+
+
+def view_pack(eng, cid, pack_id, secret=None):
+    from . import packs
+    rec = next((x for x in packs.listing(eng) if x["id"] == pack_id), None)
+    if not rec:
+        return '<p class="flash err">No such pack for this company.</p>'
+    sites = ", ".join(eng.customer.sites[s]["name"] for s in json.loads(rec["sites"]) if s in eng.customer.sites)
+    head = (f'<section><a href="/c/{cid}/documents">‹ Documents</a><h1>Pack {e_(rec["id"])} for {e_(rec["recipient"])}</h1>'
+            f'<div class="card"><p>Goes to: <b>{e_(rec["recipient"])}</b></p><p>How: <b>{e_(rec["method"])}</b> · Destination: '
+            f'<b class="mono">{e_(rec["destination"])}</b> {"<span class=\"chip ok\">verified</span>" if rec["verified"] else "<span class=\"chip bad\">not verified</span>"}</p>'
+            f'<p>Sites: {e_(sites)}</p><p>Contains personal data of <b>{rec["people"]} people</b>: names, card numbers, '
+            f'{rec["files"]} photo(s) or file(s). {rec["items"]} items, {rec["gaps"]} outstanding.</p></div>')
+    if rec["deleted_at"]:
+        return head + '<p class="muted">This pack\'s copy has been deleted (retention). The record of it stays.</p></section>'
+    if secret:
+        return head + (f'<div class="flash">Download link ready (shown once): <a href="/c/{cid}/pack-download?id={rec["id"]}&t={e_(secret)}">'
+                       f'Download {e_(rec["id"])}</a>. It works for your signed-in team only, for {packs.LINK_HOURS} hours and '
+                       f'{packs.MAX_DOWNLOADS} downloads.</div>' + sent_form(cid, rec) + '</section>')
+    if rec["confirmed_at"]:
+        return head + (f'<p>Confirmed by {e_(rec["confirmed_by"])}. Downloads used: {rec["downloads"]} of {rec["max_downloads"]}. '
+                       'To get another link, prepare a new pack.</p>' + sent_form(cid, rec) + '</section>')
+    if not rec["verified"]:
+        return head + ('<p class="flash err">This destination isn\'t verified for this contractor, so the pack can\'t be released. '
+                       'An administrator must verify it with the contractor first.</p></section>')
+    return head + (f'<form class="card" method="post" action="/c/{cid}/pack-confirm" style="display:grid;gap:10px">'
+                   f'<input type="hidden" name="id" value="{rec["id"]}"><input type="hidden" name="contractor" value="{e_(rec["contractor"])}">'
+                   f'<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input type="checkbox" name="confirm" value="yes" required>'
+                   f'<span>I confirm this pack is for <b>{e_(rec["recipient"])}</b>, going to <b>{e_(rec["destination"])}</b>, and that it '
+                   f'contains personal data of {rec["people"]} people.</span></label><button>Confirm and create a download link</button></form></section>')
+
+
+def sent_form(cid, rec):
+    if rec["sent_at"]:
+        return f'<p>Recorded as sent to {e_(rec["sent_to"])} by {e_(rec["sent_by"])} on {e_(rec["sent_at"][:10])}.</p>'
+    return (f'<form class="inline" method="post" action="/c/{cid}/pack-sent"><input type="hidden" name="id" value="{rec["id"]}">'
+            f'<label>Sent to<input name="sent_to" value="{e_(rec["destination"])}" required size="34"></label>'
+            '<button class="ghost">Record as sent</button></form>')
+
+
 def view_documents(portal, eng, cid, role):
     samples = "".join(
         f'<form class="card" method="post" action="/c/{cid}/upload"><img class="photo" alt="{e_(label)}" src="/file?path={urllib.parse.quote(str(p))}">'
@@ -865,7 +926,7 @@ def view_documents(portal, eng, cid, role):
 <label>&nbsp;<button>Upload</button></label></form>
 <h2>Or try a sample photo</h2><div class="grid">{samples}</div></section>
 <section><h2>On file</h2><div class="tbl"><table><thead><tr><th>Who</th><th>Document</th><th>Reference</th><th>Expires / issued</th><th>Versions</th><th>File</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table></div></section>"""
+<tbody>{''.join(rows)}</tbody></table></div></section>{pack_links(eng, cid)}"""
 
 
 def view_actions(portal, eng, cid, role):
@@ -1127,9 +1188,10 @@ def view_insights(portal, eng, cid, role):
 # ---------------- HTTP ----------------
 
 COOKIE = "opsengine_session"
-CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval", "challenge", "urgent-review"}
+CUSTOMER_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "standing-approval", "challenge", "urgent-review",
+                 "pack-prepare", "pack-confirm", "pack-sent"}
 STAFF_ACTS = {"approve", "reject", "approve-group", "upload", "raise", "evidence", "review", "appointment", "simulate", "resubmit",
-              "challenge", "decide-challenge", "urgent-review"}
+              "challenge", "decide-challenge", "urgent-review", "pack-prepare", "pack-confirm", "pack-sent"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1343,6 +1405,23 @@ class Handler(BaseHTTPRequestHandler):
                     body = f'<p class="flash err">No issue {e_(parts[3])} for this customer.</p><a href="/c/{cid}/issues">See all issues ›</a>'
                 else:
                     body = view_issue(p, eng, cid, role, parts[3])
+            elif tab == "pack":
+                body = view_pack(eng, cid, q.get("id", [""])[0])  # the download secret is only ever shown once, after confirming
+            elif tab == "pack-download":
+                from . import packs
+                if role == "reviewer":
+                    return self.redirect(self.home_for(user, cid) or "/", "!That page isn't available to you.")
+                try:
+                    name, data = packs.download(eng, q.get("id", [""])[0], q.get("t", [""])[0], f"human:{auth.identity(user)}")
+                except ValueError as exc:
+                    return self.redirect(f"/c/{cid}/documents", f"!{exc}.")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+                self.send_header("Content-Length", str(len(data)))
+                self.security_headers()
+                self.end_headers()
+                return self.wfile.write(data)
             elif tab == "message":
                 path = q.get("path", [""])[0]
                 body = view_message(p, eng, cid, role, path) if p.safe_file(path, user) else '<p class="flash err">Message not found.</p>'
@@ -1488,6 +1567,21 @@ class Handler(BaseHTTPRequestHandler):
                 except limits.LimitReached as exc:
                     return self.redirect(back, f"!{exc}")
                 return self.redirect(back, f"Approved all {len(steps)} by {user['name']}. Each one is recorded separately.")
+            if act in ("pack-prepare", "pack-confirm", "pack-sent"):
+                from . import packs
+                if role == "reviewer":
+                    return self.redirect(back, "!Packs are for the customer and our ops team.")
+                try:
+                    if act == "pack-prepare":
+                        rec = packs.prepare(eng, f.get("mc", ""), p.state / cid / "packs", by=f"human:{by}")
+                        return self.redirect(f"/c/{cid}/pack?id={rec['id']}", "Pack prepared. Check who it's for, then confirm.")
+                    if act == "pack-confirm":
+                        secret = packs.confirm(eng, f.get("id", ""), f"human:{by}", f.get("contractor", ""), f.get("confirm") == "yes")
+                        return self.send_html(page(p, user, cid, "documents", "Pack", view_pack(eng, cid, f.get("id", ""), secret), csrf=s["csrf"]))
+                    packs.mark_sent(eng, f.get("id", ""), f"human:{by}", f.get("sent_to", ""))
+                    return self.redirect(f"/c/{cid}/pack?id={f.get('id', '')}", "Recorded as sent.")
+                except ValueError as exc:
+                    return self.redirect(f"/c/{cid}/pack?id={f.get('id', '')}" if f.get("id") else back, f"!{exc}.")
             if act == "challenge":
                 try:
                     ch = challenges.raise_challenge(eng, f.get("issue", ""), by, f.get("reason", ""))

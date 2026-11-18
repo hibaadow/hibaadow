@@ -638,6 +638,30 @@ def cmd_deliveries(args):
         print(f"{failed} message(s) could not be delivered; their issues are escalated for the ops team.")
 
 
+def cmd_pack(args):
+    """Prepare a pack, then (only with --confirm-recipient matching the contractor) release a copy to --out."""
+    import shutil as _sh
+    from . import packs
+    e = _engine(args)
+    if not args.contractor:
+        for mc, sites in packs.contractors_for(e).items():
+            r = packs.recipient(e, mc)
+            print(f"  {mc}: sites {', '.join(sites)} -> {r['method']} {r['destination']} ({'verified' if r['verified'] else 'NOT verified'})")
+        return
+    rec = packs.prepare(e, args.contractor, Path(args.state or ROOT / "state") / e.customer.company["id"] / "packs", args.site, by="cli")
+    print(f"Prepared {rec['id']} for {rec['recipient']}: {rec['method']} {rec['destination']} "
+          f"({'verified' if rec['verified'] else 'NOT verified'}); personal data of {rec['people']} people, {rec['files']} file(s); "
+          f"{rec['items']} items, {rec['gaps']} outstanding.")
+    if args.confirm_recipient != args.contractor:
+        print(f"Not released. To release it, run again with --confirm-recipient {args.contractor}.")
+        return
+    secret = packs.confirm(e, rec["id"], "cli", args.confirm_recipient, True)
+    name, data = packs.download(e, rec["id"], secret, "cli")
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    (Path(args.out) / name).write_bytes(data)
+    print(f"Released to {Path(args.out) / name}. Record sending with the portal once it has gone to {rec['destination']}.")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="opsengine", description="Compliance operations engine v0")
     p.add_argument("--today", help="override today's date (YYYY-MM-DD)")
@@ -712,6 +736,8 @@ def main(argv=None):
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("deliveries", cmd_deliveries, customer=False); sp.add_argument("--retry", action="store_true")
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
+    sp = add("pack", cmd_pack); sp.add_argument("--contractor"); sp.add_argument("--site"); sp.add_argument("--out", default="packs")
+    sp.add_argument("--confirm-recipient", help="the contractor id again, to confirm who the pack is for")
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")
