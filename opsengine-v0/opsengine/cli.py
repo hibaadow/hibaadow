@@ -33,11 +33,13 @@ SAMPLE = ROOT / "data" / "sample" / "liffey_interiors"
 
 def ai_mode():
     from . import config, llm
-    if config.mock_ai():
-        return "mock (USE_MOCK_AI=true) - no Claude calls; sample photos use recorded reads"
+    p = config.ai_provider()
+    if p == "mock":
+        return "mock - no AI calls; sample photos use recorded reads, everything else goes to a person"
     if llm.available():
-        return f"live Claude ({llm.DEFAULT_MODEL})"
-    return "off (no ANTHROPIC_API_KEY) - photos go to human review, translations are flagged"
+        where = f"Vertex AI, {llm.vertex_region()} region" if p == "vertex" else "Claude API"
+        return f"live Claude via {where} (text {llm.text_model()}, photos {llm.vision_model()})"
+    return f"off ({llm.unavailable_reason()}) - photos go to human review, translations are flagged"
 
 
 def _engine(args):
@@ -662,6 +664,36 @@ def cmd_pack(args):
     print(f"Released to {Path(args.out) / name}. Record sending with the portal once it has gone to {rec['destination']}.")
 
 
+def cmd_ai(args):
+    """status: what's configured (no call). check: one tiny test call with no personal data."""
+    import os
+    from . import config, google_auth, llm
+    p = config.ai_provider()
+    print(f"Provider: {p}")
+    print(f"Models: text {llm.text_model()}, photos {llm.vision_model()}")
+    if p == "vertex":
+        print(f"Vertex AI: project {os.environ.get('VERTEX_PROJECT_ID') or '(not set)'}, region {llm.vertex_region()}")
+        path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
+        if path:
+            try:
+                info = json.loads(Path(path).read_text(encoding="utf-8"))
+                print(f"Credentials: service account key file for {info.get('client_email', '?')}")
+            except (OSError, json.JSONDecodeError):
+                print("Credentials: GOOGLE_APPLICATION_CREDENTIALS is set but the file can't be read")
+        else:
+            print("Credentials: none set; will use the attached service account if running on Google Cloud")
+    reason = llm.unavailable_reason()
+    print(f"Configured: {'yes (run `ai check` to test one real call)' if not reason else 'no - ' + reason}. "
+          "Whenever the AI is unavailable, every photo goes to a person to check.")
+    if args.action == "check":
+        if reason:
+            raise SystemExit(1)
+        out = llm.complete("Reply with the single word OK.", "Say OK.", max_tokens=20, purpose="health_check")
+        print(f"Test call: {'worked' if out else 'failed'} ({json.dumps(llm.last_call)})")
+        if not out:
+            raise SystemExit(1)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="opsengine", description="Compliance operations engine v0")
     p.add_argument("--today", help="override today's date (YYYY-MM-DD)")
@@ -738,6 +770,7 @@ def main(argv=None):
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("pack", cmd_pack); sp.add_argument("--contractor"); sp.add_argument("--site"); sp.add_argument("--out", default="packs")
     sp.add_argument("--confirm-recipient", help="the contractor id again, to confirm who the pack is for")
+    sp = add("ai", cmd_ai, customer=False); sp.add_argument("action", choices=["status", "check"])
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

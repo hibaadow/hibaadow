@@ -66,7 +66,8 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/detect.py` | Pure detection: rules + documents + date -> findings |
 | `opsengine/engine.py` | The loop: scan, advance, approve/reject, ingest, verify |
 | `opsengine/actions.py` | Action executors; all outgoing work goes to the outbox |
-| `opsengine/llm.py` | Optional Claude API calls (stdlib only); falls back safely |
+| `opsengine/llm.py` | Claude through a switchable provider (`AI_PROVIDER`: anthropic, vertex, mock, off); metadata-only AI logs; names replaced by placeholders |
+| `opsengine/google_auth.py` | Google access tokens for Vertex AI: service account key file (RS256 JWT, stdlib) or the Google Cloud metadata server |
 | `opsengine/config.py` | Loads `.env` (never overrides real env vars); `USE_MOCK_AI` switch |
 | `.env.example` | Settings template: `ANTHROPIC_API_KEY=` placeholder, `USE_MOCK_AI=true` |
 | `data/sample/mock_ai/` | Recorded Claude replies for the sample photos, keyed by SHA-256 (mock mode + tests) |
@@ -118,6 +119,7 @@ python -m opsengine backup make|verify|restore ; checkpoint write|verify ; rules
 python -m opsengine gdpr inventory|purge [--apply]|export --customer <folder> --person w01 --out <dir>
 python -m opsengine inbound-email --dir FOLDER | --imap ; deliveries [--retry]   # Phase 3 messaging
 python -m opsengine pack --customer <folder> [--contractor <id> --site s1 --out DIR]   # contractor pack
+python -m opsengine ai status|check                # AI provider, models, credentials; check = one tiny real call
 python -m opsengine history ISS-0001 --customer <folder>     # export --out <dir>, insights --customer <folder>
 ```
 
@@ -147,6 +149,14 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   replay recorded replies for the fictional sample photos; it never fakes a translation, a draft
   or a read of any other photo (boundaries 5 and 9 still hold). Tests force `USE_MOCK_AI=false`
   and turn it on explicitly where needed, so a local `.env` can't change results.
+- **AI provider** (`config.ai_provider`, `llm.py`): `AI_PROVIDER` = anthropic | vertex | mock | off;
+  `USE_MOCK_AI=true` always wins. Vertex AI uses the EU multi-region by default (`VERTEX_REGION=eu`,
+  `aiplatform.eu.rep.googleapis.com`), Google service account credentials, and `anthropic_version` in the body;
+  it doesn't offer server-side fallbacks, so a refusal goes to a person. Models are settings
+  (`OPSENGINE_MODEL`, `OPSENGINE_VISION_MODEL`) read at each call. Every AI failure falls back to people.
+  AI logs (`opsengine.ai`) are metadata only; never log prompts, replies, file names or names. Anything sent
+  for translation or drafting goes through `llm.redact_names` first; a reply that loses a placeholder is
+  discarded. Google key files are git-ignored (`*service-account*.json`, `secrets/`).
 - **Validation at ingest** (`opsengine/validation.py`): every document, including onboarding seeds,
   is validated before it is stored. Dates are normalised to ISO, money and counts to numbers.
   Unknown types or holders, unreadable values and implausible dates (`max_validity_years`) are

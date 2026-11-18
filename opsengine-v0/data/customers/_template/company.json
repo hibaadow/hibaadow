@@ -5,7 +5,7 @@
   "owner": {"name": "REPLACE Owner Name", "email": "REPLACE", "phone": "REPLACE +353 ...", "language": "en"},
   "broker": {"name": "REPLACE Broker", "email": "REPLACE"},
   "approval_limits": {"auto_approve_up_to_eur": 0},
-  "data_protection": {"dpa_signed_on": "YYYY-MM-DD", "subprocessor_list_version": 1, "dpia_adopted_on": "YYYY-MM-DD"},
+  "data_protection": {"dpa_signed_on": "YYYY-MM-DD", "subprocessor_list_version": 2, "dpia_adopted_on": "YYYY-MM-DD"},
   "retention": {},
   "plan": {"id": "REPLACE starter, growth, business, scale or enterprise", "agreed_on": "YYYY-MM-DD", "extra_worker_blocks": 0},
   "sites": [

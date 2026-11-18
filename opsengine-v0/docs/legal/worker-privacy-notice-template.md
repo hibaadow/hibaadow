@@ -34,9 +34,11 @@ providers who confirm you completed training.
 - **Main contractors** we work for: proof that you are compliant for their sites. For your terms of
   employment, they only get a confirmation that you signed them, never the contract.
 - **Course and inspection providers**: only what is needed for a booking we have approved.
-- **OpsEngine and the services it uses**: [hosting provider, email provider, Anthropic (reading card
-  photos, translating messages), Meta (WhatsApp)]. Some of these may process information in the United
-  States, under [the EU-US Data Privacy Framework / Standard Contractual Clauses]. [SOLICITOR.]
+- **OpsEngine and the services it uses**: [hosting provider, email provider, Google Cloud (reading card
+  photos and translating messages with Claude AI, in the EU), Meta (WhatsApp)]. When messages are
+  translated, your name is replaced with a placeholder before it is sent. Some of these may process
+  information in the United States, under [the EU-US Data Privacy Framework / Standard Contractual
+  Clauses]. [SOLICITOR.]
 
 ## Automated checks
 OpsEngine checks expiry dates and sends reminders automatically. A person approves anything that would

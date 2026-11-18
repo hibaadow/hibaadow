@@ -1,12 +1,43 @@
 {
   "_about": "Sub-processors OpsEngine uses for customer data (GDPR Art 28(2) and (4)). Customers give a general written authorisation in the data processing agreement for the list version they signed; any change to this list needs advance notice to every customer and a chance to object before it takes effect. `python -m opsengine check` flags customers who haven't been told about the current version.",
-  "version": 1,
-  "updated": "2026-11-16",
+  "version": 2,
+  "updated": "2026-11-18",
   "notice_days": 30,
   "sub_processors": [
-    {"name": "Hosting provider (to choose)", "purpose": "Stores and runs everything", "location": "EU region only", "transfer": "none", "status": "planned"},
-    {"name": "Email provider (to choose)", "purpose": "Sends and receives email", "location": "EU", "transfer": "none expected; check support access from outside the EU", "status": "planned"},
-    {"name": "Anthropic PBC", "purpose": "Reads card and certificate photos; translates and drafts messages", "location": "US", "transfer": "EU-US Data Privacy Framework if certified on the day (check dataprivacyframework.gov), with Standard Contractual Clauses (Module 3) as fallback and a transfer impact assessment", "status": "planned"},
-    {"name": "Meta Platforms Ireland (WhatsApp Business Cloud API)", "purpose": "Sends and receives WhatsApp messages", "location": "check EU storage for the Cloud API", "transfer": "to confirm; check whether Meta is its own controller for any metadata", "status": "planned"}
+    {
+      "name": "Hosting provider (to choose)",
+      "purpose": "Stores and runs everything",
+      "location": "EU region only",
+      "transfer": "none",
+      "status": "planned"
+    },
+    {
+      "name": "Email provider (to choose)",
+      "purpose": "Sends and receives email",
+      "location": "EU",
+      "transfer": "none expected; check support access from outside the EU",
+      "status": "planned"
+    },
+    {
+      "name": "Google Cloud (Vertex AI), Claude models",
+      "purpose": "Reads card and certificate photos; translates and drafts messages, with people's names replaced by placeholders",
+      "location": "EU multi-region (VERTEX_REGION=eu)",
+      "transfer": "none expected with the EU multi-region; confirm Google's terms for Claude on Vertex AI, including any support access from outside the EU",
+      "status": "planned (chosen AI provider)"
+    },
+    {
+      "name": "Anthropic PBC",
+      "purpose": "Reads card and certificate photos; translates and drafts messages",
+      "location": "US",
+      "transfer": "EU-US Data Privacy Framework if certified on the day (check dataprivacyframework.gov), with Standard Contractual Clauses (Module 3) as fallback and a transfer impact assessment",
+      "status": "alternative (only if AI_PROVIDER=anthropic)"
+    },
+    {
+      "name": "Meta Platforms Ireland (WhatsApp Business Cloud API)",
+      "purpose": "Sends and receives WhatsApp messages",
+      "location": "check EU storage for the Cloud API",
+      "transfer": "to confirm; check whether Meta is its own controller for any metadata",
+      "status": "planned"
+    }
   ]
 }

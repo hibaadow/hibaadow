@@ -100,3 +100,21 @@ passing DMARC (or SPF and DKIM) result always goes to a person.
 - Sign the data processing agreement with each customer and record `data_protection.dpa_signed_on` and
   `subprocessor_list_version` in their company.json, or the daily run refuses them.
 - Set `solicitor_confirmed: true` in rules/retention.json only once a solicitor has confirmed the periods.
+
+## AI on Google Cloud Vertex AI (EU)
+
+1. In Google Cloud, create or pick a project and turn on billing. Enable the **Vertex AI API**.
+2. In Vertex AI's Model Garden, open the Claude models you'll use (by default Claude Opus 5.5 for photos and
+   Claude Sonnet 5.5 for drafting and translation) and enable them. Check they're offered in the **EU
+   multi-region**.
+3. Create a service account (e.g. `opsengine-ai`) and give it only the **Vertex AI User** role
+   (`roles/aiplatform.user`).
+4. Either attach that service account to the machine OpsEngine runs on (Compute Engine or Cloud Run: no key
+   file needed), or create a JSON key for it and mount the file into the container (for example at
+   `/run/secrets/vertex-service-account.json`). Never commit the key, and keep it readable only by OpsEngine.
+5. In `deploy/production.env`: `AI_PROVIDER=vertex`, `VERTEX_PROJECT_ID=<project>`, `VERTEX_REGION=eu`,
+   `GOOGLE_APPLICATION_CREDENTIALS=<key path, or empty when attached>`. Models are `OPSENGINE_MODEL` and
+   `OPSENGINE_VISION_MODEL`.
+6. Run `python -m opsengine ai status`, then `python -m opsengine ai check` (one tiny call, no personal data).
+7. Keep `USE_MOCK_AI=true` until the photo reader has been validated on real documents. Whenever the AI is
+   unavailable, every photo goes to a person to check, and nothing is faked.

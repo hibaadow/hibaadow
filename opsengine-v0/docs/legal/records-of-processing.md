@@ -13,7 +13,7 @@ Kept up to date by: [name]. Reviewed: [DATE], then at least yearly and whenever 
 | --- | --- |
 | Controllers | Each customer (list kept in the customer register: name, contact, DPA date, sub-processor list version) |
 | Categories of processing | Compliance tracking for construction work: storing and checking worker, subcontractor and company records; reading card photos; sending reminders and requests; arranging approved bookings; keeping records and reports |
-| Transfers outside the EEA | Anthropic PBC (US) and possibly Meta, under [DPF / SCCs]. See `docs/sub-processors.json` |
+| Transfers outside the EEA | None expected for AI: Claude runs on Google Cloud Vertex AI in the EU multi-region. Possibly Meta (WhatsApp), and Anthropic PBC (US) only if the Claude API is used instead, under [DPF / SCCs]. See `docs/sub-processors.json` |
 | Security measures | DPA Annex 2 |
 
 ## Part B – OpsEngine as controller (Article 30(1))

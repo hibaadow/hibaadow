@@ -112,7 +112,7 @@ do not deploy to live customers or switch the matching feature on.
 
 | Dependency | Status | Effect until done |
 | --- | --- | --- |
-| Photo reader validated on real documents (Phase 1, needs the API key) | Not started | Mock mode only; every real photo goes to a person |
+| Photo reader validated on real documents (Phase 1, needs Vertex AI or the API key) | Not started | Mock mode only; every real photo goes to a person |
 | Rules library checked and signed off by a competent person | Not done (r-035c75be5ab8 unsigned) | `OPSENGINE_REQUIRE_SIGNED_RULES=true` refuses to run in production |
 | Named, qualified safety reviewer appointed | Not done (`data/service.json` appointed: false) | Portal says safety reviews are not operational |
 | Irish data protection solicitor approves retention and the legal drafts | Not done | Automatic deletion stays off (`solicitor_confirmed: false`) |
@@ -136,6 +136,17 @@ over the limit stay fully monitored and our team follows up; a review over the a
 the reviewer's queue until an administrator adds capacity or the customer upgrades. Nothing is approved
 automatically. One amended resubmission is included in a draft's original review (new: `resubmit_draft`).
 Administrators change limits at `/admin/plans`. Extra sites default to €40 a month. **Tests:** 231.
+
+## Update: Claude on Google Cloud Vertex AI (18 November 2026)
+
+The Anthropic API key couldn't be obtained, so OpsEngine can now use Claude through Google Cloud Vertex AI
+in the EU multi-region, chosen by `AI_PROVIDER` (anthropic, vertex, mock or off). Sign-in uses a Google
+service account (key file, or the attached account on Google Cloud), implemented with the standard library
+and checked byte for byte against OpenSSL. Models are settings. Whenever the AI is unavailable, a call fails
+or a read is refused, the photo goes to a person. AI logs hold metadata only, and people's names are replaced
+by placeholders in anything sent for translation or drafting. The sub-processor list (version 2) and the
+legal drafts now name Google Cloud Vertex AI. **Not yet tested against Google itself**: that needs the Google
+Cloud project, the Claude models enabled for the EU multi-region, and a service account. **Tests:** 272.
 
 ## How this was audited
 

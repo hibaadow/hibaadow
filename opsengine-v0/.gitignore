@@ -10,3 +10,7 @@ data/customers/*
 
 # Production settings and secrets
 deploy/production.env
+
+# Google service account keys: never commit
+*service-account*.json
+secrets/

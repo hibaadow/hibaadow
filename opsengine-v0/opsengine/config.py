@@ -35,6 +35,22 @@ def flag(name):
     return os.environ.get(name, "").strip().lower() in TRUE
 
 
+PROVIDERS = ("anthropic", "vertex", "mock", "off")
+
+
+def ai_provider():
+    """Which AI service to use: anthropic (Claude API), vertex (Claude on Google Cloud Vertex AI), mock or off.
+
+    USE_MOCK_AI=true always wins (safe default for demos and tests). Otherwise AI_PROVIDER decides; with no
+    AI_PROVIDER, an ANTHROPIC_API_KEY means anthropic and nothing means off. An unknown value means off."""
+    if flag("USE_MOCK_AI"):
+        return "mock"
+    chosen = (os.environ.get("AI_PROVIDER") or "").strip().lower()
+    if chosen:
+        return chosen if chosen in PROVIDERS else "off"
+    return "anthropic" if os.environ.get("ANTHROPIC_API_KEY") else "off"
+
+
 def mock_ai():
-    """USE_MOCK_AI=true: never call Claude. Sample photos get recorded reads; nothing else is faked."""
-    return flag("USE_MOCK_AI")
+    """Mock mode: never call Claude. Sample photos get recorded reads; nothing else is faked."""
+    return ai_provider() == "mock"

@@ -246,7 +246,9 @@ def page(portal, user, cid, tab, title, body, flash=None, csrf=""):
                 '<select name="to" aria-label="Customer">' +
                 "".join(f'<option value="{c}" {"selected" if c == cid else ""}>{e_(n)}</option>' for c, n in names.items()) +
                 '</select><button class="ghost" style="padding:4px 10px">Go</button></form>')
-    mode = "mock AI" if config.mock_ai() else ("live Claude" if llm.available() else "AI off")
+    mode = ("mock AI" if config.mock_ai() else
+            ("live Claude (Vertex AI, EU)" if llm.available() and config.ai_provider() == "vertex" and llm.vertex_region() == "eu"
+             else "live Claude" if llm.available() else "AI off"))
     demo = ""
     if portal.demo:
         demo = (f'<span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>'

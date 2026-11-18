@@ -20,7 +20,7 @@ from . import config, llm
 from .detect import parse_date
 
 CONFIDENCE_THRESHOLD = 0.90
-VISION_MODEL = os.environ.get("OPSENGINE_VISION_MODEL", "claude-opus-5-5")
+VISION_MODEL = llm.vision_model()  # default at import; read_photo uses llm.vision_model() at call time
 
 # Document types the reader knows how to extract. Fields come from rules/requirements.json.
 READABLE_TYPES = ("safe_pass", "cscs_scaffolding", "cscs_excavator", "cscs_dumper", "cscs_slinger_signaller",
@@ -91,7 +91,8 @@ def read_photo(path, kb, expected_type=None, call=None):
     `call` is the transport (defaults to llm.call); tests pass a fake so they stay offline."""
     path = Path(path)
     media_type = MEDIA_TYPES.get(path.suffix.lower())
-    base = {"file": str(path), "model": VISION_MODEL, "document_type": None, "name_on_document": None,
+    model = llm.vision_model()
+    base = {"file": str(path), "model": model, "document_type": None, "name_on_document": None,
             "fields": {}, "overall_confidence": 0.0, "notes": ""}
     if not media_type:
         return {**base, "source": "unsupported", "notes": f"unsupported file type {path.suffix}"}
@@ -101,7 +102,7 @@ def read_photo(path, kb, expected_type=None, call=None):
     data = base64.standard_b64encode(path.read_bytes()).decode()
     block_type = "document" if media_type == "application/pdf" else "image"
     body = {
-        "model": VISION_MODEL,
+        "model": model,
         "max_tokens": 2000,
         "system": SYSTEM,
         "fallbacks": "default",  # if a safety classifier declines, the API retries on a fallback model
@@ -110,20 +111,24 @@ def read_photo(path, kb, expected_type=None, call=None):
             {"type": "text", "text": _prompt(kb, expected_type)},
         ]}],
     }
-    response = (call or llm.call)(body, betas=["server-side-fallback-2026-07-01"])
+    if call is None:
+        response = llm.call(body, betas=["server-side-fallback-2026-07-01"], purpose="read_photo")
+    else:
+        response = call(body, betas=["server-side-fallback-2026-07-01"])
     parsed = _parse_json(llm.text_of(response))
     if response is None:
         if mock:
             return {**base, "source": "mock", "model": "mock",
                     "notes": "mock AI (USE_MOCK_AI=true) has no recorded read for this photo"}
-        return {**base, "source": "unavailable", "notes": "Claude not available (no API key, offline or call failed)"}
+        why = llm.unavailable_reason() or "the AI call failed"
+        return {**base, "source": "unavailable", "notes": f"AI not available ({why}): a person checks this photo"}
     if not isinstance(parsed, dict):
         return {**base, "source": "unparseable", "notes": "Claude's reply was not usable JSON"}
     fields = {}
     for name, cell in (parsed.get("fields") or {}).items():
         if isinstance(cell, dict):
             fields[name] = {"value": cell.get("value"), "confidence": _num(cell.get("confidence"))}
-    return {**base, "source": "mock" if mock else "claude", "model": response.get("model", VISION_MODEL),
+    return {**base, "source": "mock" if mock else "claude", "model": response.get("model", model),
             "document_type": parsed.get("document_type"), "name_on_document": parsed.get("name_on_document"),
             "fields": fields, "overall_confidence": _num(parsed.get("overall_confidence")),
             "notes": parsed.get("notes") or ""}

@@ -141,6 +141,15 @@
       "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
       "role": "processor",
       "retention": "as the issue it relates to"
+    },
+    {
+      "who": "Workers, customer and subcontractor contacts",
+      "data": "AI call log: provider, model, purpose, outcome, time taken and token counts only. No prompts, replies, file names or names",
+      "where": "application logs (logger opsengine.ai)",
+      "why": "run and troubleshoot the AI service, and know what it costs",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); contains no personal data by design",
+      "role": "controller (service operation)",
+      "retention": "as the hosting provider's application log retention"
     }
   ],
   "special_category": {

@@ -8,3 +8,5 @@ deploy/production.env
 **/__pycache__
 *.pyc
 tests/
+*service-account*.json
+secrets/

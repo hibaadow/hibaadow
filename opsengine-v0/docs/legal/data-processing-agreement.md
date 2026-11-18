@@ -125,7 +125,9 @@ See clause 1 and `docs/data-inventory.json`.
 
 ### Annex 3 – Sub-processors (list version [N])
 From `docs/sub-processors.json`: hosting provider (EU, to be chosen), email provider (EU, to be chosen),
-Anthropic PBC (US; reading photos and translating), Meta Platforms Ireland (WhatsApp Business Cloud API).
+Google Cloud Vertex AI running Claude models in the EU multi-region (reading photos; translating and drafting
+with people's names replaced by placeholders), Meta Platforms Ireland (WhatsApp Business Cloud API).
+Anthropic PBC (US) only if the Claude API is used instead of Vertex AI.
 [Complete names, entities, locations and transfer mechanisms once chosen.]
 
 ### Annex 4 – Proposed default retention (the Customer may change these)

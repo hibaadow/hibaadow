@@ -125,12 +125,20 @@ class ActionContext:
                             self.issue["id"], self.step["id"], status, str(path))
         return str(path)
 
+    def people_names(self):
+        """Everyone named in this customer's records: kept out of anything sent to the AI."""
+        c = self.customer
+        names = [w.get("name", "") for w in c.workers.values()] + [c.company.get("owner", {}).get("name", "")]
+        names += [s.get("contact", {}).get("name", "") for s in c.subcontractors.values()]
+        names += [c.company.get("broker", {}).get("name", "")]
+        return [n for n in names if n]
+
     def localise(self, body, language):
         """Translate for non-English recipients; flag for a human if Claude is unavailable."""
         if language == "en":
             return body, None
         name = LANGUAGE_NAMES.get(language, language)
-        translated = llm.translate(body, name)
+        translated = llm.translate(body, name, names=self.people_names())
         if translated:
             return f"{translated}\n\n---\nEnglish original:\n{body}", f"machine-translated to {name}: native review required"
         return f"[TRANSLATION NEEDED: {name}]\n\n{body}", f"needs translation to {name}"
@@ -346,7 +354,7 @@ def a_draft_document(ctx):
              "workers": [{"name": w["name"], "role": w["role"], "language": w.get("language")} for w in c.workers.values()],
              "site": c.sites.get(ctx.issue["context"] or ""), "requirement": ctx.req["name"], "basis": ctx.req["basis"],
              "date": ctx.today.isoformat()}
-    text = llm.draft(doc_type, facts)
+    text = llm.draft(doc_type, facts, names=ctx.people_names())
     source = "claude"
     if not text:
         source = "template"
