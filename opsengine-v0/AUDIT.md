@@ -99,7 +99,7 @@ nightly deletion stays off until a solicitor confirms.
 | Signed terms of employment (s2) | **Done** | Rule `share_as: confirmation`: main contractors only ever get a confirmation. |
 | Sign-in codes for customers (s5) | **Done** | Customers can turn on authenticator codes from the Password page. |
 | Encrypted backups, restore test, security review, breach procedure (s5, Q12) | Open | Host and process tasks; see deploy/README.md. |
-| Documents (s6): DPA, worker notice template, own privacy notice, WhatsApp opt-in wording, two Art 30 records, model DPIA, LIAs, breach procedure and register, DPO note | Open | Need drafting and the solicitor. |
+| Documents (s6): DPA, worker notice template, own privacy notice, WhatsApp opt-in wording, two Art 30 records, model DPIA, LIAs, breach procedure and register, DPO note | **Drafted, not approved** | First drafts in `docs/legal/`, each labelled as awaiting an Irish data protection solicitor. Not for use until approved. |
 | EU AI Act assessment (s8) | Open | Belongs in the DPIA; obligations from 2 December 2027. |
 | Art 22 safeguards (Q7) | **Done** | A person approves anything that stops work, and anyone can challenge a status (portal or WhatsApp); a person decides within 5 days and the reason is sent back. |
 
