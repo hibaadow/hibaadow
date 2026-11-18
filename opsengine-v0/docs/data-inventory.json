@@ -123,6 +123,15 @@
       "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment; retention also under Art 17(3)(e) (legal claims)",
       "role": "processor / controller (accounts)",
       "retention": "contract term + 6 years; forgetting a person's tokens anonymises their entries"
+    },
+    {
+      "who": "Workers and customer contacts",
+      "data": "challenges to a compliance status: who raised it, their reason, the decision and its reason",
+      "where": "state/<id>/state.db challenges",
+      "why": "let people dispute a status and have a person review it (Art 22 safeguard)",
+      "lawful_basis": "Legitimate interests (Art 6(1)(f)); needs a written legitimate interests assessment",
+      "role": "processor",
+      "retention": "as the issue it relates to"
     }
   ],
   "special_category": {
