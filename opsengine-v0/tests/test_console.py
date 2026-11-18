@@ -28,8 +28,11 @@ class Console(unittest.TestCase):
         e = self.portal.engine(B)
         e.store.add_delivery(channel="email", to_name="Broker", address="b@x.example.ie", subject="Your quote", body="",
                              issue_id="ISS-0001", step_id="ISS-0001.2", outbox="", status="bounced", last_error="mailbox full")
+        from opsengine import challenges
+        challenges.raise_challenge(e, "ISS-0007", "Gráinne Murphy", "His Safe Pass was renewed last week")
         rows = console.items(self.engines())
         self.assertEqual({r["customer_id"] for r in rows}, {B, L})
+        self.assertEqual(console.counts(rows)["challenges"], 1)
         c = console.counts(rows)
         for q in ("stops_work", "safety_reviews", "customer_approvals", "failed_messages"):
             self.assertGreater(c[q], 0, q)

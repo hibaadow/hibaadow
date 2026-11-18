@@ -12,6 +12,7 @@ QUEUES = {
     "stops_work": "Could stop work",
     "safety_reviews": "Safety reviews waiting",
     "photo_checks": "Photos and documents to check",
+    "challenges": "Status challenges to decide",
     "escalated": "Escalated issues",
     "blocked": "Blocked steps",
     "failed_messages": "Messages that couldn't be delivered",
@@ -64,6 +65,11 @@ def items(engines, role="ops"):
         for r in e.review_queue():
             add("photo_checks", f"Check a document from {e.customer.holder_name(r['holder']) or 'an unknown sender'}",
                 "high", r["created_at"], f"/c/{cid}/ops", "; ".join(r["reasons"])[:200])
+        from . import challenges
+        for ch in challenges.listing(e.store, challenges.OPEN):
+            late = ch["due_on"] < today.isoformat()
+            add("challenges", f"Challenge {ch['id']}: {ch['reason'][:120]}", "high" if late else "medium", ch["created_at"],
+                f"/c/{cid}/ops", f"decide by {ch['due_on']}" + (" (overdue)" if late else ""))
         for i in e.store.issues("escalated"):
             add("escalated", i["detail"][:160], i["severity"], i["updated_at"], f"/c/{cid}/issue/{i['id']}")
         for s in e.store.steps(state="blocked"):
