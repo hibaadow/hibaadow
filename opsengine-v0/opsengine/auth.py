@@ -119,6 +119,9 @@ class Accounts:
         if "must_change" not in cols:  # upgrade older account databases in place
             self.db.execute("ALTER TABLE users ADD COLUMN must_change INTEGER DEFAULT 0")
             self.db.commit()
+        if "mfa_wanted" not in cols:
+            self.db.execute("ALTER TABLE users ADD COLUMN mfa_wanted INTEGER DEFAULT 0")
+            self.db.commit()
 
     def audit(self, actor, event, ref="", payload=None):
         self.store.audit(actor, event, ref, payload or {})
@@ -154,6 +157,7 @@ class Accounts:
                         " VALUES (?,?,?,?,?,?,?,?,?)",
                         (uid, email, name, role, customer_id, hash_password(password), int(demo), now_iso(), int(must_change)))
         self.db.commit()
+        self.store.register_person(name, email)
         self.audit(f"admin:{by}", "user_created", uid, {"email": email, "name": name, "role": role,
                                                          "customer": customer_id, "demo": demo})
         return uid
@@ -199,7 +203,15 @@ class Accounts:
         self.audit(f"admin:{by}", "mfa_reset", user_id, {})
 
     def mfa_required(self, user):
-        return user["role"] in STAFF and not user["demo"]
+        """Staff always; customer users once they turn it on (GDPR review: offer it to customers too)."""
+        return (user["role"] in STAFF and not user["demo"]) or bool(user.get("mfa_wanted"))
+
+    def turn_on_codes(self, user_id):
+        """A customer user asks for a sign-in code as well as their password. Takes effect at the next sign-in."""
+        self.db.execute("UPDATE users SET mfa_wanted=1 WHERE id=?", (user_id,))
+        self.db.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        self.db.commit()
+        self.audit(f"user:{user_id}", "mfa_requested", user_id, {})
 
     # sign-in
     def sign_in(self, email, password, ip=""):

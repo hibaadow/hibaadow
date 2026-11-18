@@ -12,6 +12,19 @@
         "rules/main_contractors/northgate_build.json",
         "playbooks/playbooks.json"
       ]
+    },
+    {
+      "id": "r-035c75be5ab8",
+      "registered_on": "2026-11-16",
+      "note": "GDPR review: accident history must not name people; written terms shared as confirmation only. SAMPLE library, NOT checked by a competent person yet",
+      "sign_off": null,
+      "files": [
+        "rules/requirements.json",
+        "rules/main_contractors/glenmara_construction_sample.json",
+        "rules/main_contractors/harbour_construction.json",
+        "rules/main_contractors/northgate_build.json",
+        "playbooks/playbooks.json"
+      ]
     }
   ]
 }

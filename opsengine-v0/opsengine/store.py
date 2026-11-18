@@ -1,6 +1,7 @@
 """SQLite state store: documents, issues, steps and the hash-chained audit log."""
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +55,15 @@ CREATE TABLE IF NOT EXISTS deliveries (
 CREATE TABLE IF NOT EXISTS contact_prefs (
     address TEXT PRIMARY KEY, channel TEXT, opted_out_at TEXT, last_inbound_at TEXT
 );
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS audit_text (
+    tid TEXT PRIMARY KEY, sha256 TEXT UNIQUE, text TEXT, created_at TEXT, erased_at TEXT, erased_reason TEXT
+);
+CREATE TABLE IF NOT EXISTS people (
+    pid TEXT PRIMARY KEY, kind TEXT, value TEXT UNIQUE COLLATE NOCASE, first_seen TEXT, last_seen TEXT
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, event TEXT,
     ref TEXT, payload TEXT, prev_hash TEXT, hash TEXT
@@ -63,6 +73,26 @@ CREATE TRIGGER IF NOT EXISTS audit_append_only_d BEFORE DELETE ON audit BEGIN SE
 """
 
 OPEN_STATUSES = ("open", "in_progress", "escalated")
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+NAMED_EMAIL = re.compile(r"([^<>:\"]{2,80}?)\s*<([^<>\s]+@[^<>\s]+)>")
+TOKEN = re.compile(r"⟪(P-\d{4,})⟫")
+TEXT_TOKEN = re.compile(r"⟪(T-\d{4,})⟫")
+REMOVED = "[removed person]"
+REMOVED_TEXT = "[removed text]"
+# What may stay in the immutable audit log as written: identifiers, dates, hashes and lowercase machine words.
+# Everything else (sentences, names in any spelling, nicknames, card and policy numbers, file names, phone
+# numbers) goes to the separate, erasable audit_text table, and the log keeps only a token for it.
+SAFE_STRINGS = [
+    re.compile(r"^(ISS|REV|CH|APT|PK|BR|SC|P|T)-\d{3,}(\.\d+)?$"),          # our own record ids
+    re.compile(r"^\d{4}-\d{2}(-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?)?)?$"),  # dates and times
+    re.compile(r"^[0-9a-f]{8,64}$"),                                             # hashes
+    re.compile(r"^(r|u)-[0-9a-f]{6,16}$"),                                       # rules versions, user ids
+    re.compile(r"^-?\d+(\.\d+)?%?$"),                                         # numbers written as text
+]
+MACHINE_WORDS = re.compile(r"^[a-z][a-z0-9_:/-]{0,60}$")                       # e.g. book_service, inbound:email
+PHONE = re.compile(r"\+?\d[\d\s().-]{6,}\d")
+LONG_DIGITS = re.compile(r"\d{6,}")
 
 
 def now_iso():
@@ -78,8 +108,150 @@ class Store:
         self.db.executescript(SCHEMA)
 
     # ---------- audit (append-only, hash chained) ----------
+    # ---------- people in the audit log (pseudonymised: AUDIT.md, GDPR review Q4) ----------
+    # The audit log never holds a name, email, phone number or IP address: each is replaced by a token
+    # such as ⟪P-0007⟫, and the token-to-person table is kept apart. Deleting a person's rows from
+    # `people` (forget) leaves the log tamper-evident but anonymous for them.
+    _pattern = None
+
+    def register_people(self, values, kind="name"):
+        changed = False
+        for v in values:
+            v = (v or "").strip()
+            if len(v) < 3:
+                continue
+            if not self.db.execute("SELECT 1 FROM people WHERE value=?", (v,)).fetchone():
+                n = self.db.execute("SELECT COUNT(*) FROM people").fetchone()[0] + 1
+                pid = f"P-{n:04d}"
+                while self.db.execute("SELECT 1 FROM people WHERE pid=?", (pid,)).fetchone():
+                    n += 1
+                    pid = f"P-{n:04d}"
+                self.db.execute("INSERT INTO people (pid, kind, value, first_seen, last_seen) VALUES (?,?,?,?,?)",
+                                (pid, kind, v, now_iso(), now_iso()))
+                changed = True
+        if changed:
+            self.db.commit()
+            self._pattern = None
+
+    def register_person(self, name="", email="", phone=""):
+        """A person and the variants of their details that may appear in log text."""
+        if name:
+            self.register_people([name, name.replace(" ", "_"), name.replace(" ", "-")], "name")
+        if email:
+            self.register_people([email], "email")
+        if phone:
+            digits = "".join(ch for ch in phone if ch.isdigit())
+            self.register_people([phone, digits, "+" + digits if digits else ""], "phone")
+
+    def pseudonymise(self, text):
+        if not text:
+            return text
+        for m in NAMED_EMAIL.finditer(text):  # "Name <email>" of someone not on file (e.g. staff)
+            self.register_person(m.group(1).strip(), m.group(2))
+        self.register_people(EMAIL.findall(text), "email")
+        self.register_people(IPV4.findall(text), "ip")
+        if self._pattern is None:
+            rows = self.db.execute("SELECT pid, value FROM people").fetchall()
+            self._lookup = {r["value"].lower(): r["pid"] for r in rows}
+            values = sorted(self._lookup, key=len, reverse=True)
+            self._pattern = re.compile("|".join(re.escape(v) for v in values), re.IGNORECASE) if values else False
+        if not self._pattern:
+            return text
+        seen = set()
+
+        def sub(m):
+            pid = self._lookup[m.group(0).lower()]
+            seen.add(pid)
+            return f"⟪{pid}⟫"
+        out = self._pattern.sub(sub, text)
+        if seen:
+            self.db.executemany("UPDATE people SET last_seen=? WHERE pid=?", [(now_iso(), pid) for pid in seen])
+        return out
+
+    def reidentify(self, text, in_json=False):
+        if not text or "⟪" not in text:
+            return text
+        if "⟪T-" in text:
+            texts = {r["tid"]: r["text"] for r in self.db.execute("SELECT tid, text FROM audit_text")}
+
+            def put_back(m):
+                t = texts.get(m.group(1))
+                if t is None:
+                    return REMOVED_TEXT
+                return json.dumps(t, ensure_ascii=False)[1:-1] if in_json else t  # stays valid inside a JSON string
+            text = TEXT_TOKEN.sub(put_back, text)
+        names = {}
+        for r in self.db.execute("SELECT pid, value, kind FROM people ORDER BY LENGTH(value) DESC"):
+            if r["pid"] not in names or (r["kind"] == "name" and " " in r["value"]):
+                names[r["pid"]] = r["value"]
+        return TOKEN.sub(lambda m: names.get(m.group(1), REMOVED), text)
+
+    def forget(self, values=(), kinds=(), before=None):
+        """Erase people from the token table. Returns how many entries were removed."""
+        n = 0
+        for v in values:
+            if v:
+                n += self.db.execute("DELETE FROM people WHERE value=?", (v,)).rowcount
+        for kind in kinds:
+            sql, args = "DELETE FROM people WHERE kind=?", [kind]
+            if before:
+                sql, args = sql + " AND last_seen < ?", args + [before]
+            n += self.db.execute(sql, args).rowcount
+        self.db.commit()
+        self._pattern = None
+        return n
+
+    def _is_safe(self, value):
+        if any(p.match(value) for p in SAFE_STRINGS):
+            return True
+        bare = TOKEN.sub("", value)
+        if not bare.strip(" <>()"):
+            return True  # only person tokens
+        if PHONE.search(bare) or LONG_DIGITS.search(bare) or "@" in bare:
+            return False
+        return all(MACHINE_WORDS.match(part) for part in re.split(r"[\s<>()]+", bare.strip(" <>()")) if part)
+
+    def _text_token(self, value):
+        """Keep free text out of the immutable log: store it (people already tokenised) in audit_text, by hash."""
+        digest = hashlib.sha256(value.encode()).hexdigest()
+        row = self.db.execute("SELECT tid FROM audit_text WHERE sha256=?", (digest,)).fetchone()
+        if row:
+            return f"⟪{row['tid']}⟫"
+        n = self.db.execute("SELECT COUNT(*) FROM audit_text").fetchone()[0] + 1
+        tid = f"T-{n:05d}"
+        self.db.execute("INSERT INTO audit_text (tid, sha256, text, created_at) VALUES (?,?,?,?)", (tid, digest, value, now_iso()))
+        return f"⟪{tid}⟫"
+
+    def _scrub(self, value):
+        if isinstance(value, dict):
+            return {k: self._scrub(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._scrub(v) for v in value]
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+        text = self.pseudonymise(str(value))
+        return text if self._is_safe(text) else self._text_token(text)
+
+    def verify_audit_text(self):
+        """Every stored free-text entry still matches the hash the log was written with (erased ones excepted)."""
+        bad = [r["tid"] for r in self.db.execute("SELECT tid, sha256, text FROM audit_text WHERE text IS NOT NULL")
+               if hashlib.sha256(r["text"].encode()).hexdigest() != r["sha256"]]
+        return not bad, bad
+
+    def erase_text(self, containing, reason):
+        """Erase free text in the audit record that mentions someone (any spelling given). The log row, the token
+        and the hash stay, so it is still provable that an entry existed and was erased, and when."""
+        n = 0
+        for v in containing:
+            if v and len(v) >= 3:
+                n += self.db.execute("UPDATE audit_text SET text=NULL, erased_at=?, erased_reason=? WHERE text IS NOT NULL "
+                                     "AND text LIKE ? COLLATE NOCASE", (now_iso(), reason, f"%{v}%")).rowcount
+        self.db.commit()
+        return n
+
     def audit(self, actor, event, ref="", payload=None):
-        payload_json = json.dumps(payload or {}, sort_keys=True, default=str)
+        actor, ref = self._scrub(actor), self._scrub(ref or "")
+        payload_json = json.dumps(self._scrub(payload or {}), sort_keys=True, default=str, ensure_ascii=False)
         last = self.db.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
         prev = last["hash"] if last else "GENESIS"
         ts = now_iso()
@@ -101,9 +273,15 @@ class Store:
             prev = row["hash"]
         return True, None
 
-    def audit_rows(self, limit=None):
+    def audit_rows(self, limit=None, raw=False):
+        """Audit entries with people's details put back for display (raw=True: as stored, tokens only)."""
         sql = "SELECT * FROM audit ORDER BY seq" + (f" DESC LIMIT {int(limit)}" if limit else "")
-        return [dict(r) for r in self.db.execute(sql)]
+        rows = [dict(r) for r in self.db.execute(sql)]
+        if not raw:
+            for r in rows:
+                for k in ("actor", "ref", "payload"):
+                    r[k] = self.reidentify(r[k], in_json=(k == "payload"))
+        return rows
 
     # ---------- documents ----------
     def add_document(self, doc, source, actor="engine"):
@@ -294,6 +472,17 @@ class Store:
             closed = s["completed"] + s["no_show"] + s["cancelled"]
             s["reliability"] = round(s["completed"] / closed, 2) if closed else None
         return stats
+
+    # ---------- settings (e.g. the customer's standing approval) ----------
+    def setting(self, key, default=None):
+        row = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return json.loads(row["value"]) if row else default
+
+    def set_setting(self, key, value, by):
+        self.db.execute("INSERT INTO settings (key, value, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                        "value=excluded.value, updated_at=excluded.updated_at", (key, json.dumps(value), now_iso()))
+        self.db.commit()
+        self.audit(by, "setting_changed", key, {"value": value})
 
     # ---------- deliveries (retries, delivery reports, WhatsApp messages waiting for a reply window) ----------
     def add_delivery(self, **d):

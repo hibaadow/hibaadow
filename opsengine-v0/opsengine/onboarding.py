@@ -83,6 +83,11 @@ def check_customer(folder, kb=None):
         for key in ("name", "phone", "role"):
             if not w.get(key):
                 problems.append(f"workers.json: {w.get('id')} has no {key}")
+    problems += data_protection_problems(company)
+    from .pricing import load as load_prices
+    plan_id = (company.get("plan") or {}).get("id")
+    if not is_sample(company) and plan_id and "REPLACE" not in plan_id and plan_id not in {x["id"] for x in load_prices()["plans"]}:
+        problems.append(f"company.json: plan {plan_id!r} isn't one of our plans (starter, growth, business, scale, enterprise)")
     if not company.get("owner", {}).get("email"):
         problems.append("company.json: owner email missing (needed for approvals)")
     if not company.get("sites"):
@@ -111,6 +116,30 @@ def check_customer(folder, kb=None):
                 except ValueError:
                     problems.append(f"documents.json: {d.get('id')} {key} is not a date (YYYY-MM-DD)")
     return problems
+
+
+def data_protection_problems(company):
+    """A real customer needs a signed data processing agreement before we hold their people's data,
+    and must have been told about the current sub-processor list (GDPR Art 28)."""
+    if is_sample(company):
+        return []
+    dp = company.get("data_protection") or {}
+    out = []
+
+    def is_date(v):
+        try:
+            return bool(v) and parse_date(v) is not None
+        except (ValueError, TypeError):
+            return False
+    if not is_date(dp.get("dpa_signed_on")):
+        out.append("company.json: data_protection.dpa_signed_on missing - sign the data processing agreement first")
+    subs = json.loads((ROOT / "docs" / "sub-processors.json").read_text(encoding="utf-8"))
+    if (dp.get("subprocessor_list_version") or 0) < subs["version"]:
+        out.append(f"company.json: customer hasn't been told about sub-processor list version {subs['version']} "
+                   f"(give {subs['notice_days']} days' notice and a chance to object, then update subprocessor_list_version)")
+    if not is_date(dp.get("dpia_adopted_on")):
+        out.append("company.json: data_protection.dpia_adopted_on missing - the customer should adopt the model DPIA (warning)")
+    return out
 
 
 def is_sample(company):

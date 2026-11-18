@@ -26,7 +26,10 @@ stopping only at approval gates or while it waits for proof.
 These are product rules, not style preferences. Never weaken them in code.
 
 1. **Money and commitments need customer approval.** Bookings, quotes accepted and insurance
-   changes always have `"approval": "customer"` in the playbook.
+   changes always have `"approval": "customer"` in the playbook. The only shortcut is the customer's
+   own standing approval (`Engine.set_standing_approval`, set by a customer user, never by staff): bookings
+   with a known price under their limit and monthly cap go ahead, recorded as theirs. Never extend it to
+   insurance, signatures or safety sign-off.
 2. **Safety documents need a competent human.** Anything drafted (Safety Statement, RAMS)
    goes through `"approval": "safety_reviewer"` before release. Drafts are always marked DRAFT.
 3. **The engine never takes legal duty-holder roles.** No PSCS/PSDP appointments, no legal
@@ -175,9 +178,25 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 - **Checkpoints and backups:** `nightly` writes a signed checkpoint and a verified backup. Both live
   outside `state/`. A restore never goes over live data. Any new database with an `audit` table is
   picked up automatically.
-- **GDPR:** a new kind of personal data needs an entry in `docs/data-inventory.json`. Purges audit
-  counts, never the deleted content. Retention periods are placeholders until `solicitor_confirmed`.
-  Leavers (`left_on` in workers.json) are never chased.
+- **GDPR** (`docs/data-inventory.json`, first-pass review of 16 Nov 2026, awaiting a solicitor):
+  - A new kind of personal data needs an inventory entry with its lawful basis. Never use consent for
+    workers (the WhatsApp opt-in is a channel preference, not the lawful basis).
+  - The immutable audit log holds only identifiers, dates, numbers, hashes and lowercase machine words
+    (`Store._scrub` in `audit()`). People become ⟪P-0007⟫ tokens (people table); every other string (notes,
+    reasons, subjects, file names, card or policy numbers, nicknames, phone numbers) becomes a ⟪T-00001⟫ token
+    whose text and SHA-256 live in `audit_text`. `audit_rows()` puts both back for display (`raw=True` for the
+    stored form). `store.erase_text` / `store.forget` erase without breaking the chain; the hash stays as
+    evidence and `verify_audit_text` checks the kept text. Never write personal data into `event` names.
+  - The customer (controller) sets retention: `company.json` "retention" overrides `rules/retention.json`.
+    Purges audit counts, never content, and only run for real once `solicitor_confirmed` is true.
+  - Real customers need `data_protection.dpa_signed_on` and the current sub-processor list version
+    (`docs/sub-processors.json`) before the daily run touches their data. Adding a sub-processor means
+    bumping the list version and giving customers notice and a chance to object.
+  - Rules can mark data minimisation: `no_personal_data` (accident history: never names anyone, it could be
+    health data) and `share_as: confirmation` (main contractors get a confirmation, not the document).
+  - Leavers (`left_on` in workers.json) are never chased; their WhatsApp preferences go on leaving, photos
+    after `leaver_photos_months`, the named record after `leaver_records_years`.
+  - Never add face matching to card photos (it would make them biometric data).
 - **Messages and approvals (Phase 3):** every outgoing message goes through `delivery.dispatch`, which
   never treats a failure as sent: temporary failures are retried, permanent ones (and bounces, opt-outs,
   no WhatsApp opt-in) escalate the issue. Only customer approvals may be given by link
@@ -187,6 +206,27 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
   read those). Inbound files are never trusted for the channel they came by: unknown senders are kept
   aside, unverified email senders always go to review, and everything still goes through the photo reader.
   Webhooks (`/hooks/email`, `/hooks/whatsapp`) need a valid signature.
+- **Customer trust pages:** `data/service.json` holds what customers are told about setup, commission and
+  the safety reviewer (SAMPLE until named). Provider prices and our fee are always shown apart
+  (`labels.fee_line`). The "How it works" tab answers who is responsible, cost, setup and data.
+- **Pricing** (`data/pricing.json`, `opsengine/pricing.py`): plans Starter €199, Growth €399, Business €699,
+  Scale €999 a month (1–10, 11–30, 31–75, 76–150 workers), Enterprise custom; onboarding fee equals one
+  month; all excluding VAT. Each customer's plan is `company.json` "plan" (`id`, `extra_worker_blocks`,
+  `extra_site_eur`). `pricing.fit_problems` tells our team (ops Insights) when a customer outgrows their
+  plan or uses features from a higher one. Revenue figures are staff-only. Extra sites default to €40.
+- **Subscription limits** (`opsengine/limits.py`): workers, sites and routine safety reviews a month per plan
+  (Starter 10/1/5, Growth 30/3/15, Business 75/10/40, Scale 150/25/100, Enterprise custom). Notices at 80%
+  and 100% (once a month each). Limits must never stop monitoring, hide an issue, silence a safety alert or
+  approve anything: workers and sites over the limit stay fully monitored; a routine review over the
+  allowance waits in the reviewer queue (`LimitReached`) until an admin adds capacity, unless it is urgent:
+  anything missing or expired that could stop work, critical/high issues, or a review someone marks urgent
+  (`limits.mark_urgent`) is never held (overage recorded for agreement). Held reviews are announced at once
+  to the customer, ops and reviewer, and escalate after 2 days (`limits.hold_notices`). One amended
+  resubmission (`Engine.resubmit_draft`) is included in a draft's original review. Ordinary RAMS and
+  Safety Statement reviews are never specialist work. Admins change limits at `/admin/plans` (audited).
+- **Release restrictions:** not production-ready. Don't deploy to live customers, enable deletion, claim
+  the photo reader is validated, claim the rules are approved, claim safety reviews run before
+  `service.json` has an appointed reviewer, or send real messages before email/WhatsApp are tested.
 - **Holders** are `company`, worker ids, subcontractor ids (`company.json` "subcontractors") and asset
   ids (`assets.json`). Rule scopes: company, site, worker, worker_site, subcontractor, asset, manual.
 - **Corrective actions** (`requirement: corrective_action`, scope manual) are raised by people or from

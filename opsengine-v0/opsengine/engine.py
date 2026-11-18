@@ -30,6 +30,7 @@ class Engine:
         self.outbox = base / "outbox"
         self.evidence_dir = base / "evidence"
         self.today = today or date.today()
+        self._register_people()
         if not self.store.has_documents() and not self.store.reviews():
             for d in self.customer.seed_documents:
                 clean, problems = validate_document(d, self.kb, self.customer, self.today)
@@ -37,6 +38,16 @@ class Engine:
                     self._hold_for_review(d, problems, "onboarding")
                 else:
                     self.store.add_document(clean, source="onboarding")
+
+    def _register_people(self):
+        """Everyone on file, so the audit log can refer to them by token rather than by name."""
+        c = self.customer
+        st = self.store
+        for w in c.workers.values():
+            st.register_person(w.get("name", ""), w.get("email", ""), w.get("phone", ""))
+        for who in [c.company.get("owner", {}), c.company.get("broker", {})] + \
+                [s.get("contact", {}) for s in c.subcontractors.values()]:
+            st.register_person(who.get("name", ""), who.get("email", ""), who.get("phone", ""))
 
     # ---------------- detect + plan ----------------
     def scan(self):
@@ -109,6 +120,8 @@ class Engine:
                 return events
             if nxt["state"] in STOPS:
                 return events
+            if nxt["approval_role"] == "customer" and not nxt["approved_by"] and self._standing_approval(nxt, prior):
+                continue
             if nxt["approval_role"] and not nxt["approved_by"]:
                 self.store.update_step(nxt["id"], state="awaiting_approval",
                                        result=json.dumps({"awaiting_since": self.today.isoformat()}))
@@ -210,6 +223,45 @@ class Engine:
             return f"Ask {step['spec'].get('from')} about the {req['name']} for {who}: {issue['detail']}"
         return f"Approve the next step for {req['name']} ({who})"
 
+    # ---------------- standing approval (the customer's own limit) ----------------
+    STANDING_ACTIONS = ("book_service",)  # only bookings with a known price; never insurance, signatures or safety
+
+    def standing_approval(self):
+        """The customer's rule for approving small bookings without asking each time, or None."""
+        rule = self.store.setting("standing_approval")
+        if rule is None:
+            limit = (self.customer.company.get("approval_limits") or {}).get("auto_approve_up_to_eur") or 0
+            rule = {"limit_eur": limit, "monthly_cap_eur": None, "set_by": f"{self.customer.company['owner']['name']} (in your setup details)"} if limit else None
+        return rule if rule and rule.get("limit_eur") else None
+
+    def set_standing_approval(self, limit_eur, monthly_cap_eur, by):
+        if not 0 <= limit_eur <= 5000 or (monthly_cap_eur is not None and not 0 < monthly_cap_eur <= 50000):
+            raise ValueError("limit must be €0 to €5,000 each, and a monthly cap €1 to €50,000")
+        self.store.set_setting("standing_approval", {"limit_eur": limit_eur, "monthly_cap_eur": monthly_cap_eur,
+                                                     "set_by": by, "set_on": self.today.isoformat()} if limit_eur else None, by)
+
+    def auto_spent_this_month(self):
+        return self.store.setting(f"standing_approval_spent:{self.today:%Y-%m}", 0)
+
+    def _standing_approval(self, step, prior):
+        """Approve a booking under the customer's own limit. Recorded as the customer's approval, by rule."""
+        rule = self.standing_approval()
+        price = ((prior.get("find_provider") or {}).get("recommended") or {}).get("price_eur")
+        if not rule or step["action"] not in self.STANDING_ACTIONS or price is None or price > rule["limit_eur"]:
+            return False
+        spent = self.auto_spent_this_month()
+        if rule.get("monthly_cap_eur") and spent + price > rule["monthly_cap_eur"]:
+            return False
+        by = f"Standing approval set by {rule['set_by']} (bookings up to {money(rule['limit_eur'])})"
+        self.store.update_step(step["id"], approved_by=by, approved_at=now_iso())
+        key = f"standing_approval_spent:{self.today:%Y-%m}"
+        self.store.db.execute("INSERT INTO settings (key, value, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                              "value=excluded.value, updated_at=excluded.updated_at", (key, json.dumps(spent + price), now_iso()))
+        self.store.db.commit()
+        self.store.audit("engine", "auto_approved", step["id"], {"price_eur": price, "limit_eur": rule["limit_eur"],
+                                                                 "spent_this_month_eur": spent + price, "rule_set_by": rule["set_by"]})
+        return True
+
     def approval_queue(self):
         out = []
         for s in self.store.steps(state="awaiting_approval"):
@@ -221,6 +273,8 @@ class Engine:
         s = self.store.step(step_id)
         if not s or s["state"] != "awaiting_approval":
             raise ValueError(f"{step_id} is not awaiting approval")
+        from .limits import check_review_allowed
+        check_review_allowed(self, s)  # a routine review over the plan's allowance waits; never auto-released
         self.store.update_step(step_id, state="pending", approved_by=by, approved_at=now_iso())
         self.store.audit(f"human:{by}", "approved", step_id, {"role": s["approval_role"]})
         return self._advance_issue(s["issue_id"])
@@ -236,9 +290,27 @@ class Engine:
         s = self.store.step(step_id)
         if not s or s["state"] != "awaiting_approval":
             raise ValueError(f"{step_id} is not awaiting approval")
+        from .limits import check_review_allowed
+        check_review_allowed(self, s)
         self.store.update_step(step_id, state="rejected", result=json.dumps({"rejected_by": by, "reason": reason}))
         self.store.update_issue(s["issue_id"], status="escalated")
         self.store.audit(f"human:{by}", "rejected", step_id, {"reason": reason})
+
+    def resubmit_draft(self, issue_id, by, note):
+        """After the safety reviewer declines a draft: redo it with their reason and send it back for review.
+        The first resubmission is included in the original review (it doesn't use the plan's allowance)."""
+        steps = self.store.steps(issue_id)
+        review = next((s for s in steps if s["action"] == "request_signature" and s["approval_role"] == "safety_reviewer"
+                       and s["state"] == "rejected"), None)
+        draft = next((s for s in steps if s["action"] == "draft_document"), None)
+        if not review or not draft:
+            raise ValueError(f"{issue_id} has no declined draft to resubmit")
+        reason = (review["result"] or {}).get("reason", "")
+        self.store.update_step(draft["id"], state="pending", result=json.dumps({"retry_reason": reason, "amendment_note": note}))
+        self.store.update_step(review["id"], state="pending", approved_by=None, approved_at=None, result=None)
+        self.store.update_issue(issue_id, status="in_progress")
+        self.store.audit(f"human:{by}", "draft_resubmitted", issue_id, {"declined_for": reason, "note": note})
+        return self._advance_issue(issue_id)
 
     # ---------------- inbound proof ----------------
     def store_evidence(self, doc, file_path=None):

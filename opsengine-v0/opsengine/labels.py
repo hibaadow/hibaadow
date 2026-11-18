@@ -85,3 +85,17 @@ def nice_date(value):
     except ValueError:
         return str(value)
     return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def service():
+    """What customers are told about fees and the service (data/service.json)."""
+    from .knowledge import ROOT
+    return json.loads((ROOT / "data" / "service.json").read_text(encoding="utf-8"))
+
+
+def fee_line(svc=None):
+    """Our fee, kept apart from what providers charge."""
+    svc = svc or service()
+    fee = svc.get("booking_fee_eur") or 0
+    ours = f"our fee for this: {money(fee)}" if fee else "no extra fee from us (covered by your subscription)"
+    return ours + ("" if svc.get("takes_commission") else "; we take no commission from providers")

@@ -4,6 +4,7 @@ Pure: (document, rules, customer, today) -> (cleaned document, problems). A docu
 problems is never stored as proof; the engine holds it for a person to correct. Dates are
 normalised to ISO (Irish day-first formats accepted), money and counts to numbers, and
 values that are implausible for the document type are flagged instead of trusted."""
+import json
 import re
 from datetime import date, datetime, timedelta
 
@@ -83,4 +84,12 @@ def validate_document(doc, kb, customer, today):
         issued = clean.get("issued")
         if issued and date.fromisoformat(issued) > today + timedelta(days=1):
             problems.append(f"issue date {issued} is in the future")
+    if req and req.get("no_personal_data"):  # e.g. accident history: company-level only (GDPR review, Art 9)
+        people = [w.get("name", "") for w in customer.workers.values()] + \
+            [x.get("name", "") for x in [customer.company.get("owner", {})] + [s.get("contact", {}) for s in customer.subcontractors.values()]]
+        text = json.dumps({k: v for k, v in clean.items() if k not in ("id", "type", "holder", "signed_by")}, ensure_ascii=False).lower()
+        named = [n for n in people if n and (n.lower() in text or re.search(rf"\b{re.escape(n.split()[-1].lower())}\b", text))]
+        if named:
+            problems.append(f"{req['name']} must not name anyone (it could be health data): remove the names and send a "
+                            "company-level summary")
     return clean, problems

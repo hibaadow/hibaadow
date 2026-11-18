@@ -131,7 +131,7 @@ class Wording(unittest.TestCase):
 
                 seen = set()
                 pages = [f"/c/{cid}/{t}" for t in ("home", "issues", "issues?status=all", "people", "subcontractors",
-                                                     "equipment", "documents", "actions", "bookings", "messages", "report")]
+                                                     "equipment", "documents", "actions", "bookings", "messages", "report", "how", "settings")]
                 while pages:
                     path = pages.pop()
                     if path in seen or len(seen) > 400:

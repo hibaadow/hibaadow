@@ -1,8 +1,19 @@
 {
-  "_about": "How long OpsEngine keeps personal data before deleting it. These periods are PLACEHOLDERS: a solicitor must confirm each one against the customer contract, the lawful basis and any legal duty to keep records (e.g. safety training and accident records) before go-live. `python -m opsengine gdpr purge` applies them (dry run unless --apply).",
+  "_about": "Default retention periods. The customer (the controller) decides retention for their workers' and contacts' data: they can change any period in their company.json under \"retention\", and that choice is used and recorded. Defaults follow the GDPR first-pass review of 16 Nov 2026, which still needs an Irish data protection solicitor's sign-off. Until solicitor_confirmed is true, `nightly` reports what it would delete but deletes nothing. `python -m opsengine gdpr purge` applies them (dry run unless --apply).",
+  "source": "GDPR first-pass review, 16 Nov 2026 (not yet confirmed by a solicitor)",
   "solicitor_confirmed": false,
-  "review_uploads_days": 90,
-  "leaver_records_years": 2,
+  "review_uploads_days": 60,
+  "leaver_photos_months": 12,
+  "leaver_records_years": 6,
+  "leaver_whatsapp_prefs_days": 0,
   "resolved_message_files_years": 6,
-  "sessions_hours": 12
+  "unmatched_inbound_days": 30,
+  "signin_history_months": 12,
+  "sessions_hours": 12,
+  "_not_automated": {
+    "accident_records": "10 years from the accident (S.I. 370/2016, Reg 226). OpsEngine holds accident history at company level only, without names; it is not the system of record for accident reports.",
+    "directors_and_owners": "contract term + 6 years, deleted at the end of the contract",
+    "subcontractor_contacts_and_documents": "engagement + 6 years (contract and Revenue)",
+    "audit_log": "contract term + 6 years; people in it are tokens, and forgetting a person anonymises their entries"
+  }
 }

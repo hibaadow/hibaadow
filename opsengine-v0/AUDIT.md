@@ -82,6 +82,61 @@ customer (the Phase 3 exit test).
 
 **Tests:** `tests/test_comms.py` adds 19 tests, for 206 in total.
 
+## Update: GDPR first-pass review applied in the software (16 November 2026)
+
+The review (`OpsEngine – data protection advice on the brief`, 16 Nov 2026) says of itself that it is a
+first-pass review written by Claude, **not a solicitor's advice**, and must be signed off by an Irish data
+protection solicitor. Its software recommendations are built; `solicitor_confirmed` stays false, so
+nightly deletion stays off until a solicitor confirms.
+
+| Recommendation | Status | What changed |
+| --- | --- | --- |
+| Pseudonymous audit log (Q4) | **Done** | Names, emails, phone numbers and IP addresses are stored as tokens; the token table is separate and deletable. Forgetting a person anonymises their entries and the hash chain still verifies. |
+| Retention is the customer's choice (s3) | **Done** | Per-customer overrides in company.json, recorded with each purge. New defaults: rejected photos 60 days, leaver photos 12 months, named leaver record 6 years, WhatsApp preferences on leaving, unmatched inbound 30 days, sign-in IP addresses 12 months. |
+| Lawful bases (s2, Q8) | **Done (documented)** | Inventory rewritten: legitimate interests for most rows, legal obligation only for Safe Pass, CSCS and inductions, never consent for workers. Each (f) row needs a written LIA. |
+| Sub-processor authorisation (s4) | **Done** | `docs/sub-processors.json` with a version; real customers need a signed DPA and the current list version before any processing. |
+| Accident history may be health data (s2) | **Done** | Rule `no_personal_data`: a history naming a person is held for review, never stored. |
+| Signed terms of employment (s2) | **Done** | Rule `share_as: confirmation`: main contractors only ever get a confirmation. |
+| Sign-in codes for customers (s5) | **Done** | Customers can turn on authenticator codes from the Password page. |
+| Encrypted backups, restore test, security review, breach procedure (s5, Q12) | Open | Host and process tasks; see deploy/README.md. |
+| Documents (s6): DPA, worker notice template, own privacy notice, WhatsApp opt-in wording, two Art 30 records, model DPIA, LIAs, breach procedure and register, DPO note | Open | Need drafting and the solicitor. |
+| EU AI Act assessment (s8) | Open | Belongs in the DPIA; obligations from 2 December 2027. |
+| Art 22 safeguards (Q7) | Partly | A person approves anything that stops work; still to add: a way for workers to challenge a status. |
+
+**Tests:** 7 new tests in `tests/test_ops.py`, for 213 in total.
+
+## Release status (17 November 2026): not production-ready
+
+Opening pull requests does not mean the product is ready for production. Until each item below is done,
+do not deploy to live customers or switch the matching feature on.
+
+| Dependency | Status | Effect until done |
+| --- | --- | --- |
+| Photo reader validated on real documents (Phase 1, needs the API key) | Not started | Mock mode only; every real photo goes to a person |
+| Rules library checked and signed off by a competent person | Not done (r-035c75be5ab8 unsigned) | `OPSENGINE_REQUIRE_SIGNED_RULES=true` refuses to run in production |
+| Named, qualified safety reviewer appointed | Not done (`data/service.json` appointed: false) | Portal says safety reviews are not operational |
+| Irish data protection solicitor approves retention and the legal drafts | Not done | Automatic deletion stays off (`solicitor_confirmed: false`) |
+| Email and WhatsApp tested end to end | Not done | `EMAIL_MODE=outbox`, `WHATSAPP_MODE=queue`; nothing real is sent |
+| EU hosting, encrypted backups, restore drill, security review | Not done | Deployment files exist; image never built |
+
+## Update: release blockers addressed in #9 (17 November 2026)
+
+- **Review limits can't delay critical safety work.** Reviews of missing or expired documents that could stop
+  work, critical/high issues, and anything marked urgent are never held by a plan limit (the extra review is
+  recorded for the customer to agree, never charged automatically). A held routine review is announced at once
+  to the customer, ops and the reviewer, can be marked urgent by any of them, and escalates after 2 days.
+- **Audit log anonymisation no longer relies on known names.** Only identifiers, dates, numbers, hashes and
+  lowercase machine words stay in the log; all other text (including nicknames, card numbers, phone numbers and
+  file names) is held by token in a separate table with its SHA-256, so it can be erased while the proof stays.
+
+## Update: subscription limits (17 November 2026)
+
+Workers, sites and routine safety reviews a month per plan, with notices at 80% and 100%. Workers and sites
+over the limit stay fully monitored and our team follows up; a review over the allowance waits visibly in
+the reviewer's queue until an administrator adds capacity or the customer upgrades. Nothing is approved
+automatically. One amended resubmission is included in a draft's original review (new: `resubmit_draft`).
+Administrators change limits at `/admin/plans`. Extra sites default to €40 a month. **Tests:** 231.
+
 ## How this was audited
 
 - Read the code paths behind each capability rather than relying on the demo or the sample run.

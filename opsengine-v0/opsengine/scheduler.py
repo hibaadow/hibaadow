@@ -18,6 +18,7 @@ from pathlib import Path
 
 from . import approval_links, delivery
 from .actions import ActionContext
+from .labels import fee_line
 from .engine import DONE, Engine
 from .knowledge import ROOT
 
@@ -203,7 +204,9 @@ def send_approval_requests(engine):
     ctx = _context(engine, engine.store.issue(first["issue_id"]), first)
     subject, body = ctx.render("approval_request", approval_count_phrase=count[0].upper() + count[1:],
                                approval_count_phrase_lower=count, approval_items="\n\n".join(items),
-                               approval_footer=approval_links.LINK_FOOTER if links else approval_links.PORTAL_FOOTER)
+                               approval_footer=(f"Course and inspection prices are paid to the provider at their price: {fee_line()}.\n\n"
+                                                if any(st["action"] == "book_service" for st in new) else "") +
+                               (approval_links.LINK_FOOTER if links else approval_links.PORTAL_FOOTER))
     ctx.write_outbox(f"approval-request-{engine.today.isoformat()}", _approver(engine, "customer"), subject, body,
                      {"Items": ", ".join(s["id"] for s in new)})
     for step in new:
@@ -214,6 +217,11 @@ def send_approval_requests(engine):
 def run_customer(folder, state_dir=None, today=None):
     from .rules_versions import check_allowed
     rules = check_allowed()  # refuses unsigned rules when OPSENGINE_REQUIRE_SIGNED_RULES is on
+    from .onboarding import data_protection_problems
+    company = json.loads((Path(folder) / "company.json").read_text(encoding="utf-8"))
+    blocking = [x for x in data_protection_problems(company) if "(warning)" not in x]
+    if blocking:  # checked before any of their data is loaded or stored
+        raise PermissionError("not running: " + "; ".join(blocking))
     engine = Engine(folder, state_dir=state_dir, today=today)
     if not rules["signed_off"]:
         engine.store.audit("scheduler", "rules_not_signed_off", rules["current"], {"registered": rules["registered"]})
@@ -225,6 +233,9 @@ def run_customer(folder, state_dir=None, today=None):
     advanced = engine.advance()
     retried = delivery.retry_due(engine.store, engine.customer)
     requests = send_approval_requests(engine)
+    from .limits import hold_notices, notify as usage_notices
+    notices = usage_notices(engine)
+    held = hold_notices(engine)
     chased = chase_stalled(engine)
     overdue = chase_overdue_actions(engine)
     followed = follow_up_appointments(engine)
@@ -235,7 +246,7 @@ def run_customer(folder, state_dir=None, today=None):
                "escalated": [ref for ref, what in chased if what.startswith("escalated")],
                "overdue_actions": [ref for ref, _ in overdue],
                "appointments_followed_up": [ref for ref, _ in followed],
-               "approval_requests_sent": len(requests), "messages_retried": len(retried),
+               "approval_requests_sent": len(requests), "reviews_held": [ref for ref, _ in held], "usage_notices": [f"{m} {lvl}%" for m, lvl in notices], "messages_retried": len(retried),
                "approvals_waiting": len(engine.approval_queue()),
                "reviews_waiting": len(engine.review_queue())}
     engine.store.audit("scheduler", "daily_run_finished", summary["customer"], summary)
