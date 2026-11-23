@@ -1,3 +1,18 @@
+# CURRENT DEFAULT DELIVERY (approved on "THE AGENCY" — use this from now on)
+
+Approved on `the-agency/out/the_agency_small.mp4` (male voice). Listen: `voice/narrator_pace_reference.m4a`.
+Applies to both house voices (male `am_puck`, girl `af_heart`); recipe: `the-agency/tts.py` / `2am-delivery/tts.py`.
+- **Each line is read in ONE continuous Kokoro call** (whole line, "..." -> ","). Never stitch phrases, never insert
+  breaths, never boost individual words (that made it sound disconnected and robotic).
+- Pace: **~188-190 wpm** (`TARGET_WPM = 188`, damped calibration `speed *= (target/wpm) ** 0.6`, 5 passes;
+  Puck lands at speed ~0.84). The slower ~158 wpm read was rejected ("sounds high").
+- `sentence_pause=0.24, clause_pause=0.1`; gap between lines 0.25 s (0.5 s before a new section).
+- Only per-line speed nudges on the darkest reveal lines (x0.94-0.96).
+- Post: `aresample=44100,aecho=0.8:0.5:40|80:0.06|0.03`. No pitch effects.
+- Captions: chunk boundaries by phoneme share, snapped to real silences in the line audio.
+
+---
+
 # House narrator voice (approved)
 
 Use this voice for all future shorts unless told otherwise. Approved on the final cut of
