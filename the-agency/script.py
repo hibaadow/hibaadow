@@ -1,23 +1,58 @@
-# THE AGENCY — an original, fictional story (names, places and events are invented), told storytime-style.
-# Each line: (scene, [(spoken words, caption chunk), ...]).  *word* = red key word, _word_ = blue key word.
-LINES = [
-    ("hook",     [("This is why", "This is why"), ("some people will never trust", "some people will _never_ trust"), ("surrogacy.", "*surrogacy.*")]),
-    ("broke",    [("Maya is twenty-six,", "Maya is _26,_"), ("broke,", "*broke,*"), ("and tired of choosing", "and tired of choosing"), ("between rent and groceries.", "between _rent_ and _groceries._")]),
-    ("signup",   [("So she signs up", "So she signs up"), ("with an agency called New Cradle,", "with an agency called *New Cradle,*"), ("to carry a baby", "to carry a _baby_"), ("for someone else.", "for someone else.")]),
-    ("couple",   [("They match her with a quiet couple,", "They match her with a _quiet couple,_"), ("Elise and Victor Hale,", "*Elise and Victor Hale,*"), ("who can't have", "who can't have"), ("another child on their own.", "another child on their own.")]),
-    ("pregnant", [("Maya gets pregnant", "Maya gets _pregnant_"), ("on the first try.", "on the first try."), ("And that's when", "And that's when"), ("things get strange.", "things get *strange.*")]),
-    ("noshow",   [("The Hales never come", "The Hales _never_ come"), ("to a single appointment.", "to a single *appointment.*"), ("Not the scans.", "Not the scans."), ("Not the heartbeat.", "Not the _heartbeat._")]),
-    ("onread",   [("She sends them photos,", "She sends them _photos,_"), ("updates,", "updates,"), ("the first kick.", "the first _kick._"), ("They leave her on read.", "They leave her *on read.*")]),
-    ("posting",  [("So Maya starts posting", "So Maya starts _posting_"), ("her pregnancy online,", "her pregnancy online,"), ("just to have someone", "just to have _someone_"), ("to share it with.", "to share it with.")]),
-    ("dm",       [("Then a message from a stranger.", "Then a message from a *stranger.*"), ("This is going to sound crazy,", "\"This is going to sound _crazy,_"), ("but I think I'm carrying", "but I think I'm carrying"), ("for the same couple.", "for the *same couple.*\"")]),
-    ("more",     [("Then another.", "Then _another._"), ("And another.", "And _another._"), ("By the end of the week,", "By the end of the week,"), ("there are eight of them.", "there are *eight* of them.")]),
-    ("eight",    [("Eight women.", "*8 women.*"), ("Eight pregnancies.", "*8 pregnancies.*"), ("One couple.", "_One couple._")]),
-    ("dig",      [("The women start digging", "The women start _digging_"), ("into New Cradle.", "into New Cradle."), ("And on the company papers,", "And on the company papers,"), ("two names.", "two *names.*")]),
-    ("owners",   [("Elise and Victor Hale.", "*Elise and Victor Hale.*"), ("They didn't hire the agency.", "They didn't _hire_ the agency."), ("They were the agency.", "They *were* the agency.")]),
-    ("police",   [("Maya goes to the police.", "Maya goes to the _police._"), ("Officers drive out", "Officers drive out"), ("to the Hales' address,", "to the Hales' address,"), ("a gated house in the hills.", "a *gated house* in the hills.")]),
-    ("cribs",    [("Inside, there are cribs", "Inside, there are _cribs_"), ("in every single room.", "in *every single room.*"), ("Seventeen babies,", "*17 babies,*"), ("all under three.", "all under _three._")]),
-    ("chaos",    [("Toddlers crying in the halls.", "Toddlers _crying_ in the halls."), ("Bottles on the floor.", "Bottles on the floor."), ("And two nannies", "And _two nannies_"), ("trying to keep up.", "trying to *keep up.*")]),
-    ("arrest",   [("The Hales are arrested that night.", "The Hales are *arrested* that night."), ("But nobody can answer", "But nobody can _answer_"), ("the one question that matters.", "the one question that matters.")]),
-    ("why",      [("Why would two people", "Why would two people"), ("need seventeen babies?", "need *17 babies?*")]),
-    ("end",      [("Follow for part two.", "Follow for _part two._")]),
+# THE AGENCY — the creator's own script, word for word (captions show it exactly).
+# SPOKEN fixes pronunciation only (numbers, names); captions keep the original text.
+import re
+RAW = [
+    ("hook",    "This is why a lot of people are not okay with surrogacy.", {"not okay": "*", "surrogacy.": "_"}),
+    ("signup",  "So back in 2024, a 26-year-old woman named Kayla decided that she was going to be a surrogate for a little bit of extra money through a surrogacy agency.", {"Kayla": "*", "surrogate": "_", "extra money": "*", "agency.": "_"}),
+    ("couple",  "She gets paired with this couple, Sylvia and Guojun, who want a second child but are not able to conceive naturally.", {"Sylvia and Guojun,": "*", "second child": "_", "naturally.": "_"}),
+    ("pregnant", "So Kayla moves forward with the surrogacy, she gets pregnant, and things start getting weird.", {"pregnant,": "_", "weird.": "*"}),
+    ("intro",   "Also, I'm Kaelyn, a dark curiosity, so follow along for the rabbit holes I go down.", {"Kaelyn,": "*", "dark curiosity,": "_", "rabbit holes": "*"}),
+    ("onread",  "So first, Kayla rarely hears from this couple.", {"rarely hears": "*"}),
+    ("noshow",  "She's carrying their child, she's going to appointment, she texts them updates, they never show up to the appointments and they rarely reach out to her.", {"updates,": "_", "never show up": "*", "rarely reach out": "_"}),
+    ("onread2", "It seems like they just don't care about being involved.", {"don't care": "*"}),
+    ("posting", "But also, Kayla's tracking her journey on TikTok, and other women start reaching out to her", {"TikTok,": "_", "other women": "*"}),
+    ("dm",      "and they say, \"Hey, this is gonna sound so weird, but I think I'm carrying a baby for the same couple that you are.\"", {"weird,": "_", "same couple": "*"}),
+    ("more",    "And it's not just one other woman, it's like six other women.", {"six other women.": "*"}),
+    ("owners",  "So some of these women start to dig a little bit deeper and they find out that the agency that organised the surrogacy was actually founded by this couple.", {"dig": "_", "agency": "_", "founded by this couple.": "*"}),
+    ("police",  "That's when the police get involved.", {"police": "*"}),
+    ("arcadia", "They find out that the couple is living in Arcadia, California.", {"Arcadia, California.": "_"}),
+    ("cribs",   "They show up just to investigate, and they find over 15 babies, all under the age of 3 years old, inside of their house.", {"over 15 babies,": "*", "3 years old,": "_"}),
+    ("nightmare", "And what was going on in the house was the stuff of nightmares.", {"nightmares.": "*"}),
+    ("chaos",   "Think cribs everywhere, kids running around, and not enough adults to look after all of them.", {"cribs everywhere,": "_", "not enough adults": "*"}),
+    ("arrest",  "The story is still unfolding. That couple was actually just recently arrested, so we're gonna get a lot more information on what was really happening there.", {"still unfolding.": "_", "arrested,": "*", "really happening": "_"}),
+    ("end",     "But The Journey by The New Yorker is a podcast that's actually covering it this season. That's where a lot of this information comes from, so check it out if you wanna learn more.", {"The Journey": "*", "The New Yorker": "_", "check it out": "*"}),
 ]
+SAY = {"2024": "twenty twenty-four", "26-year-old": "twenty-six-year-old", "Guojun": "Gwo-jun", "Kaelyn": "Kay-lin", "15": "fifteen", "3": "three"}
+
+
+def mark(cap, hl):
+    for k, m in hl.items():
+        cap = cap.replace(k, " ".join(m + w + m for w in k.split()), 1) if k in cap else cap
+    return cap
+
+
+def chunks(text, hl, n=5):
+    words = text.split(); out, cur = [], []
+    for w in words:
+        cur.append(w)
+        if len(cur) >= n or (len(cur) >= 3 and re.search(r"[.,?!\"]$", w)):
+            out.append(" ".join(cur)); cur = []
+    if cur: out.append(" ".join(cur))
+    res = []
+    for c in out:
+        sp = c
+        for k, v in SAY.items():
+            sp = re.sub(rf"\b{re.escape(k)}\b", v, sp)
+        res.append((sp, c))
+    # highlights on the caption side (phrase may span chunks: mark word by word)
+    words_hl = {}
+    for k, m in hl.items():
+        for w in k.split(): words_hl[w] = m
+    res2 = []
+    for sp, c in res:
+        cw = [(words_hl[w] + w + words_hl[w]) if w in words_hl else w for w in c.split()]
+        res2.append((sp, " ".join(cw)))
+    return res2
+
+
+LINES = [(sc, chunks(txt, hl)) for sc, txt, hl in RAW]

@@ -17,7 +17,7 @@ TARGET_WPM = 188
 SR = 24000
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
 VOICE = "am_puck"
-MOODS = {10: (0.94, 0), 12: (0.95, 0), 17: (0.92, 0)}   # slower on the reveals
+MOODS = {14: (0.96, 0), 15: (0.94, 0)}   # a touch slower on the dark reveal
 
 
 def trim(a, thr=0.008):
@@ -108,7 +108,7 @@ for i, ln in enumerate(LINES):
                  "chunks": [[round(S + c0, 3), round(S + c1, 3), cap] for c0, c1, cap in times],
                  "text": " ".join(sp for sp, _ in ch), "voice": "daniel" if len(ln) > 2 else "narr"})
     nxt = LINES[i + 1][0] if i + 1 < len(LINES) else None
-    S += dur + (0.5 if nxt in ("broke", "noshow", "dm", "dig", "police", "arrest", "end") else 0.25)
+    S += dur + (0.5 if nxt in ("intro", "onread", "posting", "police", "arrest", "end") else 0.25)
 end = meta[-1]["start"] + meta[-1]["dur"] + 4.0
 json.dump({"lines": meta, "duration": round(end, 2)}, open(os.path.join(HERE, "timeline.json"), "w"), indent=1)
 print(f"narrator {sum(words(l[1]) for l in LINES) / sum(m['dur'] for m in meta) * 60:.0f} wpm; total {end:.1f}s")

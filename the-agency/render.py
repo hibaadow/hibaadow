@@ -1,5 +1,5 @@
-"""THE AGENCY — frame renderer (Pillow, flat 2D). An original, fictional story; all names, places and events invented.
-Main character: the house girl character (white stick figure, red hoodie, black joggers, long dark hair).
+"""THE AGENCY — frame renderer (Pillow, flat 2D), to the creator's own script.
+Kayla is drawn as the house girl character (white stick figure, red hoodie, black joggers, long dark hair).
 
 usage: python render.py <start_frame> <end_frame> <out.mp4>  |  python render.py --still <t> <out.png>"""
 import importlib.util, json, math, os, subprocess, sys
@@ -77,9 +77,9 @@ def police_lights(cv, t, x, y, a=1.0):
 def sc_hook(cv, t, lt, i):
     bg(cv, RED, 40)
     q = eout(prog(lt, 0.2, 0.9))
-    cv.text((540, 640 + am.slide(q, 30)), "THE AGENCY", "anton", 190, WHITE)
-    cv.glow_ell(540, 640, 460, 110, RED, int(90 * q))
-    cv.rrect(370, 770, 710, 830, 30, (60, 30, 40)); cv.text((540, 800), "A FICTIONAL STORY", "mono", 28, (255, 190, 200))
+    cv.text((540, 560 + am.slide(q, 30)), "THE DARK SIDE", "anton", 150, WHITE)
+    cv.text((540, 720 + am.slide(q, 30)), "OF SURROGACY", "anton", 150, RED)
+    cv.glow_ell(540, 640, 460, 160, RED, int(90 * q))
     girl(cv, 540, 1380, s=0.75, look=0.0, bump=1.0)
     return (540, 960, lerp(1.0, 1.05, prog(lt, 0, 3)))
 
@@ -104,12 +104,12 @@ def sc_signup(cv, t, lt, i):
     cx = (sx0 + sx1) / 2
     cv.rect(sx0, sy0 + 60, sx1, sy0 + 420, (230, 222, 240))
     cv.circ(cx, sy0 + 190, 70, (180, 150, 210)); cv.circ(cx, sy0 + 170, 26, (250, 246, 252)); cv.ell(cx, sy0 + 220, 40, 28, (250, 246, 252))
-    cv.text((cx, sy0 + 320), "New Cradle", "interx", 58, (70, 40, 110))
-    cv.text((cx, sy0 + 380), "Surrogacy Agency", "inters", 30, (120, 100, 140))
+    cv.text((cx, sy0 + 320), "Surrogacy", "interx", 58, (70, 40, 110))
+    cv.text((cx, sy0 + 380), "Agency", "inters", 30, (120, 100, 140))
     cv.text((cx, sy0 + 500), "Help a family", "interx", 46, WHITE); cv.text((cx, sy0 + 560), "grow.", "interx", 46, WHITE)
     if t >= chunk_t(i, 2):
         q = eout(prog(t, chunk_t(i, 2), chunk_t(i, 2) + 0.3))
-        cv.rrect(sx0 + 60, sy0 + 640, sx1 - 60, sy0 + 720, 40, (40, 140, 90)); cv.text((cx, sy0 + 680), "Compensation: $45,000", "interx", 34, WHITE)
+        cv.rrect(sx0 + 60, sy0 + 640, sx1 - 60, sy0 + 720, 40, (40, 140, 90)); cv.text((cx, sy0 + 680), "Earn extra money", "interx", 34, WHITE)
     tap = prog(t, chunk_t(i, 3), chunk_t(i, 3) + 0.3)
     cv.rrect(sx0 + 90, sy1 - 200, sx1 - 90, sy1 - 100, 50, (150, 90, 220) if tap < 0.5 else (110, 60, 170))
     cv.text((cx, sy1 - 150), "APPLY" if tap < 1 else "APPLIED", "interx", 44, WHITE)
@@ -123,9 +123,9 @@ def sc_couple(cv, t, lt, i):
     cv.text((540, y0 + 70), "YOUR MATCH", "mono", 32, GREY)
     victor(cv, 420, y0 + 700, 0.55); elise(cv, 660, y0 + 700, 0.55)
     if t >= chunk_t(i, 1):
-        cv.text((540, y0 + 790), "Elise & Victor Hale", "interx", 52, WHITE)
+        cv.text((540, y0 + 790), "Sylvia & Guojun", "interx", 52, WHITE)
     if t >= chunk_t(i, 2):
-        cv.rrect(250, y0 + 850, 830, y0 + 920, 20, (70, 40, 58)); cv.text((540, y0 + 885), "Hoping for a second child", "inters", 32, (255, 200, 220))
+        cv.rrect(250, y0 + 850, 830, y0 + 920, 20, (70, 40, 58)); cv.text((540, y0 + 885), "Want a second child", "inters", 32, (255, 200, 220))
     return (540, 900, 1.0)
 
 
@@ -162,7 +162,7 @@ def sc_noshow(cv, t, lt, i):
 def sc_onread(cv, t, lt, i):
     bg(cv, BLUE, 26)
     sx0, sy0, sx1, sy1 = phone(cv)
-    cv.text(((sx0 + sx1) / 2, sy0 + 90), "Elise & Victor", "interx", 36, WHITE)
+    cv.text(((sx0 + sx1) / 2, sy0 + 90), "Sylvia & Guojun", "interx", 36, WHITE)
     msgs = [("Scan pics! Baby's healthy", chunk_t(i, 0)), ("Week 18 update!", chunk_t(i, 1)), ("Felt the first kick today!!", chunk_t(i, 2))]
     y = sy0 + 200
     for txt, t0 in msgs:
@@ -181,7 +181,7 @@ def sc_posting(cv, t, lt, i):
     bg(cv, (255, 120, 170), 26)
     u = prog(lt, 0, 0.4); y0 = 380 + slide(u)
     card(cv, 150, y0, 930, y0 + 920)
-    cv.circ(220, y0 + 70, 34, (255, 150, 180)); cv.text((275, y0 + 70), "@maya.carries", "interx", 34, WHITE, anchor="lm")
+    cv.circ(220, y0 + 70, 34, (255, 150, 180)); cv.text((275, y0 + 70), "Kayla · surrogacy journey", "interx", 34, WHITE, anchor="lm")
     cv.rect(170, y0 + 130, 910, y0 + 690, (40, 34, 50))
     girl(cv, 540, y0 + 670, s=0.6, look=0.0, bump=1.15)
     cv.text((190, y0 + 750), "Week 20, carrying for a family!", "inters", 32, WHITE, anchor="lm")
@@ -194,9 +194,9 @@ def sc_dm(cv, t, lt, i):
     bg(cv, (180, 120, 255), 26)
     sx0, sy0, sx1, sy1 = phone(cv)
     cv.text(((sx0 + sx1) / 2, sy0 + 90), "Message request", "interx", 34, WHITE)
-    cv.text(((sx0 + sx1) / 2, sy0 + 140), "@jess.k", "inters", 28, GREY)
+    cv.text(((sx0 + sx1) / 2, sy0 + 140), "New message", "inters", 28, GREY)
     if t >= chunk_t(i, 1):
-        lines = ["This is going to sound", "crazy, but I think I'm", "carrying for the same", "couple as you."]
+        lines = ["Hey, this is gonna sound", "so weird, but I think I'm", "carrying a baby for the", "same couple that you are."]
         n = 1 + int(3 * clamp((t - chunk_t(i, 1)) / max(0.3, chunk_t(i, 3) - chunk_t(i, 1))))
         cv.rrect(sx0 + 30, sy0 + 220, sx1 - 70, sy0 + 260 + 60 * n, 30, (52, 44, 66))
         for k in range(n):
@@ -206,8 +206,8 @@ def sc_dm(cv, t, lt, i):
 
 def sc_more(cv, t, lt, i):
     bg(cv, (180, 120, 255), 30)
-    names = ["@jess.k", "@brianna_r", "@tay.lynn", "@amara.o", "@kelsey88", "@nina.w", "@dani.p", "@rose.m"]
-    n = 1 + int(7 * eout(prog(lt, 0.3, LINES[i]["dur"] - 0.3)))
+    names = ["Another surrogate"] * 6
+    n = 1 + int(5 * eout(prog(lt, 0.3, LINES[i]["dur"] - 0.3)))
     for k in range(n):
         y = 380 + k * 112
         card(cv, 160, y, 920, y + 94, c=(40, 33, 52), r=22)
@@ -235,7 +235,7 @@ def sc_dig(cv, t, lt, i):
     u = prog(lt, 0, 0.4); y0 = 400 + slide(u)
     cv.rect(170, y0, 910, y0 + 900, (236, 232, 224))
     cv.text((540, y0 + 70), "BUSINESS REGISTRY", "mono", 30, (100, 96, 110))
-    cv.text((540, y0 + 150), "NEW CRADLE LLC", "interx", 56, INK)
+    cv.text((540, y0 + 150), "THE SURROGACY AGENCY", "interx", 50, INK)
     cv.rect(220, y0 + 210, 860, y0 + 214, (190, 186, 180))
     cv.text((230, y0 + 280), "Status: Active", "inters", 32, (90, 86, 96), anchor="lm")
     cv.text((230, y0 + 400), "Registered officers:", "inters", 34, INK, anchor="lm")
@@ -247,15 +247,16 @@ def sc_dig(cv, t, lt, i):
 def sc_owners(cv, t, lt, i):
     sc_dig(cv, t, 0.5, i)
     y0 = 400
-    q = eout(prog(lt, 0.0, 0.5))
-    for k, nm in enumerate(("Elise Hale · Director", "Victor Hale · Director")):
+    nc = len(LINES[i]["chunks"])
+    if t < chunk_t(i, nc - 2): return (540, 960, 1.0)
+    for k, nm in enumerate(("Sylvia · Founder", "Guojun · Founder")):
         cv.rrect(230, y0 + 470 + k * 110, 860, y0 + 540 + k * 110, 8, (255, 226, 120))
         cv.text((250, y0 + 505 + k * 110), nm, "interx", 38, INK, anchor="lm")
-    if t >= chunk_t(i, 2):
-        q = eout(prog(t, chunk_t(i, 2), chunk_t(i, 2) + 0.25))
+    if t >= chunk_t(i, nc - 1):
+        q = eout(prog(t, chunk_t(i, nc - 1), chunk_t(i, nc - 1) + 0.25))
         im = Image.new("RGBA", (760, 220), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
         d.rounded_rectangle([14, 14, 746, 206], radius=12, outline=(210, 30, 50, 235), width=10)
-        d.text((380, 112), "THEY WERE THE AGENCY", font=F("anton", int(lerp(110, 74, q))), fill=(210, 30, 50, 240), anchor="mm")
+        d.text((380, 112), "FOUNDED BY THE COUPLE", font=F("anton", int(lerp(110, 74, q))), fill=(210, 30, 50, 240), anchor="mm")
         im = im.rotate(-6, expand=True).resize((int(im.width * 0.9 * SS), int(im.height * 0.9 * SS)))
         cv.im.paste(im, (int(540 * SS - im.width / 2), int(1140 * SS - im.height / 2)), im)
     return (540, 960, 1.05)
@@ -285,15 +286,15 @@ def sc_police(cv, t, lt, i):
 def sc_cribs(cv, t, lt, i):
     cv.rect(0, 0, W, H, (36, 32, 40)); cv.rect(0, 1100, W, H, (54, 48, 52))
     cv.glow_ell(540, 400, 600, 300, (255, 230, 190), 40)
-    n = int(1 + 16 * eout(prog(t, chunk_t(i, 0), chunk_t(i, 2) + 0.6)))
+    n = int(1 + 14 * eout(prog(t, chunk_t(i, 0), chunk_t(i, 2) + 0.6)))
     k = 0
     for r in range(4):
         for c in range(5):
-            if k >= n or k >= 17: break
+            if k >= n or k >= 15: break
             crib(cv, 140 + c * 200 + (r % 2) * 40, 520 + r * 200, 0.7); k += 1
     q = eout(prog(t, chunk_t(i, 2), chunk_t(i, 2) + 0.3))
     if q > 0:
-        cv.rrect(330, 1260, 750, 1400, 30, (200, 30, 44)); cv.text((540, 1330), f"{n} BABIES", "anton", 90, WHITE)
+        cv.rrect(330, 1260, 750, 1400, 30, (200, 30, 44)); cv.text((540, 1330), f"{n}+ BABIES" if n >= 15 else f"{n} BABIES", "anton", 90, WHITE)
     police_lights(cv, t, 1000, 300, 0.5)
     return (540, 960, 1.0)
 
@@ -309,7 +310,7 @@ def sc_chaos(cv, t, lt, i):
     if t >= chunk_t(i, 2):
         for k, x in enumerate((360, 760)):
             m35.suit_man(cv, x, 1150, s=0.5, shades=False, color=(120, 160, 190), rim=(150, 190, 220))
-        cv.text((560, 380), "2 NANNIES", "anton", 70, AMBER)
+        cv.text((560, 380), "NOT ENOUGH ADULTS", "anton", 70, AMBER)
     return (540 + math.sin(t * 30) * 2, 960, 1.0)
 
 
@@ -340,13 +341,62 @@ def sc_end(cv, t, lt, i):
     u = prog(lt, 0.2, 0.6)
     cv.rrect(240, 1260 + slide(u, 30), 840, 1370 + slide(u, 30), 55, None, outline=WHITE, w=5)
     cv.text((540, 1315 + slide(u, 30)), "FOLLOW FOR PART 2", "interx", 46, WHITE)
-    cv.text((540, 1760), "Fictional story. All names and events are made up.", "inters", 26, GREY)
     return (540, 960, 1.0)
 
 
-SCENES = {"hook": sc_hook, "broke": sc_broke, "signup": sc_signup, "couple": sc_couple, "pregnant": sc_pregnant, "noshow": sc_noshow,
+def sc_intro(cv, t, lt, i):
+    bg(cv, (180, 120, 255), 34)
+    for k in range(7):                                           # rabbit hole spiral
+        r = 420 - k * 56 + (t * 40) % 56
+        cv.circ(540, 860, max(10, r), None, outline=(90 + k * 18, 60, 140 + k * 10), w=6)
+    u = prog(lt, 0.1, 0.5); y = 380 + slide(u)
+    card(cv, 170, y, 910, y + 220)
+    cv.circ(270, y + 110, 62, (120, 80, 200)); cv.text((270, y + 110), "K", "interx", 70, WHITE)
+    cv.text((360, y + 80), "Kaelyn", "interx", 52, WHITE, anchor="lm"); cv.text((360, y + 145), "a dark curiosity", "inters", 34, GREY, anchor="lm")
+    if t >= chunk_t(i, 2):
+        q = eout(prog(t, chunk_t(i, 2), chunk_t(i, 2) + 0.3))
+        cv.rrect(330, 1220, 750, 1320, 50, RED); cv.text((540, 1270), "FOLLOW", "interx", 50, WHITE)
+    return (540, 960, 1.0)
+
+
+def sc_onread2(cv, t, lt, i):
+    sc_onread(cv, LINES[i - 2]["start"] + 30, 30, i - 2)
+    return (540, 900, lerp(1.0, 1.08, ease(prog(lt, 0, 3))))
+
+
+def sc_arcadia(cv, t, lt, i):
+    sc_police(cv, LINES[i - 1]["start"] + LINES[i - 1]["dur"] + 0.4 + lt, 3 + lt, i - 1)
+    u = prog(lt, 0.3, 0.7); y = 300 + slide(u)
+    card(cv, 240, y, 840, y + 150, c=(30, 24, 36))
+    cv.circ(310, y + 75, 26, RED); cv.circ(310, y + 75, 10, WHITE)
+    cv.text((360, y + 75), "Arcadia, California", "interx", 44, WHITE, anchor="lm")
+    return (540, 1000, 1.0)
+
+
+def sc_nightmare(cv, t, lt, i):
+    cv.rect(0, 0, W, H, (8, 6, 12)); cv.glow_ell(540, 900, 500, 400, RED, int(50 + 30 * math.sin(t * 2)))
+    for k in range(3): crib(cv, 300 + k * 240, 1200, 0.7, baby=False)
+    q = eout(prog(t, chunk_t(i, len(LINES[i]["chunks"]) - 1), chunk_t(i, len(LINES[i]["chunks"]) - 1) + 0.4))
+    cv.text((540, 700), "THE STUFF OF", "anton", 120, WHITE)
+    cv.text((540, 860), "NIGHTMARES", "anton", 150 * (0.9 + 0.1 * q), RED)
+    return (540, 900, lerp(1.0, 1.08, ease(prog(lt, 0, 3))))
+
+
+def sc_end2(cv, t, lt, i):
+    bg(cv, RED, 30)
+    u = prog(lt, 0.2, 0.6); y = 420 + slide(u)
+    card(cv, 170, y, 910, y + 520)
+    cv.rect(220, y + 50, 860, y + 330, (70, 50, 110)); cv.text((540, y + 190), "THE JOURNEY", "anton", 110, WHITE)
+    cv.text((540, y + 400), "The New Yorker · podcast", "inters", 38, GREY)
+    cv.text((540, y + 465), "this season", "inters", 32, GREY)
+    if t >= chunk_t(i, len(LINES[i]["chunks"]) - 2):
+        cv.rrect(260, 1180, 820, 1290, 55, None, outline=WHITE, w=5); cv.text((540, 1235), "FOLLOW FOR MORE", "interx", 46, WHITE)
+    return (540, 960, 1.0)
+
+
+SCENES = {"intro": sc_intro, "onread2": sc_onread2, "arcadia": sc_arcadia, "nightmare": sc_nightmare, "hook": sc_hook, "broke": sc_broke, "signup": sc_signup, "couple": sc_couple, "pregnant": sc_pregnant, "noshow": sc_noshow,
           "onread": sc_onread, "posting": sc_posting, "dm": sc_dm, "more": sc_more, "eight": sc_eight, "dig": sc_dig, "owners": sc_owners,
-          "police": sc_police, "cribs": sc_cribs, "chaos": sc_chaos, "arrest": sc_arrest, "why": sc_why, "end": sc_end}
+          "police": sc_police, "cribs": sc_cribs, "chaos": sc_chaos, "arrest": sc_arrest, "why": sc_why, "end": sc_end2}
 
 
 def line_at(t):
@@ -365,10 +415,7 @@ def frame(t):
     img = camera(cv, *cam)
     img = post(img, t)
     d = ImageDraw.Draw(img, "RGBA")                              # small series tag
-    d.rounded_rectangle([40, 50, 330, 110], radius=14, fill=(24, 18, 28, 220))
-    d.text((185, 80), "THE AGENCY · PT 1", font=F("mono", 26), fill=RED, anchor="mm")
-    if l["scene"] != "end":
-        am.draw_caption(img, t)
+    am.draw_caption(img, t)
     if t < 0.4: img = Image.blend(Image.new("RGB", (W, H)), img, t / 0.4)
     if t > DUR - 0.6: img = Image.blend(img, Image.new("RGB", (W, H)), clamp((t - (DUR - 0.6)) / 0.6))
     return img

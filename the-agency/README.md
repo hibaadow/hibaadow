@@ -1,6 +1,6 @@
 # THE AGENCY (Part 1)
 
-An original, fictional storytime short (~93 s, 1080x1920). All names, places and events are invented.
+Storytime short to the creator's own script, word for word (~121 s, 1080x1920).
 Main character: the house girl character (red hoodie, black joggers, long dark hair); voice: house male voice
 (Kokoro `am_puck`, ~188 wpm, each line read in one continuous pass). Built on the toolkit in `../2am-delivery`.
 

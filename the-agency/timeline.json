@@ -4,527 +4,592 @@
    "i": 0,
    "scene": "hook",
    "start": 0.5,
-   "dur": 2.787,
+   "dur": 3.248,
    "chunks": [
     [
      0.5,
-     1.057,
-     "This is why"
+     1.546,
+     "This is why a lot"
     ],
     [
-     1.057,
-     2.606,
-     "some people will _never_ trust"
+     1.546,
+     2.873,
+     "of people are *not* *okay*"
     ],
     [
-     2.606,
-     3.287,
-     "*surrogacy.*"
+     2.873,
+     3.748,
+     "with _surrogacy._"
     ]
    ],
-   "text": "This is why some people will never trust surrogacy.",
+   "text": "This is why a lot of people are not okay with surrogacy.",
    "voice": "narr"
   },
   {
    "i": 1,
-   "scene": "broke",
-   "start": 3.787,
-   "dur": 4.518,
+   "scene": "signup",
+   "start": 3.998,
+   "dur": 10.46,
    "chunks": [
     [
-     3.787,
-     5.145,
-     "Maya is _26,_"
+     3.998,
+     6.006,
+     "So back in 2024,"
     ],
     [
-     5.145,
-     5.61,
-     "*broke,*"
+     6.006,
+     8.512,
+     "a 26-year-old woman named *Kayla*"
     ],
     [
-     5.61,
-     6.657,
-     "and tired of choosing"
+     8.512,
+     10.067,
+     "decided that she was going"
     ],
     [
-     6.657,
-     8.305,
-     "between _rent_ and _groceries._"
+     10.067,
+     10.912,
+     "to be a _surrogate_ for"
+    ],
+    [
+     10.912,
+     12.612,
+     "a little bit of *extra*"
+    ],
+    [
+     12.612,
+     14.458,
+     "*money* through a surrogacy _agency._"
     ]
    ],
-   "text": "Maya is twenty-six, broke, and tired of choosing between rent and groceries.",
+   "text": "So back in twenty twenty-four, a twenty-six-year-old woman named Kayla decided that she was going to be a surrogate for a little bit of extra money through a surrogacy agency.",
    "voice": "narr"
   },
   {
    "i": 2,
-   "scene": "signup",
-   "start": 8.555,
-   "dur": 4.855,
+   "scene": "couple",
+   "start": 14.707,
+   "dur": 7.022,
    "chunks": [
     [
-     8.555,
-     9.362,
-     "So she signs up"
+     14.707,
+     16.107,
+     "She gets paired with this"
     ],
     [
-     9.362,
-     11.338,
-     "with an agency called *New Cradle,*"
+     16.107,
+     17.716,
+     "couple, *Sylvia* *and* *Guojun,*"
     ],
     [
-     11.338,
-     12.427,
-     "to carry a _baby_"
+     17.716,
+     18.934,
+     "who want a _second_ _child_"
     ],
     [
-     12.427,
-     13.41,
-     "for someone else."
+     18.934,
+     20.524,
+     "but are not able to"
+    ],
+    [
+     20.524,
+     21.729,
+     "conceive _naturally._"
     ]
    ],
-   "text": "So she signs up with an agency called New Cradle, to carry a baby for someone else.",
+   "text": "She gets paired with this couple, Sylvia and Gwo-jun, who want a second child but are not able to conceive naturally.",
    "voice": "narr"
   },
   {
    "i": 3,
-   "scene": "couple",
-   "start": 13.66,
-   "dur": 5.581,
+   "scene": "pregnant",
+   "start": 21.979,
+   "dur": 5.256,
    "chunks": [
     [
-     13.66,
-     15.522,
-     "They match her with a _quiet couple,_"
+     21.979,
+     23.649,
+     "So Kayla moves forward with"
     ],
     [
-     15.522,
-     17.094,
-     "*Elise and Victor Hale,*"
+     23.649,
+     25.576,
+     "the surrogacy, she gets _pregnant,_"
     ],
     [
-     17.094,
-     17.665,
-     "who can't have"
-    ],
-    [
-     17.665,
-     19.241,
-     "another child on their own."
+     25.576,
+     27.235,
+     "and things start getting *weird.*"
     ]
    ],
-   "text": "They match her with a quiet couple, Elise and Victor Hale, who can't have another child on their own.",
+   "text": "So Kayla moves forward with the surrogacy, she gets pregnant, and things start getting weird.",
    "voice": "narr"
   },
   {
    "i": 4,
-   "scene": "pregnant",
-   "start": 19.491,
-   "dur": 4.122,
+   "scene": "intro",
+   "start": 27.735,
+   "dur": 5.801,
    "chunks": [
     [
-     19.491,
-     20.715,
-     "Maya gets _pregnant_"
+     27.735,
+     29.214,
+     "Also, I'm *Kaelyn,*"
     ],
     [
-     20.715,
-     21.682,
-     "on the first try."
+     29.214,
+     30.679,
+     "a _dark_ _curiosity,_"
     ],
     [
-     21.682,
-     22.454,
-     "And that's when"
+     30.679,
+     31.898,
+     "so follow along for the"
     ],
     [
-     22.454,
-     23.613,
-     "things get *strange.*"
+     31.898,
+     33.536,
+     "*rabbit* *holes* I go down."
     ]
    ],
-   "text": "Maya gets pregnant on the first try. And that's when things get strange.",
+   "text": "Also, I'm Kay-lin, a dark curiosity, so follow along for the rabbit holes I go down.",
    "voice": "narr"
   },
   {
    "i": 5,
-   "scene": "noshow",
-   "start": 24.113,
-   "dur": 4.378,
+   "scene": "onread",
+   "start": 34.036,
+   "dur": 2.368,
    "chunks": [
     [
-     24.113,
-     25.161,
-     "The Hales _never_ come"
+     34.036,
+     35.615,
+     "So first, Kayla *rarely* *hears*"
     ],
     [
-     25.161,
-     26.526,
-     "to a single *appointment.*"
-    ],
-    [
-     26.526,
-     27.723,
-     "Not the scans."
-    ],
-    [
-     27.723,
-     28.491,
-     "Not the _heartbeat._"
+     35.615,
+     36.404,
+     "from this couple."
     ]
    ],
-   "text": "The Hales never come to a single appointment. Not the scans. Not the heartbeat.",
+   "text": "So first, Kayla rarely hears from this couple.",
    "voice": "narr"
   },
   {
    "i": 6,
-   "scene": "onread",
-   "start": 28.741,
-   "dur": 4.023,
+   "scene": "noshow",
+   "start": 36.654,
+   "dur": 8.074,
    "chunks": [
     [
-     28.741,
-     30.161,
-     "She sends them _photos,_"
+     36.654,
+     38.031,
+     "She's carrying their child,"
     ],
     [
-     30.161,
-     30.569,
-     "updates,"
+     38.031,
+     39.63,
+     "she's going to appointment,"
     ],
     [
-     30.569,
-     31.503,
-     "the first _kick._"
+     39.63,
+     41.074,
+     "she texts them _updates,_"
     ],
     [
-     31.503,
-     32.764,
-     "They leave her *on read.*"
+     41.074,
+     41.98,
+     "they *never* *show* *up* to"
+    ],
+    [
+     41.98,
+     43.726,
+     "the appointments and they _rarely_"
+    ],
+    [
+     43.726,
+     44.728,
+     "_reach_ _out_ to her."
     ]
    ],
-   "text": "She sends them photos, updates, the first kick. They leave her on read.",
+   "text": "She's carrying their child, she's going to appointment, she texts them updates, they never show up to the appointments and they rarely reach out to her.",
    "voice": "narr"
   },
   {
    "i": 7,
-   "scene": "posting",
-   "start": 33.014,
-   "dur": 4.776,
+   "scene": "onread2",
+   "start": 44.977,
+   "dur": 2.871,
    "chunks": [
     [
-     33.014,
-     34.472,
-     "So Maya starts _posting_"
+     44.977,
+     46.128,
+     "It seems like they just"
     ],
     [
-     34.472,
-     35.769,
-     "her pregnancy online,"
-    ],
-    [
-     35.769,
-     37.046,
-     "just to have _someone_"
-    ],
-    [
-     37.046,
-     37.79,
-     "to share it with."
+     46.128,
+     47.848,
+     "*don't* *care* about being involved."
     ]
    ],
-   "text": "So Maya starts posting her pregnancy online, just to have someone to share it with.",
+   "text": "It seems like they just don't care about being involved.",
    "voice": "narr"
   },
   {
    "i": 8,
-   "scene": "dm",
-   "start": 38.29,
-   "dur": 6.123,
+   "scene": "posting",
+   "start": 48.348,
+   "dur": 5.489,
    "chunks": [
     [
-     38.29,
-     40.315,
-     "Then a message from a *stranger.*"
+     48.348,
+     50.199,
+     "But also, Kayla's tracking her"
     ],
     [
-     40.315,
-     42.197,
-     "\"This is going to sound _crazy,_"
+     50.199,
+     51.59,
+     "journey on _TikTok,_"
     ],
     [
-     42.197,
-     43.418,
-     "but I think I'm carrying"
+     51.59,
+     53.347,
+     "and *other* *women* start reaching"
     ],
     [
-     43.418,
-     44.413,
-     "for the *same couple.*\""
+     53.347,
+     53.837,
+     "out to her"
     ]
    ],
-   "text": "Then a message from a stranger. This is going to sound crazy, but I think I'm carrying for the same couple.",
+   "text": "But also, Kayla's tracking her journey on TikTok, and other women start reaching out to her",
    "voice": "narr"
   },
   {
    "i": 9,
-   "scene": "more",
-   "start": 44.663,
-   "dur": 3.466,
+   "scene": "dm",
+   "start": 54.087,
+   "dur": 6.739,
    "chunks": [
     [
-     44.663,
-     45.287,
-     "Then _another._"
+     54.087,
+     54.828,
+     "and they say,"
     ],
     [
-     45.287,
-     46.013,
-     "And _another._"
+     54.828,
+     56.311,
+     "\"Hey, this is gonna sound"
     ],
     [
-     46.013,
-     46.918,
-     "By the end of the week,"
+     56.311,
+     57.538,
+     "so _weird,_ but I think"
     ],
     [
-     46.918,
-     48.129,
-     "there are *eight* of them."
+     57.538,
+     59.026,
+     "I'm carrying a baby for"
+    ],
+    [
+     59.026,
+     60.782,
+     "the *same* *couple* that you"
+    ],
+    [
+     60.782,
+     60.826,
+     "are.\""
     ]
    ],
-   "text": "Then another. And another. By the end of the week, there are eight of them.",
+   "text": "and they say, \"Hey, this is gonna sound so weird, but I think I'm carrying a baby for the same couple that you are.\"",
    "voice": "narr"
   },
   {
    "i": 10,
-   "scene": "eight",
-   "start": 48.38,
-   "dur": 2.525,
+   "scene": "more",
+   "start": 61.076,
+   "dur": 3.369,
    "chunks": [
     [
-     48.38,
-     49.19,
-     "*8 women.*"
+     61.076,
+     62.339,
+     "And it's not just one"
     ],
     [
-     49.19,
-     50.05,
-     "*8 pregnancies.*"
+     62.339,
+     63.783,
+     "*other* woman, it's like *six*"
     ],
     [
-     50.05,
-     50.905,
-     "_One couple._"
+     63.783,
+     64.445,
+     "*other* *women.*"
     ]
    ],
-   "text": "Eight women. Eight pregnancies. One couple.",
+   "text": "And it's not just one other woman, it's like six other women.",
    "voice": "narr"
   },
   {
    "i": 11,
-   "scene": "dig",
-   "start": 51.405,
-   "dur": 4.681,
+   "scene": "owners",
+   "start": 64.695,
+   "dur": 8.928,
    "chunks": [
     [
-     51.405,
-     52.752,
-     "The women start _digging_"
+     64.695,
+     66.217,
+     "So some of these women"
     ],
     [
-     52.752,
-     53.727,
-     "into New Cradle."
+     66.217,
+     67.137,
+     "start to _dig_ a little"
     ],
     [
-     53.727,
-     55.204,
-     "And on the company papers,"
+     67.137,
+     68.642,
+     "bit deeper and they find"
     ],
     [
-     55.204,
-     56.086,
-     "two *names.*"
+     68.642,
+     69.782,
+     "out that the _agency_ that"
+    ],
+    [
+     69.782,
+     72.27,
+     "organised the surrogacy was actually"
+    ],
+    [
+     72.27,
+     73.623,
+     "*founded* *by* *this* *couple.*"
     ]
    ],
-   "text": "The women start digging into New Cradle. And on the company papers, two names.",
+   "text": "So some of these women start to dig a little bit deeper and they find out that the agency that organised the surrogacy was actually founded by this couple.",
    "voice": "narr"
   },
   {
    "i": 12,
-   "scene": "owners",
-   "start": 56.336,
-   "dur": 4.411,
+   "scene": "police",
+   "start": 74.122,
+   "dur": 1.645,
    "chunks": [
     [
-     56.336,
-     57.848,
-     "*Elise and Victor Hale.*"
+     74.122,
+     75.219,
+     "That's when the *police* get"
     ],
     [
-     57.848,
-     59.479,
-     "They didn't _hire_ the agency."
-    ],
-    [
-     59.479,
-     60.747,
-     "They *were* the agency."
+     75.219,
+     75.767,
+     "involved."
     ]
    ],
-   "text": "Elise and Victor Hale. They didn't hire the agency. They were the agency.",
+   "text": "That's when the police get involved.",
    "voice": "narr"
   },
   {
    "i": 13,
-   "scene": "police",
-   "start": 61.246,
-   "dur": 5.732,
+   "scene": "arcadia",
+   "start": 76.018,
+   "dur": 3.715,
    "chunks": [
     [
-     61.246,
-     62.924,
-     "Maya goes to the _police._"
+     76.018,
+     77.155,
+     "They find out that the"
     ],
     [
-     62.924,
-     64.25,
-     "Officers drive out"
+     77.155,
+     78.775,
+     "couple is living in _Arcadia,_"
     ],
     [
-     64.25,
-     65.356,
-     "to the Hales' address,"
-    ],
-    [
-     65.356,
-     66.978,
-     "a *gated house* in the hills."
+     78.775,
+     79.733,
+     "_California._"
     ]
    ],
-   "text": "Maya goes to the police. Officers drive out to the Hales' address, a gated house in the hills.",
+   "text": "They find out that the couple is living in Arcadia, California.",
    "voice": "narr"
   },
   {
    "i": 14,
    "scene": "cribs",
-   "start": 67.228,
-   "dur": 5.018,
+   "start": 79.983,
+   "dur": 7.996,
    "chunks": [
     [
-     67.228,
-     68.789,
-     "Inside, there are _cribs_"
+     79.983,
+     81.27,
+     "They show up just to"
     ],
     [
-     68.789,
-     70.033,
-     "in *every single room.*"
+     81.27,
+     83.145,
+     "investigate, and they find *over*"
     ],
     [
-     70.033,
-     71.264,
-     "*17 babies,*"
+     83.145,
+     85.366,
+     "*15* *babies,* all under the"
     ],
     [
-     71.264,
-     72.246,
-     "all under _three._"
+     85.366,
+     86.454,
+     "age of _3_ _years_ _old,_"
+    ],
+    [
+     86.454,
+     87.979,
+     "inside of their house."
     ]
    ],
-   "text": "Inside, there are cribs in every single room. Seventeen babies, all under three.",
+   "text": "They show up just to investigate, and they find over fifteen babies, all under the age of three years old, inside of their house.",
    "voice": "narr"
   },
   {
    "i": 15,
-   "scene": "chaos",
-   "start": 72.496,
-   "dur": 4.856,
+   "scene": "nightmare",
+   "start": 88.229,
+   "dur": 3.215,
    "chunks": [
     [
-     72.496,
-     74.306,
-     "Toddlers _crying_ in the halls."
+     88.229,
+     89.41,
+     "And what was going on"
     ],
     [
-     74.306,
-     75.511,
-     "Bottles on the floor."
+     89.41,
+     90.096,
+     "in the house was the"
     ],
     [
-     75.511,
-     76.202,
-     "And _two nannies_"
-    ],
-    [
-     76.202,
-     77.352,
-     "trying to *keep up.*"
+     90.096,
+     91.444,
+     "stuff of *nightmares.*"
     ]
    ],
-   "text": "Toddlers crying in the halls. Bottles on the floor. And two nannies trying to keep up.",
+   "text": "And what was going on in the house was the stuff of nightmares.",
    "voice": "narr"
   },
   {
    "i": 16,
-   "scene": "arrest",
-   "start": 77.852,
-   "dur": 4.869,
+   "scene": "chaos",
+   "start": 91.694,
+   "dur": 5.072,
    "chunks": [
     [
-     77.852,
-     79.786,
-     "The Hales are *arrested* that night."
+     91.694,
+     93.008,
+     "Think _cribs_ _everywhere,_"
     ],
     [
-     79.786,
-     81.076,
-     "But nobody can _answer_"
+     93.008,
+     94.282,
+     "kids running around,"
     ],
     [
-     81.076,
-     82.721,
-     "the one question that matters."
+     94.282,
+     95.498,
+     "and *not* *enough* *adults* to"
+    ],
+    [
+     95.498,
+     96.766,
+     "look after all of them."
     ]
    ],
-   "text": "The Hales are arrested that night. But nobody can answer the one question that matters.",
+   "text": "Think cribs everywhere, kids running around, and not enough adults to look after all of them.",
    "voice": "narr"
   },
   {
    "i": 17,
-   "scene": "why",
-   "start": 82.971,
-   "dur": 2.479,
+   "scene": "arrest",
+   "start": 97.266,
+   "dur": 9.368,
    "chunks": [
     [
-     82.971,
-     83.824,
-     "Why would two people"
+     97.266,
+     99.073,
+     "The story is _still_ _unfolding._"
     ],
     [
-     83.824,
-     85.45,
-     "need *17 babies?*"
+     99.073,
+     100.946,
+     "That couple was actually just"
+    ],
+    [
+     100.946,
+     103.021,
+     "recently *arrested,* so we're gonna"
+    ],
+    [
+     103.021,
+     104.76,
+     "get a lot more information"
+    ],
+    [
+     104.76,
+     106.597,
+     "on what was _really_ _happening_"
+    ],
+    [
+     106.597,
+     106.634,
+     "there."
     ]
    ],
-   "text": "Why would two people need seventeen babies?",
+   "text": "The story is still unfolding. That couple was actually just recently arrested, so we're gonna get a lot more information on what was really happening there.",
    "voice": "narr"
   },
   {
    "i": 18,
    "scene": "end",
-   "start": 85.95,
-   "dur": 1.29,
+   "start": 107.134,
+   "dur": 10.186,
    "chunks": [
     [
-     85.95,
-     87.24,
-     "Follow for _part two._"
+     107.134,
+     108.618,
+     "But _The_ *Journey* by _The_"
+    ],
+    [
+     108.618,
+     109.936,
+     "_New_ _Yorker_ is a podcast"
+    ],
+    [
+     109.936,
+     111.734,
+     "that's actually covering *it* this"
+    ],
+    [
+     111.734,
+     113.18,
+     "season. That's where a lot"
+    ],
+    [
+     113.18,
+     114.791,
+     "of this information comes from,"
+    ],
+    [
+     114.791,
+     116.071,
+     "so *check* *it* *out* if"
+    ],
+    [
+     116.071,
+     117.32,
+     "you wanna learn more."
     ]
    ],
-   "text": "Follow for part two.",
+   "text": "But The Journey by The New Yorker is a podcast that's actually covering it this season. That's where a lot of this information comes from, so check it out if you wanna learn more.",
    "voice": "narr"
   }
  ],
- "duration": 91.24
+ "duration": 121.32
 }
