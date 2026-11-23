@@ -1,0 +1,11 @@
+# Caddy gets and renews the HTTPS certificate automatically. Replace the domain.
+app.example.ie {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+	}
+	reverse_proxy 127.0.0.1:8000
+}

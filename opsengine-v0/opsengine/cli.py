@@ -332,6 +332,58 @@ def cmd_web(args):
           customers=customers, live=args.live)
 
 
+def _live_customers(root):
+    folders = scheduler.customer_folders(root)
+    return {json.loads((f / "company.json").read_text(encoding="utf-8"))["id"]: f for f in folders}
+
+
+def cmd_inbox(args):
+    from .inbound import check_mailbox
+    results = check_mailbox(_live_customers(args.root), state_dir=args.state)
+    for r in results:
+        print(r)
+    print(f"{len(results)} email(s) processed.")
+
+
+def cmd_approval_emails(args):
+    from . import connectors, links
+    from .web import prior_results
+    sent = 0
+    for cid, folder in _live_customers(args.root).items():
+        eng = Engine(folder, state_dir=args.state)
+        steps = [s for s in eng.store.steps(state="awaiting_approval") if s["approval_role"] == "customer"]
+        if not steps:
+            continue
+        subject, body = links.approval_email(eng, cid, steps, lambda st: eng.approval_summary(st, prior_results(eng, st)))
+        owner = eng.customer.company["owner"]
+        status = connectors.send("email", owner.get("email"), subject, body, ref=(cid, None))
+        eng.store.log_comm("out", "email", owner["name"], owner.get("email"), subject, None, None, status, "")
+        sent += status.startswith("sent")
+        print(f"  {cid:<24} {len(steps)} approval(s): {status}")
+    print(f"{sent} approval email(s) sent.")
+
+
+def cmd_erase_customer(args):
+    """GDPR erasure at the end of a contract: delete the customer's data, state, uploads and evidence."""
+    root = Path(args.root)
+    customers = _live_customers(root)
+    if args.id not in customers:
+        raise SystemExit(f"No customer {args.id} under {root}")
+    targets = [customers[args.id], Path(args.state or ROOT / "state") / args.id, Path(args.state or ROOT / "state") / "uploads" / args.id]
+    if not args.yes:
+        print("This permanently deletes:\n  " + "\n  ".join(str(t) for t in targets if t.exists()))
+        print("Export first (python -m opsengine export ...). Run again with --yes to delete.")
+        return
+    for t in targets:
+        if t.exists():
+            shutil.rmtree(t)
+    log = Path(args.state or ROOT / "state") / "erasures.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8") as fh:          # no personal data: just that an erasure happened
+        fh.write(f"{date.today().isoformat()} erased customer {args.id}\n")
+    print(f"Erased {args.id}.")
+
+
 def cmd_add_user(args):
     import getpass
     from .auth import Auth
@@ -484,6 +536,10 @@ def main(argv=None):
     sp.add_argument("--role", required=True, choices=["customer", "ops", "reviewer"]); sp.add_argument("--customer", help="customer id (customer role)")
     sp.add_argument("--password", help="omit to be asked"); sp.add_argument("--auth-dir", default=auth_dir)
     sp = add("users", cmd_users, customer=False); sp.add_argument("--auth-dir", default=auth_dir)
+    sp = add("inbox", cmd_inbox, customer=False); sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT))
+    sp = add("approval-emails", cmd_approval_emails, customer=False); sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT))
+    sp = add("erase-customer", cmd_erase_customer, customer=False); sp.add_argument("id")
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--yes", action="store_true")
     sp = add("remove-user", cmd_remove_user, customer=False); sp.add_argument("email"); sp.add_argument("--auth-dir", default=auth_dir)
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")

@@ -1,0 +1,11 @@
+# Daily run: scan + advance every customer, chase and escalate, then email customers their approvals.
+# Any failure emails ALERT_EMAIL (see alert.sh).
+[Unit]
+Description=OpsEngine daily run
+
+[Service]
+Type=oneshot
+User=opsengine
+WorkingDirectory=/opt/opsengine
+ExecStart=/bin/sh -c 'python3 -m opsengine daily && python3 -m opsengine approval-emails'
+ExecStopPost=/bin/sh -c '[ "$SERVICE_RESULT" = success ] || /opt/opsengine/deploy/alert.sh "Daily run failed ($SERVICE_RESULT)"'

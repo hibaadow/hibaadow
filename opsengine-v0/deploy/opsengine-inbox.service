@@ -1,0 +1,9 @@
+[Unit]
+Description=OpsEngine inbound email check
+
+[Service]
+Type=oneshot
+User=opsengine
+WorkingDirectory=/opt/opsengine
+ExecStart=/usr/bin/python3 -m opsengine inbox
+ExecStopPost=/bin/sh -c '[ "$SERVICE_RESULT" = success ] || /opt/opsengine/deploy/alert.sh "Inbox check failed ($SERVICE_RESULT)"'

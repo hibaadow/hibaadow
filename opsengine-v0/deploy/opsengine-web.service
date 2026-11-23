@@ -1,0 +1,18 @@
+# The portal, on 127.0.0.1:8000 behind Caddy (HTTPS). Logins are always on in --live mode.
+[Unit]
+Description=OpsEngine portal
+After=network-online.target
+
+[Service]
+User=opsengine
+WorkingDirectory=/opt/opsengine
+ExecStart=/usr/bin/python3 -m opsengine web --live --secure --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/opsengine/state /opt/opsengine/data/customers
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

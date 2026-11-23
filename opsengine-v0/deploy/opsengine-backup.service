@@ -1,0 +1,9 @@
+[Unit]
+Description=OpsEngine nightly backup
+
+[Service]
+Type=oneshot
+User=opsengine
+WorkingDirectory=/opt/opsengine
+ExecStart=/opt/opsengine/deploy/backup.sh
+ExecStopPost=/bin/sh -c '[ "$SERVICE_RESULT" = success ] || /opt/opsengine/deploy/alert.sh "Backup failed ($SERVICE_RESULT)"'

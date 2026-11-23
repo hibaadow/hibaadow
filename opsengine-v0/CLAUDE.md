@@ -77,6 +77,9 @@ These are product rules, not style preferences. Never weaken them in code.
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
 | `opsengine/auth.py` | Logins: accounts, scrypt passwords, sessions; customers only see their own company |
+| `opsengine/inbound.py` | Inbound email (IMAP): replies and photos filed to the right customer and issue |
+| `opsengine/links.py` | Approve-by-link: signed, single-use, expiring tokens; approval emails |
+| `deploy/` | Server setup: systemd services/timers, Caddy HTTPS, backups, alerts (`deploy/SETUP.md`) |
 | `launch/` | Launch kit, daily founder tasks and the build sprint (`06_build_sprint.md`) |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
@@ -89,6 +92,9 @@ These are product rules, not style preferences. Never weaken them in code.
 python -m opsengine demo                      # full scripted walkthrough
 python -m opsengine web                       # clickable portal on http://127.0.0.1:8000 (demo, no accounts)
 python -m opsengine web --live --secure       # real customers, logins required (add-user / users / remove-user)
+python -m opsengine inbox                     # file inbound email (every 5 min on the server)
+python -m opsengine approval-emails           # email customers their pending approvals with links
+python -m opsengine erase-customer <id> --yes # GDPR erasure after export
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>

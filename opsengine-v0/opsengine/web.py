@@ -47,6 +47,7 @@ class Portal:
         self.uploads = self.state / "uploads"
         self.clock_file = self.state / "clock.json"
         self.live = live          # live = real customers: the real date, and never wipe the state
+        self.links_dir = ROOT / "state" / "auth"
         if not live and not self.clock_file.exists():
             self.reset()
 
@@ -673,6 +674,27 @@ def login_page(flash=None):
 CUSTOMER_BLOCKED_TABS = {"ops", "reviewer", "providers", "insights"}
 
 
+def link_page(title, inner):
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>OpsEngine</span></div><main style="max-width:560px">{inner}</main></body></html>"""
+
+
+def link_step(portal, token):
+    """(engine, step, error message) for an approve-by-link token."""
+    from . import links
+    found = links.read_token(token)
+    if not found or found[0] not in portal.customers:
+        return None, None, "This link isn't valid or has expired. Log in to see what's waiting, or ask us for a new link."
+    if links.UsedLinks(portal.links_dir).used(token):
+        return None, None, "This link has already been used."
+    eng = portal.engine(found[0])
+    st = eng.store.step(found[1])
+    if not st or st["state"] != "awaiting_approval" or st["approval_role"] != "customer":
+        return None, None, "This doesn't need your OK any more."
+    return eng, st, None
+
+
 # ---------------- HTTP ----------------
 
 class Handler(BaseHTTPRequestHandler):
@@ -736,6 +758,20 @@ class Handler(BaseHTTPRequestHandler):
         first = next(iter(p.customers))
         user = None
         try:
+            if parts == ["health"]:
+                return self.send_html("ok")
+            if len(parts) == 2 and parts[0] == "a":
+                eng, st, err = link_step(p, parts[1])
+                if err:
+                    return self.send_html(link_page("Link", f'<div class="card"><h3>{e_(err)}</h3></div>'), 410 if "used" in err else 404)
+                summary = eng.approval_summary(st, prior_results(eng, st))
+                tok = e_(parts[1])
+                return self.send_html(link_page("Your OK", f"""<div class="card"><h3>{e_(summary)}</h3>
+<p class="muted">{e_(eng.customer.company["name"])} · {e_(st["issue_id"])}</p>
+<form method="post" action="/a/{tok}"><input type="hidden" name="decision" value="approve"><button>Approve</button></form>
+<form method="post" action="/a/{tok}" style="margin-top:12px"><input type="hidden" name="decision" value="decline">
+<p><label>Reason (optional)<br><input name="reason" style="width:100%"></label></p><button class="ghost">Decline</button></form>
+<p class="note">This link works once. Your decision is recorded with your name.</p></div>"""))
             if self.auth:
                 if parts == ["login"]:
                     return self.send_html(login_page(q.get("flash", [None])[0]))
@@ -827,6 +863,24 @@ class Handler(BaseHTTPRequestHandler):
         f, files = self.form()
         role = self.role()
         by = {"customer": None, "ops": "Ops team", "reviewer": "Safety reviewer (competent person)"}[role]
+        if len(parts) == 2 and parts[0] == "a":
+            from . import links
+            if self.auth and not self.same_origin():
+                return self.send_html("Forbidden", 403)
+            eng, st, err = link_step(p, parts[1])
+            if err:
+                return self.send_html(link_page("Link", f'<div class="card"><h3>{e_(err)}</h3></div>'), 410)
+            decision = "approve" if f.get("decision") == "approve" else "decline"
+            if not links.UsedLinks(p.links_dir).mark(parts[1], decision):
+                return self.send_html(link_page("Link", '<div class="card"><h3>This link has already been used.</h3></div>'), 410)
+            who = f"{eng.customer.company['owner']['name']} (via email link)"
+            if decision == "approve":
+                eng.approve(st["id"], who)
+                msg = "Approved. Thank you, OpsEngine has carried on."
+            else:
+                eng.reject(st["id"], who, f.get("reason") or "Declined from email link")
+                msg = "Declined. Our team will follow up."
+            return self.send_html(link_page("Done", f'<div class="card"><h3>{e_(msg)}</h3></div>'))
         if self.auth:
             if not self.same_origin():
                 return self.send_html("Forbidden", 403)
@@ -935,7 +989,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False, login=False, secure=False,
           auth_dir=None, live=False):
-    portal = Portal(customers or SAMPLES, state_dir or ROOT / "state" / ("live" if live else "web"), live=live)
+    portal = Portal(customers or SAMPLES, state_dir or ROOT / "state" / ("" if live else "web"), live=live)
     if fresh:
         portal.reset()
     Handler.portal = portal

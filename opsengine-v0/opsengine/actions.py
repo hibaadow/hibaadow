@@ -116,7 +116,8 @@ class ActionContext:
                  f"- Issue: {self.issue['id']} ({self.issue['requirement']}, {self.issue['kind']})"]
         for k, v in (meta or {}).items():
             lines.append(f"- {k}: {v}")
-        status = "internal" if to.get("channel") == "file" else connectors.send(to.get("channel"), to.get("address"), subject, body)
+        status = "internal" if to.get("channel") == "file" else connectors.send(to.get("channel"), to.get("address"), subject, body,
+                                                                                         ref=(self.customer.company["id"], self.issue["id"]))
         lines += [f"- Delivery: {status}", "", body, ""]
         path.write_text("\n".join(lines), encoding="utf-8")
         self.store.log_comm("out", to.get("channel"), to.get("name"), to.get("address"), subject,
