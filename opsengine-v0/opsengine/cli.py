@@ -322,7 +322,37 @@ def cmd_insights(args):
 
 def cmd_web(args):
     from .web import serve
-    serve(host=args.host, port=args.port, fresh=args.reset)
+    customers = None
+    if args.live:
+        root = Path(args.root)
+        customers = [d for d in sorted(root.iterdir()) if d.is_dir() and not d.name.startswith("_") and (d / "company.json").exists()]
+        if not customers:
+            raise SystemExit(f"No customers in {root}. Add one with: python -m opsengine new-customer <id> --name ...")
+    serve(host=args.host, port=args.port, fresh=args.reset and not args.live, login=args.login, secure=args.secure,
+          customers=customers, live=args.live)
+
+
+def cmd_add_user(args):
+    import getpass
+    from .auth import Auth
+    pw = args.password or getpass.getpass("Password (10+ characters): ")
+    try:
+        email = Auth(Path(args.auth_dir)).add_user(args.email, args.name, args.role, pw, customer=args.customer)
+    except ValueError as exc:
+        raise SystemExit(f"Not added: {exc}")
+    print(f"Added {email} ({args.role}{' for ' + args.customer if args.customer else ''}).")
+
+
+def cmd_users(args):
+    from .auth import Auth
+    for u in Auth(Path(args.auth_dir)).users():
+        print(f"{u['email']:32} {u['role']:9} {u['customer'] or ''}  {u['name']}")
+
+
+def cmd_remove_user(args):
+    from .auth import Auth
+    n = Auth(Path(args.auth_dir)).remove_user(args.email)
+    print("Removed." if n else "No such account.")
 
 
 def cmd_demo(args):
@@ -446,6 +476,15 @@ def main(argv=None):
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--customer", action="append")
     sp = add("web", cmd_web, customer=False); sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8000); sp.add_argument("--reset", action="store_true")
+    sp.add_argument("--login", action="store_true", help="require accounts (see add-user)")
+    sp.add_argument("--live", action="store_true", help="real customers from --root, real date, logins on")
+    sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT)); sp.add_argument("--secure", action="store_true", help="behind HTTPS")
+    auth_dir = str(ROOT / "state" / "auth")
+    sp = add("add-user", cmd_add_user, customer=False); sp.add_argument("email"); sp.add_argument("--name", required=True)
+    sp.add_argument("--role", required=True, choices=["customer", "ops", "reviewer"]); sp.add_argument("--customer", help="customer id (customer role)")
+    sp.add_argument("--password", help="omit to be asked"); sp.add_argument("--auth-dir", default=auth_dir)
+    sp = add("users", cmd_users, customer=False); sp.add_argument("--auth-dir", default=auth_dir)
+    sp = add("remove-user", cmd_remove_user, customer=False); sp.add_argument("email"); sp.add_argument("--auth-dir", default=auth_dir)
     sp = add("daily", cmd_daily, customer=False)
     sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT), help="folder holding customer folders")
     sp.add_argument("--customer", action="append", help="run only this customer folder (repeatable)")

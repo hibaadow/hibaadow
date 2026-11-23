@@ -9,8 +9,8 @@ Three views, switched at the top of every page:
 
 Every button calls the engine itself (approve, ingest, raise an action, update a booking) and is
 audited like any other action. The demo clock lets you run the daily job day by day to watch
-reminders and escalations happen. This is a local demo: there is no login, so do not put it on
-the internet with real customer data.
+reminders and escalations happen. Without --login this is a local demo with no accounts; with
+--login every page needs an account and customers only see their own company (see auth.py).
 """
 import email.parser
 import email.policy
@@ -38,7 +38,7 @@ e_ = html.escape
 
 
 class Portal:
-    def __init__(self, customers, state_dir):
+    def __init__(self, customers, state_dir, live=False):
         self.customers = {}
         for folder in customers:
             company = json.loads((Path(folder) / "company.json").read_text(encoding="utf-8"))
@@ -46,12 +46,15 @@ class Portal:
         self.state = Path(state_dir)
         self.uploads = self.state / "uploads"
         self.clock_file = self.state / "clock.json"
-        if not self.clock_file.exists():
+        self.live = live          # live = real customers: the real date, and never wipe the state
+        if not live and not self.clock_file.exists():
             self.reset()
 
     # ---- demo clock ----
     @property
     def today(self):
+        if self.live:
+            return date.today()
         try:
             return date.fromisoformat(json.loads(self.clock_file.read_text())["today"])
         except (OSError, ValueError, KeyError):
@@ -62,6 +65,8 @@ class Portal:
         self.clock_file.write_text(json.dumps({"today": day.isoformat()}))
 
     def reset(self):
+        if self.live:
+            raise RuntimeError("reset is only for the demo; it would delete real customer state")
         if self.state.exists():
             shutil.rmtree(self.state)
         self.set_today(DEFAULT_DAY)
@@ -76,10 +81,16 @@ class Portal:
     def engine(self, cid):
         return Engine(self.customers[cid], state_dir=self.state, today=self.today)
 
-    def safe_file(self, path):
-        """Only serve files from the demo state, the sample data and the test photos."""
+    def safe_file(self, path, user=None):
+        """Only serve files from the state, the customer data and the test photos.
+        A logged-in customer only gets files from their own folder and their own uploads."""
         p = Path(path).resolve()
-        roots = [self.state.resolve(), (ROOT / "data" / "sample").resolve(), (ROOT / "tests" / "fixtures").resolve()]
+        if user and user["role"] == "customer":
+            cid = user["customer"]
+            roots = [self.customers[cid].resolve(), (self.uploads / cid).resolve(), (self.state / cid).resolve()] if cid in self.customers else []
+        else:
+            roots = [self.state.resolve(), (ROOT / "data" / "sample").resolve(), (ROOT / "tests" / "fixtures").resolve(),
+                     *[f.resolve() for f in self.customers.values()]]
         return p if p.is_file() and any(r in p.parents for r in roots) else None
 
 
@@ -192,8 +203,10 @@ FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=
          '&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">')
 
 
-def page(portal, role, cid, tab, title, body, flash=None):
+def page(portal, role, cid, tab, title, body, flash=None, user=None):
     eng_names = {c: json.loads((f / "company.json").read_text(encoding="utf-8"))["name"] for c, f in portal.customers.items()}
+    if user and user["role"] == "customer":
+        eng_names = {c: n for c, n in eng_names.items() if c == user["customer"]}
     roles = "".join(f'<a class="{"on" if r == role else ""}" href="/as/{r}?next=/c/{cid}/home">{label}</a>'
                     for r, label in ROLES.items())
     tabs = {"customer": [("home", "Overview"), ("issues", "Issues"), ("people", "People"), ("subcontractors", "Subcontractors"),
@@ -208,12 +221,17 @@ def page(portal, role, cid, tab, title, body, flash=None):
             "</select>")
     mode = "mock AI" if config.mock_ai() else ("live Claude" if llm.available() else "AI off")
     flash_html = f'<div class="flash{" err" if flash and flash.startswith("!") else ""}">{e_(flash.lstrip("!"))}</div>' if flash else ""
+    if user:      # real accounts: no role switching, no demo clock
+        roles = f'<span>{e_(user["name"])} · {e_(ROLES[user["role"]])}</span>'
+        demo = f'<span class="demo"><span>{mode}</span><a href="/logout" style="color:inherit">Log out</a></span>'
+    else:
+        demo = f"""<span class="demo"><span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>
+<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>
+<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form></span>"""
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
 <div class="top"><span class="brand"><i></i>OpsEngine</span><span class="roles">{roles}</span>
-<span class="demo"><span>Demo date <b>{portal.today.isoformat()}</b> · {mode}</span>
-<form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>
-<form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form></span></div>
+{demo}</div>
 <nav class="sub">{nav}{pick}</nav><main>{flash_html}{body}</main></body></html>"""
 
 
@@ -641,15 +659,52 @@ def view_insights(portal, eng, cid, role):
 <div class="card"><h3>Recommendations</h3><ul>{''.join(f'<li>{e_(x)}</li>' for x in r['recommendations'])}</ul><p class="note">Suggestions for a person to accept. OpsEngine doesn't change its own rules.</p></div></section>"""
 
 
+def login_page(flash=None):
+    msg = f'<div class="flash err">{e_(flash)}</div>' if flash else ""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log in · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>OpsEngine</span></div>
+<main style="max-width:420px">{msg}<div class="card"><h3>Log in</h3>
+<form method="post" action="/login"><p><label>Email<br><input name="email" type="email" autocomplete="username" required style="width:100%"></label></p>
+<p><label>Password<br><input name="password" type="password" autocomplete="current-password" required style="width:100%"></label></p>
+<button>Log in</button></form></div></main></body></html>"""
+
+
+CUSTOMER_BLOCKED_TABS = {"ops", "reviewer", "providers", "insights"}
+
+
 # ---------------- HTTP ----------------
 
 class Handler(BaseHTTPRequestHandler):
     portal: Portal = None
+    auth = None          # an auth.Auth when logins are on; None = local demo (role switcher, demo clock)
+    secure = False       # behind HTTPS: mark the session cookie Secure
+
+    def cookie(self, name):
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == name:
+                return v
+        return None
+
+    def user(self):
+        return self.auth.session(self.cookie("session")) if self.auth else None
+
+    def session_cookie(self, token, max_age):
+        return (f"session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}" + ("; Secure" if self.secure else ""))
+
+    def same_origin(self):
+        """Refuse cross-site form posts (CSRF): the Origin or Referer must be this host."""
+        src = self.headers.get("Origin") or self.headers.get("Referer")
+        return bool(src) and urllib.parse.urlparse(src).netloc == self.headers.get("Host")
 
     def log_message(self, fmt, *args):  # keep the console quiet
         pass
 
     def role(self):
+        if self.auth:
+            u = self.user()
+            return u["role"] if u else "customer"
         for part in (self.headers.get("Cookie") or "").split(";"):
             k, _, v = part.strip().partition("=")
             if k == "role" and v in ROLES:
@@ -679,7 +734,23 @@ class Handler(BaseHTTPRequestHandler):
         parts = [p for p in url.path.split("/") if p]
         p = self.portal
         first = next(iter(p.customers))
+        user = None
         try:
+            if self.auth:
+                if parts == ["login"]:
+                    return self.send_html(login_page(q.get("flash", [None])[0]))
+                if parts == ["logout"]:
+                    self.auth.logout(self.cookie("session"))
+                    return self.redirect("/login", cookie=self.session_cookie("", 0))
+                user = self.user()
+                if not user:
+                    return self.redirect("/login")
+                if parts and parts[0] == "as":
+                    return self.send_html("Not found", 404)
+                if not parts:
+                    if user["role"] == "customer":
+                        return self.redirect(f"/c/{user['customer']}/home")
+                    return self.redirect(f"/c/{first}/{'ops' if user['role'] == 'ops' else 'reviewer'}")
             if not parts:
                 return self.redirect(f"/c/{first}/home")
             if parts[0] == "as" and len(parts) == 2 and parts[1] in ROLES:
@@ -688,7 +759,7 @@ class Handler(BaseHTTPRequestHandler):
                 cid = nxt.split("/")[2] if nxt.startswith("/c/") else first
                 return self.redirect(f"/c/{cid}/{start}", cookie=f"role={parts[1]}; Path=/; SameSite=Lax")
             if parts[0] == "file":
-                f = p.safe_file(q.get("path", [""])[0])
+                f = p.safe_file(q.get("path", [""])[0], user)
                 if not f:
                     return self.send_html("Not found", 404)
                 data = f.read_bytes()
@@ -701,6 +772,9 @@ class Handler(BaseHTTPRequestHandler):
             if parts[0] != "c" or len(parts) < 3 or parts[1] not in p.customers:
                 return self.send_html("Not found", 404)
             cid, tab, role = parts[1], parts[2], self.role()
+            if self.auth and (not self.auth.can_see(user, cid) or (role == "customer" and tab in CUSTOMER_BLOCKED_TABS)
+                              or (role == "reviewer" and tab == "ops")):
+                return self.send_html("Not found", 404)
             eng = p.engine(cid)
             views = {"home": view_home, "documents": view_documents, "actions": view_actions, "bookings": view_bookings,
                      "messages": view_messages, "report": view_report, "ops": view_ops, "reviewer": view_reviewer,
@@ -725,7 +799,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self.send_html("Not found", 404)
             self.send_html(page(p, role, cid, tab.replace("issue", "issues") if tab == "issue" else tab, tab.title(), body,
-                                q.get("flash", [None])[0]))
+                                q.get("flash", [None])[0], user))
         except Exception as exc:  # show the problem instead of a blank page
             self.send_html(f"<pre>Something went wrong: {e_(repr(exc))}</pre>", 500)
 
@@ -753,6 +827,24 @@ class Handler(BaseHTTPRequestHandler):
         f, files = self.form()
         role = self.role()
         by = {"customer": None, "ops": "Ops team", "reviewer": "Safety reviewer (competent person)"}[role]
+        if self.auth:
+            if not self.same_origin():
+                return self.send_html("Forbidden", 403)
+            if parts == ["login"]:
+                token = self.auth.login(f.get("email", ""), f.get("password", ""))
+                if not token:
+                    return self.redirect("/login", "Wrong email or password (or too many tries: wait 15 minutes).")
+                return self.redirect("/", cookie=self.session_cookie(token, 12 * 3600))
+            user = self.user()
+            if not user:
+                return self.redirect("/login")
+            if parts and parts[0] == "demo":
+                return self.send_html("Not found", 404)
+            if len(parts) < 3 or parts[0] != "c" or not self.auth.can_see(user, parts[1]):
+                return self.send_html("Not found", 404)
+            if parts[2] == "simulate" and role != "ops":
+                return self.send_html("Not found", 404)
+            by = user["name"] + ("" if role != "reviewer" else " (safety reviewer)")
         try:
             if parts == ["demo", "next-day"]:
                 runs = p.next_day()
@@ -792,7 +884,9 @@ class Handler(BaseHTTPRequestHandler):
                     name, data = files.get("file", (None, None))
                     if not data:
                         return self.redirect(back, "!Choose a photo first.")
-                    path = p.uploads / f"{date.today().isoformat()}-{Path(name).name}"
+                    folder = p.uploads / cid
+                    folder.mkdir(parents=True, exist_ok=True)
+                    path = folder / f"{date.today().isoformat()}-{Path(name).name}"
                     path.write_bytes(data)
                 r = eng.ingest_photo(path, f.get("holder", "company"), expected_type=f.get("type") or None)
                 if r["status"] == "ingested":
@@ -839,11 +933,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.redirect(urllib.parse.urlparse(self.headers.get("Referer") or "/").path or "/", f"!{exc}")
 
 
-def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False):
-    portal = Portal(customers or SAMPLES, state_dir or ROOT / "state" / "web")
+def serve(host="127.0.0.1", port=8000, customers=None, state_dir=None, fresh=False, login=False, secure=False,
+          auth_dir=None, live=False):
+    portal = Portal(customers or SAMPLES, state_dir or ROOT / "state" / ("live" if live else "web"), live=live)
     if fresh:
         portal.reset()
     Handler.portal = portal
+    if login or live:          # real customers always need logins
+        from .auth import Auth
+        Handler.auth, Handler.secure = Auth(auth_dir or ROOT / "state" / "auth"), secure
+        if not Handler.auth.users():
+            print("No accounts yet. Add one: python -m opsengine add-user EMAIL --name NAME --role ops")
     httpd = ThreadingHTTPServer((host, port), Handler)
     print(f"OpsEngine portal on http://{host}:{port}  (demo date {portal.today}; Ctrl+C to stop)")
     httpd.serve_forever()

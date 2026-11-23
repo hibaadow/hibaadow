@@ -76,6 +76,8 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
+| `opsengine/auth.py` | Logins: accounts, scrypt passwords, sessions; customers only see their own company |
+| `launch/` | Launch kit, daily founder tasks and the build sprint (`06_build_sprint.md`) |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
 | `AUDIT.md` | Implementation audit: what is real, simulated or blocked; defects; roadmap |
 | `opsengine/cli.py` | Command line |
@@ -85,7 +87,8 @@ These are product rules, not style preferences. Never weaken them in code.
 
 ```bash
 python -m opsengine demo                      # full scripted walkthrough
-python -m opsengine web                       # clickable portal on http://127.0.0.1:8000
+python -m opsengine web                       # clickable portal on http://127.0.0.1:8000 (demo, no accounts)
+python -m opsengine web --live --secure       # real customers, logins required (add-user / users / remove-user)
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>

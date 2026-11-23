@@ -53,8 +53,8 @@ three views at the top:
 
 **Run next day** runs the daily job so you can watch reminders and escalations happen;
 **Reset** starts the demo again. Every button calls the engine and is audited. Each view can
-only approve what that role is allowed to. It's a local demo with no login: don't put it on
-the internet with real customer data.
+only approve what that role is allowed to. Without `--login` it's a local demo with no accounts. For real customers use
+`python -m opsengine web --live --secure` after adding accounts with `add-user` (see `launch/06_build_sprint.md`).
 
 ## Use it step by step
 
