@@ -1,4 +1,4 @@
-"""Voiceover for THE AGENCY: house girl voice (Kokoro af_heart). Each line read in one continuous
+"""Voiceover for THE AGENCY: house male voice (Kokoro am_puck). Each line read in one continuous
 pass (no stitched phrases, no added breaths or gain jumps) at a natural ~168 wpm; Daniel = am_onyx. Captions synced by phoneme share,
 snapped to real silences. Writes $SCR/vo2am/vo_XX.npy and timeline.json (line starts, caption chunk times)."""
 import json, os, subprocess, sys
@@ -13,10 +13,10 @@ from script import LINES
 SCR = os.environ["SCR"]
 OUT = f"{SCR}/voagency"
 os.makedirs(OUT, exist_ok=True)
-TARGET_WPM = 185
+TARGET_WPM = 188
 SR = 24000
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
-VOICE = "af_heart"
+VOICE = "am_puck"
 MOODS = {10: (0.94, 0), 12: (0.95, 0), 17: (0.92, 0)}   # slower on the reveals
 
 
