@@ -5,7 +5,7 @@ Rules: one task a day. If a day is bad, skip it; the plan waits for you. Ask Cla
 Tell Claude "done" when finished and it ticks the box.
 
 ## Week 1: get the story right and start conversations
-- [ ] **Day 1.** Read `01_one_page_pitch.md`. Tell Claude anything that's wrong, unclear or
+- [x] **Day 1.** Read `01_one_page_pitch.md`. Tell Claude anything that's wrong, unclear or
       doesn't sound like you. (10 min)
 - [ ] **Day 2.** Choose a working name and email from Claude's shortlist. (10 min)
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
