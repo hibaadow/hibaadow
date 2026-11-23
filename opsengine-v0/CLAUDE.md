@@ -160,6 +160,14 @@ No third-party dependencies. Python 3.11+. Keep it stdlib-only unless there's a 
 issues open/resolved and median hours to close. The business depends on **human minutes
 per customer falling**. When adding features, ask whether they remove human work.
 
+## Launch mode (founder workflow)
+
+The founder has ADHD and works best with one tiny task a day. When they ask
+"what's today's task?" (or similar): read `launch/05_daily_tasks.md`, take the **first unticked
+task**, prepare everything it needs (drafts, lists, exact steps), and hand over exactly one thing
+to do in 15 minutes or less. When they say it's done, tick the box and commit.
+Do all build work yourself; only items in `launch/04_only_you_checklist.md` need the founder.
+
 ## Roadmap (next steps, in order)
 
 1. **Connectors:** real sending (WhatsApp Business API, email) and inbound capture
