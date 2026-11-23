@@ -13,7 +13,7 @@ from script import LINES, REVEALS, BREATH_BEFORE
 SCR = os.environ["SCR"]
 OUT = f"{SCR}/vo2am"
 os.makedirs(OUT, exist_ok=True)
-TARGET_WPM = 168
+TARGET_WPM = 188
 SR = 24000
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
 VOICE = "am_puck"
@@ -82,21 +82,21 @@ def emphasize(a, times, gain_db):
 
 
 words = lambda ch: sum(len(sp.split()) for sp, _ in ch)
-speed = 0.9
-for _ in range(3):
+speed = 1.0
+for _ in range(5):
     w = d = 0
     for i, ln in enumerate(LINES):
         if len(ln) > 2: continue
         a, _t = synth_line(ln[1], speed * MOODS.get(i, (1, 0))[0], False)
         w += words(ln[1]); d += len(a) / SR
-    wpm = w / d * 60; speed *= TARGET_WPM / wpm
+    wpm = w / d * 60; speed *= (TARGET_WPM / wpm) ** 0.6
     print(f"wpm {wpm:.0f} -> speed {speed:.3f}")
 
 meta, S = [], 0.5
 for i, ln in enumerate(LINES):
     scene, ch = ln[0], ln[1]
     if len(ln) > 2:
-        a, times = synth_line(ch, 0.95, False, voice="am_onyx")
+        a, times = synth_line(ch, 1.08, False, voice="am_onyx")
     else:
         a, times = synth_line(ch, speed * MOODS.get(i, (1, 0))[0], False)
     sf.write(f"{OUT}/raw_{i:02d}.wav", a, SR)
@@ -108,7 +108,7 @@ for i, ln in enumerate(LINES):
                  "chunks": [[round(S + c0, 3), round(S + c1, 3), cap] for c0, c1, cap in times],
                  "text": " ".join(sp for sp, _ in ch), "voice": "daniel" if len(ln) > 2 else "narr"})
     nxt = LINES[i + 1][0] if i + 1 < len(LINES) else None
-    S += dur + (0.7 if nxt in ("spend", "dial", "search", "keep", "choose", "garage_in", "realize", "mailbox", "end") else 0.35)
+    S += dur + (0.5 if nxt in ("spend", "dial", "search", "keep", "choose", "garage_in", "realize", "mailbox", "end") else 0.25)
 end = meta[-1]["start"] + meta[-1]["dur"] + 4.0
 json.dump({"lines": meta, "duration": round(end, 2)}, open(os.path.join(HERE, "timeline.json"), "w"), indent=1)
 print(f"narrator {sum(words(l[1]) for l in LINES) / sum(m['dur'] for m in meta) * 60:.0f} wpm; total {end:.1f}s")
