@@ -1,0 +1,530 @@
+{
+ "lines": [
+  {
+   "i": 0,
+   "scene": "hook",
+   "start": 0.5,
+   "dur": 2.747,
+   "chunks": [
+    [
+     0.5,
+     1.049,
+     "This is why"
+    ],
+    [
+     1.049,
+     2.441,
+     "some people will _never_ trust"
+    ],
+    [
+     2.441,
+     3.247,
+     "*surrogacy.*"
+    ]
+   ],
+   "text": "This is why some people will never trust surrogacy.",
+   "voice": "narr"
+  },
+  {
+   "i": 1,
+   "scene": "broke",
+   "start": 3.747,
+   "dur": 4.737,
+   "chunks": [
+    [
+     3.747,
+     5.122,
+     "Maya is _26,_"
+    ],
+    [
+     5.122,
+     5.475,
+     "*broke,*"
+    ],
+    [
+     5.475,
+     6.471,
+     "and tired of choosing"
+    ],
+    [
+     6.471,
+     8.484,
+     "between _rent_ and _groceries._"
+    ]
+   ],
+   "text": "Maya is twenty-six, broke, and tired of choosing between rent and groceries.",
+   "voice": "narr"
+  },
+  {
+   "i": 2,
+   "scene": "signup",
+   "start": 8.734,
+   "dur": 4.963,
+   "chunks": [
+    [
+     8.734,
+     9.537,
+     "So she signs up"
+    ],
+    [
+     9.537,
+     11.582,
+     "with an agency called *New Cradle,*"
+    ],
+    [
+     11.582,
+     12.802,
+     "to carry a _baby_"
+    ],
+    [
+     12.802,
+     13.697,
+     "for someone else."
+    ]
+   ],
+   "text": "So she signs up with an agency called New Cradle, to carry a baby for someone else.",
+   "voice": "narr"
+  },
+  {
+   "i": 3,
+   "scene": "couple",
+   "start": 13.947,
+   "dur": 5.674,
+   "chunks": [
+    [
+     13.947,
+     15.717,
+     "They match her with a _quiet couple,_"
+    ],
+    [
+     15.717,
+     17.412,
+     "*Elise and Victor Hale,*"
+    ],
+    [
+     17.412,
+     18.019,
+     "who can't have"
+    ],
+    [
+     18.019,
+     19.621,
+     "another child on their own."
+    ]
+   ],
+   "text": "They match her with a quiet couple, Elise and Victor Hale, who can't have another child on their own.",
+   "voice": "narr"
+  },
+  {
+   "i": 4,
+   "scene": "pregnant",
+   "start": 19.871,
+   "dur": 4.117,
+   "chunks": [
+    [
+     19.871,
+     21.17,
+     "Maya gets _pregnant_"
+    ],
+    [
+     21.17,
+     22.055,
+     "on the first try."
+    ],
+    [
+     22.055,
+     22.862,
+     "And that's when"
+    ],
+    [
+     22.862,
+     23.988,
+     "things get *strange.*"
+    ]
+   ],
+   "text": "Maya gets pregnant on the first try. And that's when things get strange.",
+   "voice": "narr"
+  },
+  {
+   "i": 5,
+   "scene": "noshow",
+   "start": 24.488,
+   "dur": 4.702,
+   "chunks": [
+    [
+     24.488,
+     25.614,
+     "The Hales _never_ come"
+    ],
+    [
+     25.614,
+     26.943,
+     "to a single *appointment.*"
+    ],
+    [
+     26.943,
+     28.203,
+     "Not the scans."
+    ],
+    [
+     28.203,
+     29.19,
+     "Not the _heartbeat._"
+    ]
+   ],
+   "text": "The Hales never come to a single appointment. Not the scans. Not the heartbeat.",
+   "voice": "narr"
+  },
+  {
+   "i": 6,
+   "scene": "onread",
+   "start": 29.44,
+   "dur": 4.096,
+   "chunks": [
+    [
+     29.44,
+     30.885,
+     "She sends them _photos,_"
+    ],
+    [
+     30.885,
+     31.396,
+     "updates,"
+    ],
+    [
+     31.396,
+     32.221,
+     "the first _kick._"
+    ],
+    [
+     32.221,
+     33.536,
+     "They leave her *on read.*"
+    ]
+   ],
+   "text": "She sends them photos, updates, the first kick. They leave her on read.",
+   "voice": "narr"
+  },
+  {
+   "i": 7,
+   "scene": "posting",
+   "start": 33.786,
+   "dur": 4.621,
+   "chunks": [
+    [
+     33.786,
+     35.234,
+     "So Maya starts _posting_"
+    ],
+    [
+     35.234,
+     36.55,
+     "her pregnancy online,"
+    ],
+    [
+     36.55,
+     37.687,
+     "just to have _someone_"
+    ],
+    [
+     37.687,
+     38.407,
+     "to share it with."
+    ]
+   ],
+   "text": "So Maya starts posting her pregnancy online, just to have someone to share it with.",
+   "voice": "narr"
+  },
+  {
+   "i": 8,
+   "scene": "dm",
+   "start": 38.907,
+   "dur": 6.3,
+   "chunks": [
+    [
+     38.907,
+     40.808,
+     "Then a message from a *stranger.*"
+    ],
+    [
+     40.808,
+     42.905,
+     "\"This is going to sound _crazy,_"
+    ],
+    [
+     42.905,
+     44.261,
+     "but I think I'm carrying"
+    ],
+    [
+     44.261,
+     45.207,
+     "for the *same couple.*\""
+    ]
+   ],
+   "text": "Then a message from a stranger. This is going to sound crazy, but I think I'm carrying for the same couple.",
+   "voice": "narr"
+  },
+  {
+   "i": 9,
+   "scene": "more",
+   "start": 45.457,
+   "dur": 3.671,
+   "chunks": [
+    [
+     45.457,
+     46.133,
+     "Then _another._"
+    ],
+    [
+     46.133,
+     46.992,
+     "And _another._"
+    ],
+    [
+     46.992,
+     48.028,
+     "By the end of the week,"
+    ],
+    [
+     48.028,
+     49.128,
+     "there are *eight* of them."
+    ]
+   ],
+   "text": "Then another. And another. By the end of the week, there are eight of them.",
+   "voice": "narr"
+  },
+  {
+   "i": 10,
+   "scene": "eight",
+   "start": 49.378,
+   "dur": 2.677,
+   "chunks": [
+    [
+     49.378,
+     50.085,
+     "*8 women.*"
+    ],
+    [
+     50.085,
+     51.256,
+     "*8 pregnancies.*"
+    ],
+    [
+     51.256,
+     52.055,
+     "_One couple._"
+    ]
+   ],
+   "text": "Eight women. Eight pregnancies. One couple.",
+   "voice": "narr"
+  },
+  {
+   "i": 11,
+   "scene": "dig",
+   "start": 52.555,
+   "dur": 4.608,
+   "chunks": [
+    [
+     52.555,
+     54.12,
+     "The women start _digging_"
+    ],
+    [
+     54.12,
+     54.796,
+     "into New Cradle."
+    ],
+    [
+     54.796,
+     56.406,
+     "And on the company papers,"
+    ],
+    [
+     56.406,
+     57.163,
+     "two *names.*"
+    ]
+   ],
+   "text": "The women start digging into New Cradle. And on the company papers, two names.",
+   "voice": "narr"
+  },
+  {
+   "i": 12,
+   "scene": "owners",
+   "start": 57.413,
+   "dur": 4.732,
+   "chunks": [
+    [
+     57.413,
+     58.977,
+     "*Elise and Victor Hale.*"
+    ],
+    [
+     58.977,
+     60.791,
+     "They didn't _hire_ the agency."
+    ],
+    [
+     60.791,
+     62.145,
+     "They *were* the agency."
+    ]
+   ],
+   "text": "Elise and Victor Hale. They didn't hire the agency. They were the agency.",
+   "voice": "narr"
+  },
+  {
+   "i": 13,
+   "scene": "police",
+   "start": 62.646,
+   "dur": 5.836,
+   "chunks": [
+    [
+     62.646,
+     64.322,
+     "Maya goes to the _police._"
+    ],
+    [
+     64.322,
+     65.262,
+     "Officers drive out"
+    ],
+    [
+     65.262,
+     66.889,
+     "to the Hales' address,"
+    ],
+    [
+     66.889,
+     68.482,
+     "a *gated house* in the hills."
+    ]
+   ],
+   "text": "Maya goes to the police. Officers drive out to the Hales' address, a gated house in the hills.",
+   "voice": "narr"
+  },
+  {
+   "i": 14,
+   "scene": "cribs",
+   "start": 68.732,
+   "dur": 4.976,
+   "chunks": [
+    [
+     68.732,
+     70.213,
+     "Inside, there are _cribs_"
+    ],
+    [
+     70.213,
+     71.501,
+     "in *every single room.*"
+    ],
+    [
+     71.501,
+     72.86,
+     "*17 babies,*"
+    ],
+    [
+     72.86,
+     73.708,
+     "all under _three._"
+    ]
+   ],
+   "text": "Inside, there are cribs in every single room. Seventeen babies, all under three.",
+   "voice": "narr"
+  },
+  {
+   "i": 15,
+   "scene": "chaos",
+   "start": 73.958,
+   "dur": 4.963,
+   "chunks": [
+    [
+     73.958,
+     75.788,
+     "Toddlers _crying_ in the halls."
+    ],
+    [
+     75.788,
+     76.73,
+     "Bottles on the floor."
+    ],
+    [
+     76.73,
+     77.745,
+     "And _two nannies_"
+    ],
+    [
+     77.745,
+     78.921,
+     "trying to *keep up.*"
+    ]
+   ],
+   "text": "Toddlers crying in the halls. Bottles on the floor. And two nannies trying to keep up.",
+   "voice": "narr"
+  },
+  {
+   "i": 16,
+   "scene": "arrest",
+   "start": 79.421,
+   "dur": 4.752,
+   "chunks": [
+    [
+     79.421,
+     81.302,
+     "The Hales are *arrested* that night."
+    ],
+    [
+     81.302,
+     82.567,
+     "But nobody can _answer_"
+    ],
+    [
+     82.567,
+     84.173,
+     "the one question that matters."
+    ]
+   ],
+   "text": "The Hales are arrested that night. But nobody can answer the one question that matters.",
+   "voice": "narr"
+  },
+  {
+   "i": 17,
+   "scene": "why",
+   "start": 84.423,
+   "dur": 2.463,
+   "chunks": [
+    [
+     84.423,
+     85.289,
+     "Why would two people"
+    ],
+    [
+     85.289,
+     86.886,
+     "need *17 babies?*"
+    ]
+   ],
+   "text": "Why would two people need seventeen babies?",
+   "voice": "narr"
+  },
+  {
+   "i": 18,
+   "scene": "end",
+   "start": 87.386,
+   "dur": 1.348,
+   "chunks": [
+    [
+     87.386,
+     88.734,
+     "Follow for _part two._"
+    ]
+   ],
+   "text": "Follow for part two.",
+   "voice": "narr"
+  }
+ ],
+ "duration": 92.73
+}
