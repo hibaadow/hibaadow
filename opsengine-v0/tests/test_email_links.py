@@ -60,6 +60,33 @@ class SendingTests(unittest.TestCase):
             raise OSError("network down")
         self.assertTrue(connectors.send("email", "o@x.ie", "S", "B", transport=down).startswith("failed: OSError after 3"))
 
+    def test_resend_payload_and_errors(self):
+        sent = []
+
+        class Resp:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b"{}"
+
+        def fake_open(req, timeout=0):
+            sent.append((req.full_url, req.headers, json.loads(req.data)))
+            return Resp()
+        with mock.patch.dict(os.environ, {"EMAIL_MODE": "resend", "RESEND_API_KEY": "re_test", "EMAIL_FROM": "OpsEngine <onboarding@resend.dev>",
+                                          "OPSENGINE_ALLOW_SEND_IN_TESTS": "1", "EMAIL_REPLY_TO": "inbox@ops.example.ie"}), \
+                mock.patch("urllib.request.urlopen", fake_open):
+            self.assertEqual(connectors.send("email", "o@x.ie", "Subject", "Body", ref=(C, "ISS-0001")), "sent")
+        url, headers, body = sent[0]
+        self.assertEqual(url, "https://api.resend.com/emails")
+        self.assertEqual(headers["Authorization"], "Bearer re_test")
+        self.assertEqual((body["to"], body["subject"], body["text"].strip()), (["o@x.ie"], "Subject", "Body"))
+        self.assertEqual(body["reply_to"], f"inbox+{C}.ISS-0001@ops.example.ie")
+
+        def refused(req, timeout=0):
+            raise urllib.error.HTTPError(req.full_url, 422, "bad", {}, __import__("io").BytesIO(b"invalid to"))
+        with mock.patch.dict(os.environ, {"EMAIL_MODE": "resend", "RESEND_API_KEY": "re_test", "OPSENGINE_ALLOW_SEND_IN_TESTS": "1"}), \
+                mock.patch("urllib.request.urlopen", refused):
+            self.assertTrue(connectors.send("email", "o@x.ie", "S", "B").startswith("failed: resend 422"))
+
     def test_still_outbox_only_by_default(self):
         self.assertTrue(connectors.send("email", "o@x.ie", "S", "B").startswith("queued_in_outbox"))
 

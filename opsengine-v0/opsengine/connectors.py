@@ -8,10 +8,16 @@ transactional email provider that offers SMTP (Postmark, Amazon SES, Resend, Bre
   - Temporary failures are retried (3 tries); a refused address fails at once.
   - With EMAIL_REPLY_TO=inbox@yourdomain, replies go to inbox+<customer>.<issue>@yourdomain so
     `python -m opsengine inbox` can file the reply (and any photos) against the right issue.
+EMAIL_MODE=resend: email is sent through Resend's HTTPS API (RESEND_API_KEY). Useful where mail
+ports are blocked. Without a verified domain, Resend only delivers to your own account address,
+from onboarding@resend.dev - fine for a first test.
 WhatsApp has no connector yet, so WhatsApp messages stay queued in the outbox."""
+import json
 import os
 import smtplib
 import time
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 from email.utils import make_msgid
 
@@ -62,6 +68,38 @@ def _smtp_send(msg):
         s.send_message(msg)
 
 
+class PermanentFailure(Exception):
+    """The provider refused the message for good (bad address, bad key...): don't retry."""
+
+
+def _resend_send(msg):
+    """Send an EmailMessage through Resend's API."""
+    key = os.environ.get("RESEND_API_KEY", "")
+    if not key:
+        raise PermanentFailure("no RESEND_API_KEY")
+    plain = msg.get_body(("plain",))
+    html = msg.get_body(("html",))
+    payload = {"from": msg["From"] or "OpsEngine <onboarding@resend.dev>", "to": [msg["To"]], "subject": msg["Subject"],
+               "text": plain.get_content() if plain else ""}
+    if html:
+        payload["html"] = html.get_content()
+    if msg["Reply-To"]:
+        payload["reply_to"] = msg["Reply-To"]
+    if msg["X-OpsEngine-Ref"]:
+        payload["headers"] = {"X-OpsEngine-Ref": msg["X-OpsEngine-Ref"]}
+    req = urllib.request.Request("https://api.resend.com/emails", data=json.dumps(payload).encode(), method="POST",
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                                          "User-Agent": "opsengine/0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429 or exc.code >= 500:
+            raise OSError(f"resend {exc.code}") from exc            # temporary: retried
+        detail = exc.read().decode("utf-8", "replace")[:200]
+        raise PermanentFailure(f"resend {exc.code}: {detail}") from exc
+
+
 def send(channel, address, subject, body, ref=None, html=None, transport=None):
     """Return the delivery status: sent, failed: <reason>, or queued_in_outbox (<why>).
     transport(msg) replaces SMTP (tests)."""
@@ -69,17 +107,19 @@ def send(channel, address, subject, body, ref=None, html=None, transport=None):
         return "queued_in_outbox (offline)"
     if channel != "email":
         return f"queued_in_outbox (no {channel} connector yet)"
-    if transport is None and email_mode() != "smtp":
+    if transport is None and email_mode() not in ("smtp", "resend"):
         return "queued_in_outbox (EMAIL_MODE=outbox)"
     if not address or "@" not in address:
         return "failed: no email address"
     msg = build_message(address, subject, body, ref, html)
-    transport = transport or _smtp_send
+    transport = transport or (_resend_send if email_mode() == "resend" else _smtp_send)
     last = None
     for attempt in range(len(RETRY_WAITS) + 1):
         try:
             transport(msg)
             return "sent" if attempt == 0 else f"sent (after {attempt + 1} tries)"
+        except PermanentFailure as exc:
+            return f"failed: {exc}"
         except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPAuthenticationError) as exc:
             return f"failed: {type(exc).__name__}"          # permanent: retrying won't help
         except (OSError, smtplib.SMTPException) as exc:
