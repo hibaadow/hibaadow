@@ -17,7 +17,17 @@ LINES = [
     ("keep",    [("If you keep it...", "If you _keep_ it..."), ("they come looking for it.", "they come *looking* for it.")]),
     ("bring",   [("If you bring it...", "If you _bring_ it..."), ("you walk into an empty garage", "you walk into an *empty garage*"), ("alone.", "alone.")]),
     ("police",  [("If you call the police...", "If you call the _police_..."), ("you have to explain", "you have to *explain*"), ("why you opened it.", "why you opened it.")]),
-    ("final",   [("So what do you do?", "So what do you do?"), ("Keep it, bring it,", "_Keep_ it, _bring_ it,"), ("or call the police?", "or call the *police?*")]),
+    ("choose",  [("You pick the only one", "You pick the only one"), ("that ends tonight.", "that ends _tonight._"), ("You bring it.", "You *bring it.*")]),
+    ("garage_in", [("Six A.M. Level minus two.", "*6 AM.* Level -2."), ("The lights flicker.", "The lights _flicker._"), ("Nobody's here.", "Nobody's *here.*")]),
+    ("steps",   [("You set the box down,", "You set the box _down,_"), ("and hear footsteps", "and hear *footsteps*"), ("behind you.", "behind you.")]),
+    ("daniel",  [("A man steps out of the dark.", "A man steps out of the _dark._"), ("The face from the poster.", "The face from the *poster.*"), ("Daniel Cross. Alive.", "Daniel Cross. *Alive.*")]),
+    ("daniel_says", [("You opened it, didn't you?", "\"You _opened_ it, didn't you?"), ("It was meant for me.", "It was meant for *me.*"), ("They've been hunting me all week.", "They've been _hunting_ me all week.\"")], "daniel"),
+    ("headlights", [("Then headlights flood the level.", "Then *headlights* flood the level."), ("The dark car.", "The _dark car._")]),
+    ("run",     [("Daniel grabs the box and runs.", "Daniel grabs the box and *runs.*"), ("Tires screech.", "Tires _screech._"), ("They go after him, not you.", "They go after *him.* Not you.")]),
+    ("burner_end", [("The burner buzzes one last time.", "The burner buzzes _one last time._"), ("Thank you for finding him.", "\"Thank you for *finding him.*\"")]),
+    ("realize", [("You didn't deliver the money.", "You didn't deliver the _money._"), ("You delivered him.", "You delivered *him.*")]),
+    ("mailbox", [("The next morning,", "The next _morning,_"), ("an envelope in your mailbox.", "an *envelope* in your mailbox."), ("Ten thousand dollars,", "*$10,000,*"), ("and a note.", "and a note."), ("Tell no one.", "\"Tell _no one._\"")]),
+    ("end",     [("So, would you keep it?", "So, would you *keep it?*")]),
 ]
 # lines whose "..." leads into a reveal (longer pause) and lines with a quick breath first
 REVEALS = {2, 10, 11}

@@ -4,430 +4,682 @@
    "i": 0,
    "scene": "door",
    "start": 0.5,
-   "dur": 3.909,
+   "dur": 4.448,
    "chunks": [
     [
      0.5,
-     2.22,
+     2.655,
      "It's *2:14 AM*..."
     ],
     [
-     2.5,
-     3.471,
+     2.655,
+     3.942,
      "and someone is _knocking_"
     ],
     [
-     3.471,
-     4.409,
+     3.942,
+     4.948,
      "on your door."
     ]
    ],
-   "text": "It's two fourteen A.M.... and someone is knocking on your door."
+   "text": "It's two fourteen A.M.... and someone is knocking on your door.",
+   "voice": "narr"
   },
   {
    "i": 1,
    "scene": "door2",
-   "start": 4.809,
-   "dur": 4.442,
+   "start": 5.298,
+   "dur": 4.773,
    "chunks": [
     [
-     5.09,
-     6.486,
+     5.298,
+     7.159,
      "A courier hands you a _box_."
     ],
     [
-     6.486,
-     7.957,
+     7.159,
+     8.824,
      "Your apartment number..."
     ],
     [
-     8.238,
-     9.252,
+     8.824,
+     10.071,
      "but *not your name.*"
     ]
    ],
-   "text": "A courier hands you a box. Your apartment number... but not your name."
+   "text": "A courier hands you a box. Your apartment number... but not your name.",
+   "voice": "narr"
   },
   {
    "i": 2,
    "scene": "cash",
-   "start": 9.652,
-   "dur": 5.435,
+   "start": 10.421,
+   "dur": 5.387,
    "chunks": [
     [
-     9.932,
-     11.468,
+     10.421,
+     12.274,
      "You open it. Inside..."
     ],
     [
-     11.888,
-     14.578,
+     12.274,
+     15.236,
      "*$250,000*"
     ],
     [
-     14.578,
-     15.087,
+     15.236,
+     15.808,
      "in _cash._"
     ]
    ],
-   "text": "You open it. Inside... two hundred and fifty thousand dollars! In cash."
+   "text": "You open it. Inside... two hundred and fifty thousand dollars! In cash.",
+   "voice": "narr"
   },
   {
    "i": 3,
    "scene": "note",
-   "start": 15.487,
-   "dur": 4.136,
+   "start": 16.158,
+   "dur": 5.066,
    "chunks": [
     [
-     15.487,
-     16.456,
+     16.158,
+     17.345,
      "Taped to the lid,"
     ],
     [
-     16.456,
-     16.836,
+     17.345,
+     17.909,
      "a _note._"
     ],
     [
-     16.836,
-     18.722,
+     17.909,
+     20.07,
      "Hold it for *48 hours.*"
     ],
     [
-     18.722,
-     19.623,
+     20.07,
+     21.224,
      "Tell _no one._"
     ]
    ],
-   "text": "Taped to the lid, a note. Hold it for forty-eight hours. Tell no one."
+   "text": "Taped to the lid, a note. Hold it for forty-eight hours. Tell no one.",
+   "voice": "narr"
   },
   {
    "i": 4,
    "scene": "spend",
-   "start": 20.373,
-   "dur": 3.327,
+   "start": 21.924,
+   "dur": 4.039,
    "chunks": [
     [
-     20.373,
-     21.501,
+     21.924,
+     23.33,
      "Your first thought"
     ],
     [
-     21.501,
-     21.999,
+     23.33,
+     23.876,
      "is to _spend it._"
     ],
     [
-     21.999,
-     22.766,
+     23.876,
+     24.837,
      "Rent. Debt."
     ],
     [
-     22.766,
-     23.7,
+     24.837,
+     25.963,
      "A new *car.*"
     ]
    ],
-   "text": "Your first thought is to spend it. Rent. Debt. A new car."
+   "text": "Your first thought is to spend it. Rent. Debt. A new car.",
+   "voice": "narr"
   },
   {
    "i": 5,
    "scene": "report",
-   "start": 24.101,
-   "dur": 7.683,
+   "start": 26.312,
+   "dur": 9.551,
    "chunks": [
     [
-     24.101,
-     25.472,
+     26.312,
+     28.019,
      "But any cash payment"
     ],
     [
-     25.472,
-     26.763,
+     28.019,
+     29.932,
      "over *$10,000*"
     ],
     [
-     26.763,
-     27.821,
+     29.932,
+     31.105,
      "gets _reported._"
     ],
     [
-     27.821,
-     29.182,
+     31.105,
+     32.385,
      "One big purchase..."
     ],
     [
-     29.462,
-     31.051,
+     32.385,
+     34.372,
      "and someone starts _asking_"
     ],
     [
-     31.051,
-     31.784,
+     34.372,
+     35.863,
      "where it *came from.*"
     ]
    ],
-   "text": "But any cash payment over ten thousand dollars gets reported. One big purchase... and someone starts asking where it came from."
+   "text": "But any cash payment over ten thousand dollars gets reported. One big purchase... and someone starts asking where it came from.",
+   "voice": "narr"
   },
   {
    "i": 6,
    "scene": "dial",
-   "start": 32.533,
-   "dur": 2.38,
+   "start": 36.563,
+   "dur": 2.808,
    "chunks": [
     [
-     32.533,
-     33.95,
+     36.563,
+     38.167,
      "So you reach for your _phone_"
     ],
     [
-     33.95,
-     34.913,
+     38.167,
+     39.371,
      "to call the *police.*"
     ]
    ],
-   "text": "So you reach for your phone to call the police."
+   "text": "So you reach for your phone to call the police.",
+   "voice": "narr"
   },
   {
    "i": 7,
    "scene": "burner",
-   "start": 35.313,
-   "dur": 4.08,
+   "start": 39.721,
+   "dur": 4.698,
    "chunks": [
     [
-     35.593,
-     36.707,
+     39.721,
+     41.264,
      "Then a *second phone*"
     ],
     [
-     36.707,
-     37.906,
+     41.264,
+     42.678,
      "in the box _lights up._"
     ],
     [
-     37.906,
-     39.393,
+     42.678,
+     44.419,
      "\"We see your *light* is on.\""
     ]
    ],
-   "text": "Then a second phone in the box lights up. We see your light is on."
+   "text": "Then a second phone in the box lights up. We see your light is on.",
+   "voice": "narr"
   },
   {
    "i": 8,
    "scene": "window",
-   "start": 39.793,
-   "dur": 4.76,
+   "start": 44.769,
+   "dur": 5.496,
    "chunks": [
     [
-     40.073,
-     41.129,
+     44.769,
+     46.092,
      "You look _outside._"
     ],
     [
-     41.129,
-     41.54,
+     46.092,
+     46.683,
      "A dark *car*"
     ],
     [
-     41.54,
-     43.314,
+     46.683,
+     48.954,
      "is parked across the street..."
     ],
     [
-     43.594,
-     44.553,
+     48.954,
+     50.265,
      "engine _running._"
     ]
    ],
-   "text": "You look outside. A dark car is parked across the street... engine running."
+   "text": "You look outside. A dark car is parked across the street... engine running.",
+   "voice": "narr"
   },
   {
    "i": 9,
    "scene": "search",
-   "start": 45.303,
-   "dur": 2.928,
+   "start": 50.965,
+   "dur": 3.595,
    "chunks": [
     [
-     45.303,
-     46.604,
+     50.965,
+     52.563,
      "So you _search_ the name"
     ],
     [
-     46.604,
-     47.106,
+     52.563,
+     53.834,
      "on the label."
     ],
     [
-     47.106,
-     48.231,
+     53.834,
+     54.56,
      "*Daniel Cross.*"
     ]
    ],
-   "text": "So you search the name on the label. Daniel Cross."
+   "text": "So you search the name on the label. Daniel Cross.",
+   "voice": "narr"
   },
   {
    "i": 10,
    "scene": "missing",
-   "start": 48.63,
-   "dur": 4.638,
+   "start": 54.91,
+   "dur": 5.37,
    "chunks": [
     [
-     48.63,
-     49.677,
+     54.91,
+     56.08,
      "The first result..."
     ],
     [
-     50.097,
-     51.663,
+     56.08,
+     58.131,
      "a *missing person* poster."
     ],
     [
-     51.663,
-     53.268,
+     58.131,
+     60.28,
      "Last seen _3 days ago._"
     ]
    ],
-   "text": "The first result... a missing person poster. Last seen three days ago."
+   "text": "The first result... a missing person poster. Last seen three days ago.",
+   "voice": "narr"
   },
   {
    "i": 11,
    "scene": "reveal",
-   "start": 53.668,
-   "dur": 5.123,
+   "start": 60.631,
+   "dur": 4.945,
    "chunks": [
     [
-     53.948,
-     55.706,
+     60.631,
+     62.746,
      "The box was meant for _him._"
     ],
     [
-     55.706,
-     57.12,
+     62.746,
+     64.091,
      "And whoever sent it..."
     ],
     [
-     57.54,
-     58.791,
+     64.091,
+     65.576,
      "now thinks *you're him.*"
     ]
    ],
-   "text": "The box was meant for him. And whoever sent it... now thinks you're him."
+   "text": "The box was meant for him. And whoever sent it... now thinks you're him.",
+   "voice": "narr"
   },
   {
    "i": 12,
    "scene": "garage",
-   "start": 59.191,
-   "dur": 5.542,
+   "start": 65.925,
+   "dur": 5.986,
    "chunks": [
     [
-     59.471,
-     60.415,
+     65.925,
+     67.102,
      "Another _message._"
     ],
     [
-     60.415,
-     63.024,
+     67.102,
+     70.019,
      "\"Parking garage. *Level -2.*"
     ],
     [
-     63.024,
-     64.733,
+     70.019,
+     71.911,
      "6 AM. _Come alone._\""
     ]
    ],
-   "text": "Another message. Parking garage. Level minus two. Six A.M. Come alone."
+   "text": "Another message. Parking garage. Level minus two. Six A.M. Come alone.",
+   "voice": "narr"
   },
   {
    "i": 13,
    "scene": "keep",
-   "start": 65.483,
-   "dur": 2.508,
+   "start": 72.611,
+   "dur": 2.525,
    "chunks": [
     [
-     65.483,
-     66.427,
+     72.611,
+     73.568,
      "If you _keep_ it..."
     ],
     [
-     66.707,
-     67.991,
+     73.568,
+     75.136,
      "they come *looking* for it."
     ]
    ],
-   "text": "If you keep it... they come looking for it."
+   "text": "If you keep it... they come looking for it.",
+   "voice": "narr"
   },
   {
    "i": 14,
    "scene": "bring",
-   "start": 68.391,
-   "dur": 3.545,
+   "start": 75.486,
+   "dur": 3.841,
    "chunks": [
     [
-     68.671,
-     69.584,
+     75.486,
+     76.48,
      "If you _bring_ it..."
     ],
     [
-     69.864,
-     71.521,
+     76.48,
+     78.789,
      "you walk into an *empty garage*"
     ],
     [
-     71.521,
-     71.936,
+     78.789,
+     79.327,
      "alone."
     ]
    ],
-   "text": "If you bring it... you walk into an empty garage alone."
+   "text": "If you bring it... you walk into an empty garage alone.",
+   "voice": "narr"
   },
   {
    "i": 15,
    "scene": "police",
-   "start": 72.336,
-   "dur": 3.495,
+   "start": 79.677,
+   "dur": 4.218,
    "chunks": [
     [
-     72.336,
-     73.533,
+     79.677,
+     81.199,
      "If you call the _police_..."
     ],
     [
-     73.813,
-     74.822,
+     81.199,
+     82.615,
      "you have to *explain*"
     ],
     [
-     74.822,
-     75.831,
+     82.615,
+     83.895,
      "why you opened it."
     ]
    ],
-   "text": "If you call the police... you have to explain why you opened it."
+   "text": "If you call the police... you have to explain why you opened it.",
+   "voice": "narr"
   },
   {
    "i": 16,
-   "scene": "final",
-   "start": 76.581,
-   "dur": 3.375,
+   "scene": "choose",
+   "start": 84.595,
+   "dur": 3.636,
    "chunks": [
     [
-     76.581,
-     77.861,
-     "So what do you do?"
+     84.595,
+     86.252,
+     "You pick the only one"
     ],
     [
-     77.861,
-     78.834,
-     "_Keep_ it, _bring_ it,"
+     86.252,
+     87.206,
+     "that ends _tonight._"
     ],
     [
-     78.834,
-     79.956,
-     "or call the *police?*"
+     87.206,
+     88.231,
+     "You *bring it.*"
     ]
    ],
-   "text": "So what do you do? Keep it, bring it, or call the police?"
+   "text": "You pick the only one that ends tonight. You bring it.",
+   "voice": "narr"
+  },
+  {
+   "i": 17,
+   "scene": "garage_in",
+   "start": 88.931,
+   "dur": 4.811,
+   "chunks": [
+    [
+     88.931,
+     91.299,
+     "*6 AM.* Level -2."
+    ],
+    [
+     91.299,
+     92.559,
+     "The lights _flicker._"
+    ],
+    [
+     92.559,
+     93.742,
+     "Nobody's *here.*"
+    ]
+   ],
+   "text": "Six A.M. Level minus two. The lights flicker. Nobody's here.",
+   "voice": "narr"
+  },
+  {
+   "i": 18,
+   "scene": "steps",
+   "start": 94.092,
+   "dur": 3.69,
+   "chunks": [
+    [
+     94.092,
+     95.709,
+     "You set the box _down,_"
+    ],
+    [
+     95.709,
+     96.811,
+     "and hear *footsteps*"
+    ],
+    [
+     96.811,
+     97.782,
+     "behind you."
+    ]
+   ],
+   "text": "You set the box down, and hear footsteps behind you.",
+   "voice": "narr"
+  },
+  {
+   "i": 19,
+   "scene": "daniel",
+   "start": 98.132,
+   "dur": 5.853,
+   "chunks": [
+    [
+     98.132,
+     100.273,
+     "A man steps out of the _dark._"
+    ],
+    [
+     100.273,
+     102.472,
+     "The face from the *poster.*"
+    ],
+    [
+     102.472,
+     103.985,
+     "Daniel Cross. *Alive.*"
+    ]
+   ],
+   "text": "A man steps out of the dark. The face from the poster. Daniel Cross. Alive.",
+   "voice": "narr"
+  },
+  {
+   "i": 20,
+   "scene": "daniel_says",
+   "start": 104.335,
+   "dur": 3.927,
+   "chunks": [
+    [
+     104.335,
+     105.524,
+     "\"You _opened_ it, didn't you?"
+    ],
+    [
+     105.524,
+     106.62,
+     "It was meant for *me.*"
+    ],
+    [
+     106.62,
+     108.262,
+     "They've been _hunting_ me all week.\""
+    ]
+   ],
+   "text": "You opened it, didn't you? It was meant for me. They've been hunting me all week.",
+   "voice": "daniel"
+  },
+  {
+   "i": 21,
+   "scene": "headlights",
+   "start": 108.613,
+   "dur": 3.135,
+   "chunks": [
+    [
+     108.613,
+     110.506,
+     "Then *headlights* flood the level."
+    ],
+    [
+     110.506,
+     111.748,
+     "The _dark car._"
+    ]
+   ],
+   "text": "Then headlights flood the level. The dark car.",
+   "voice": "narr"
+  },
+  {
+   "i": 22,
+   "scene": "run",
+   "start": 112.098,
+   "dur": 5.806,
+   "chunks": [
+    [
+     112.098,
+     114.657,
+     "Daniel grabs the box and *runs.*"
+    ],
+    [
+     114.657,
+     115.735,
+     "Tires _screech._"
+    ],
+    [
+     115.735,
+     117.904,
+     "They go after *him.* Not you."
+    ]
+   ],
+   "text": "Daniel grabs the box and runs. Tires screech. They go after him, not you.",
+   "voice": "narr"
+  },
+  {
+   "i": 23,
+   "scene": "burner_end",
+   "start": 118.254,
+   "dur": 4.318,
+   "chunks": [
+    [
+     118.254,
+     120.806,
+     "The burner buzzes _one last time._"
+    ],
+    [
+     120.806,
+     122.572,
+     "\"Thank you for *finding him.*\""
+    ]
+   ],
+   "text": "The burner buzzes one last time. Thank you for finding him.",
+   "voice": "narr"
+  },
+  {
+   "i": 24,
+   "scene": "realize",
+   "start": 123.271,
+   "dur": 3.171,
+   "chunks": [
+    [
+     123.271,
+     124.997,
+     "You didn't deliver the _money._"
+    ],
+    [
+     124.997,
+     126.442,
+     "You delivered *him.*"
+    ]
+   ],
+   "text": "You didn't deliver the money. You delivered him.",
+   "voice": "narr"
+  },
+  {
+   "i": 25,
+   "scene": "mailbox",
+   "start": 127.142,
+   "dur": 6.939,
+   "chunks": [
+    [
+     127.142,
+     128.438,
+     "The next _morning,_"
+    ],
+    [
+     128.438,
+     130.91,
+     "an *envelope* in your mailbox."
+    ],
+    [
+     130.91,
+     132.288,
+     "*$10,000,*"
+    ],
+    [
+     132.288,
+     132.885,
+     "and a note."
+    ],
+    [
+     132.885,
+     134.082,
+     "\"Tell _no one._\""
+    ]
+   ],
+   "text": "The next morning, an envelope in your mailbox. Ten thousand dollars, and a note. Tell no one.",
+   "voice": "narr"
+  },
+  {
+   "i": 26,
+   "scene": "end",
+   "start": 134.782,
+   "dur": 1.383,
+   "chunks": [
+    [
+     134.782,
+     136.165,
+     "So, would you *keep it?*"
+    ]
+   ],
+   "text": "So, would you keep it?",
+   "voice": "narr"
   }
  ],
- "duration": 83.96
+ "duration": 140.17
 }

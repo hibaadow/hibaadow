@@ -1,5 +1,5 @@
-"""Voiceover for THE 2AM DELIVERY: house male voice (Kokoro am_puck, ~180 wpm incl. pauses and breaths,
-pauses only at "...", quick breaths before tense lines, no pitch effects). Captions synced by phoneme share,
+"""Voiceover for THE 2AM DELIVERY: house male voice (Kokoro am_puck). Each line is read in one continuous
+pass (no stitched phrases, no added breaths or gain jumps) at a natural ~168 wpm; Daniel = am_onyx. Captions synced by phoneme share,
 snapped to real silences. Writes $SCR/vo2am/vo_XX.npy and timeline.json (line starts, caption chunk times)."""
 import json, os, subprocess, sys
 import numpy as np
@@ -13,11 +13,11 @@ from script import LINES, REVEALS, BREATH_BEFORE
 SCR = os.environ["SCR"]
 OUT = f"{SCR}/vo2am"
 os.makedirs(OUT, exist_ok=True)
-TARGET_WPM = 180
+TARGET_WPM = 168
 SR = 24000
 kk = Kokoro(f"{SCR}/kokoro/kokoro-v1.0.onnx", f"{SCR}/kokoro/voices-v1.0.bin")
 VOICE = "am_puck"
-MOODS = {2: (0.95, 1.0), 11: (0.93, 0.5), 12: (0.96, 0.5), 16: (0.94, 0.5)}   # slower on the reveals
+MOODS = {11: (0.95, 0), 24: (0.94, 0), 27: (0.95, 0)}   # a touch slower on the dark reveals
 
 
 def trim(a, thr=0.008):
@@ -47,33 +47,19 @@ def gaps(a, min_len=0.05):
     return out
 
 
-def synth_line(chunks, speed, reveal):
-    phrases, cur = [], []
-    for sp, cap in chunks:
-        cur.append((sp, cap))
-        if sp.rstrip().endswith("..."):
-            phrases.append(cur); cur = []
-    if cur:
-        phrases.append(cur)
-    audio, times, t = [], [], 0.0
-    for pi, ph in enumerate(phrases):
-        text = " ".join(sp for sp, _ in ph).replace("!...", "!").replace("...", ",")
-        a, _ = kk.create(text, voice=VOICE, speed=speed, lang="en-us", sentence_pause=0.14, clause_pause=0.04)
-        a = trim(np.asarray(a, np.float32)); d = len(a) / SR
-        w = [phon_len(sp) for sp, _ in ph]; cum = np.cumsum(w) / sum(w); g = gaps(a)
-        bounds = [0.0]
-        for c in cum[:-1]:
-            est = c * d
-            near = [(abs((g0 + g1) / 2 - est), (g0 + g1) / 2) for g0, g1 in g if abs((g0 + g1) / 2 - est) < 0.3]
-            bounds.append(min(near)[1] if near else est)
-        bounds.append(d)
-        for k, (sp, cap) in enumerate(ph):
-            times.append([round(t + bounds[k], 3), round(t + bounds[k + 1], 3), cap])
-        audio.append(a); t += d
-        if pi < len(phrases) - 1:
-            p = 0.42 if reveal else 0.28
-            audio.append(np.zeros(int(p * SR), np.float32)); t += p
-    return np.concatenate(audio), times
+def synth_line(chunks, speed, reveal, voice=VOICE):
+    """one continuous read per line (no stitching): Kokoro handles the flow; "..." becomes a comma pause"""
+    text = " ".join(sp for sp, _ in chunks).replace("!...", "!").replace("...", ",")
+    a, _ = kk.create(text, voice=voice, speed=speed, lang="en-us", sentence_pause=0.24, clause_pause=0.1)
+    a = trim(np.asarray(a, np.float32)); d = len(a) / SR
+    w = [phon_len(sp) for sp, _ in chunks]; cum = np.cumsum(w) / sum(w); g = gaps(a)
+    bounds = [0.0]
+    for c in cum[:-1]:
+        est = c * d
+        near = [(abs((g0 + g1) / 2 - est), (g0 + g1) / 2) for g0, g1 in g if abs((g0 + g1) / 2 - est) < 0.35]
+        bounds.append(min(near)[1] if near else est)
+    bounds.append(d)
+    return a, [[round(bounds[k], 3), round(bounds[k + 1], 3), cap] for k, (sp, cap) in enumerate(chunks)]
 
 
 def breath(dur=0.24, seed=0):
@@ -99,19 +85,20 @@ words = lambda ch: sum(len(sp.split()) for sp, _ in ch)
 speed = 0.9
 for _ in range(3):
     w = d = 0
-    for i, (_, ch) in enumerate(LINES):
-        a, _t = synth_line(ch, speed * MOODS.get(i, (1, 0))[0], i in REVEALS)
-        w += words(ch); d += len(a) / SR + (0.28 if i in BREATH_BEFORE else 0)
+    for i, ln in enumerate(LINES):
+        if len(ln) > 2: continue
+        a, _t = synth_line(ln[1], speed * MOODS.get(i, (1, 0))[0], False)
+        w += words(ln[1]); d += len(a) / SR
     wpm = w / d * 60; speed *= TARGET_WPM / wpm
     print(f"wpm {wpm:.0f} -> speed {speed:.3f}")
 
 meta, S = [], 0.5
-for i, (scene, ch) in enumerate(LINES):
-    a, times = synth_line(ch, speed * MOODS.get(i, (1, 0))[0], i in REVEALS)
-    a = emphasize(a, times, MOODS.get(i, (1, 0))[1])
-    if i in BREATH_BEFORE:
-        a = np.concatenate([breath(0.24, i), np.zeros(int(0.04 * SR), np.float32), a])
-        times = [[round(c0 + 0.28, 3), round(c1 + 0.28, 3), cap] for c0, c1, cap in times]
+for i, ln in enumerate(LINES):
+    scene, ch = ln[0], ln[1]
+    if len(ln) > 2:
+        a, times = synth_line(ch, 0.95, False, voice="am_onyx")
+    else:
+        a, times = synth_line(ch, speed * MOODS.get(i, (1, 0))[0], False)
     sf.write(f"{OUT}/raw_{i:02d}.wav", a, SR)
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", f"{OUT}/raw_{i:02d}.wav", "-af", "aresample=44100,aecho=0.8:0.5:40|80:0.06|0.03",
                     "-ac", "1", f"{OUT}/vo_{i:02d}.wav"], check=True)
@@ -119,11 +106,11 @@ for i, (scene, ch) in enumerate(LINES):
     dur = len(a) / SR
     meta.append({"i": i, "scene": scene, "start": round(S, 3), "dur": round(dur, 3),
                  "chunks": [[round(S + c0, 3), round(S + c1, 3), cap] for c0, c1, cap in times],
-                 "text": " ".join(sp for sp, _ in ch)})
+                 "text": " ".join(sp for sp, _ in ch), "voice": "daniel" if len(ln) > 2 else "narr"})
     nxt = LINES[i + 1][0] if i + 1 < len(LINES) else None
-    S += dur + (0.75 if nxt in ("spend", "dial", "search", "keep", "final") else 0.4)
+    S += dur + (0.7 if nxt in ("spend", "dial", "search", "keep", "choose", "garage_in", "realize", "mailbox", "end") else 0.35)
 end = meta[-1]["start"] + meta[-1]["dur"] + 4.0
 json.dump({"lines": meta, "duration": round(end, 2)}, open(os.path.join(HERE, "timeline.json"), "w"), indent=1)
-print(f"narrator {sum(words(c) for _, c in LINES) / sum(m['dur'] for m in meta) * 60:.0f} wpm; total {end:.1f}s")
+print(f"narrator {sum(words(l[1]) for l in LINES) / sum(m['dur'] for m in meta) * 60:.0f} wpm; total {end:.1f}s")
 for m in meta:
     print(f"{m['i']:02d} {m['start']:6.2f} +{m['dur']:.2f} {m['scene']:8s} {m['text']}")

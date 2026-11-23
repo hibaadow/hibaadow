@@ -407,6 +407,204 @@ SCENES = {"door": sc_door, "door2": sc_door, "cash": sc_cash, "note": sc_note, "
           "reveal": sc_reveal, "garage": sc_garage, "keep": sc_choices, "bring": sc_choices, "police": sc_choices, "final": sc_final}
 
 
+# ================================================================ the ending (lines 16-26)
+DANIEL = m35.NEW_PAL
+
+
+def small_box(cv, x, y, s=1.0):
+    cv.rrect(x - 90 * s, y - 60 * s, x + 90 * s, y + 60 * s, 6 * s, (150, 112, 70))
+    cv.rect(x - 90 * s, y - 8 * s, x + 90 * s, y + 8 * s, (200, 170, 110))
+
+
+def garage_bg(cv, t, flick=True, flood=0.0):
+    cv.rect(0, 0, W, H, (16, 16, 20))
+    cv.rect(0, 1300, W, H, (30, 30, 34))
+    for k in range(6):                                          # parking lines on the floor
+        x = 40 + k * 210
+        cv.poly([(x, 1300), (x + 14, 1300), (x - 40 + 14, H), (x - 40, H)], (70, 70, 60))
+    for px in (120, 960):                                       # pillars
+        cv.rect(px - 70, 250, px + 70, 1320, (44, 44, 50)); cv.rect(px - 70, 980, px + 70, 1060, (200, 170, 40))
+        cv.text((px, 760), "P−2", "anton", 70, (190, 40, 50))
+    for k, lx in enumerate((300, 780)):                         # fluorescent tubes
+        on = 1.0 if not flick else (0.2 if hrand(int(t * 9) + k * 7, 4) < 0.16 else 1.0)
+        cv.rrect(lx - 110, 370, lx + 110, 388, 8, (int(220 * on), int(235 * on), int(255 * on)))
+        cv.glow_ell(lx, 400, 260, 140, (190, 210, 255), int(80 * on))
+    if flood > 0:
+        cv.glow_ell(0, 1000, 820 * flood, 400 * flood, (255, 250, 230), int(200 * flood))
+        cv.circ(30, 1000, 46 * flood, (255, 255, 240)); cv.circ(30, 1140, 46 * flood, (255, 255, 240))
+
+
+def sc_choose(cv, t, lt, i):
+    bg(cv, BLUE, 30)
+    pick = eout(prog(t, chunk_t(16, 2), chunk_t(16, 2) + 0.35))
+    for k, (c, txt) in enumerate([(BLUE, "KEEP IT"), (AMBER, "BRING IT"), (RED, "CALL THE POLICE")]):
+        sel = k == 1
+        p = 1 + (0.08 * pick if sel else 0)
+        y = 560 + k * 220
+        cc = c if (sel or pick < 0.01) else tuple(int(v * (1 - 0.7 * pick) + 30 * 0.7 * pick) for v in c)
+        w2, h2 = 380 * p, 78 * p
+        cv.rrect(540 - w2, y - h2, 540 + w2, y + h2, h2, cc)
+        if sel: cv.glow_ell(540, y, w2 * 1.1, h2 * 1.4, c, int(60 + 120 * pick))
+        cv.text((540, y), txt, "interx", 62 * p, (12, 10, 18))
+    return (540, 960, 1.0)
+
+
+def sc_garage_in(cv, t, lt, i):
+    garage_bg(cv, t)
+    you_stand(cv, 540, 1330, s=0.9, eyes=True, look=0.0, hold=lambda hx, hy: small_box(cv, hx - 10, hy + 20, 0.9))
+    return (540, 900, lerp(1.0, 1.12, ease(prog(lt, 0, 5))))
+
+
+def sc_steps(cv, t, lt, i):
+    garage_bg(cv, t)
+    small_box(cv, 600, 1290, 1.0)
+    turn = ease(prog(t, chunk_t(18, 1), chunk_t(18, 1) + 0.4))
+    you_stand(cv, 420, 1330, s=0.9, eyes=True, look=lerp(0.3, 0.95, turn))
+    if t > chunk_t(18, 1):                                      # a long shadow creeping in from the right
+        u = ease(prog(t, chunk_t(18, 1), chunk_t(18, 2) + 0.8))
+        man_shadow(cv, lerp(1250, 1020, u), 1330, 0.9, holds_phone=False, a=230)
+    return (540, 950, lerp(1.0, 1.08, ease(prog(lt, 0, 4))))
+
+
+def sc_daniel(cv, t, lt, i):
+    garage_bg(cv, t)
+    small_box(cv, 540, 1290, 1.0)
+    you_stand(cv, 290, 1330, s=0.9, eyes=True, look=0.95)
+    u = ease(prog(lt, 0.0, 1.6))
+    you_stand(cv, lerp(1150, 790, u), 1330, s=0.92, eyes=True, look=-0.6, pal=DANIEL)
+    if t >= chunk_t(19, 1):                                     # the poster, for comparison
+        q = eout(prog(t, chunk_t(19, 1), chunk_t(19, 1) + 0.35))
+        x0, y0 = 640, 380 + slide(q, 40)
+        cv.rect(x0, y0, x0 + 330, y0 + 420, (238, 234, 224))
+        cv.text((x0 + 165, y0 + 60), "MISSING", "anton", 60, (200, 30, 44))
+        cv.rect(x0 + 75, y0 + 110, x0 + 255, y0 + 300, (180, 176, 170))
+        cv.circ(x0 + 165, y0 + 170, 34, (120, 116, 112)); cv.rrect(x0 + 115, y0 + 210, x0 + 215, y0 + 300, 20, (120, 116, 112))
+        cv.text((x0 + 165, y0 + 350), "DANIEL CROSS", "interx", 32, INK)
+        if t >= chunk_t(19, 2):
+            a = eout(prog(t, chunk_t(19, 2), chunk_t(19, 2) + 0.3))
+            cv.rrect(x0 + 30, y0 + 160, x0 + 300, y0 + 240, 12, (40, 170, 90))
+            cv.text((x0 + 165, y0 + 200), "ALIVE", "anton", 64 * (0.8 + 0.2 * a), WHITE)
+    return (540, 960, 1.0)
+
+
+def sc_daniel_says(cv, t, lt, i):
+    garage_bg(cv, t)
+    small_box(cv, 540, 1290, 1.0)
+    you_stand(cv, 300, 1330, s=0.9, eyes=True, look=0.9)
+    jit = math.sin(t * 13) * 3                                  # he's shaking
+    you_stand(cv, 780 + jit, 1330, s=0.92, eyes=True, look=-0.8, pal=DANIEL)
+    return (lerp(600, 680, ease(prog(lt, 0, 4))), 900, lerp(1.05, 1.25, ease(prog(lt, 0, 4))))
+
+
+def sc_headlights(cv, t, lt, i):
+    f = ease(prog(lt, 0.0, 0.5))
+    garage_bg(cv, t, flick=False, flood=f)
+    small_box(cv, 540, 1290, 1.0)
+    you_stand(cv, 300, 1330, s=0.9, eyes=True, look=-0.9, arms_up=0.4 * f)
+    you_stand(cv, 780, 1330, s=0.92, eyes=True, look=-0.9, pal=DANIEL, arms_up=0.6 * f)
+    return (540 + math.sin(t * 40) * 4 * (lt < 0.6), 960, 1.0)
+
+
+def sc_run(cv, t, lt, i):
+    garage_bg(cv, t, flick=False, flood=1.0 - 0.6 * ease(prog(t, chunk_t(22, 2), chunk_t(22, 2) + 1.0)))
+    you_stand(cv, 300, 1330, s=0.9, eyes=True, look=0.9)
+    u = prog(lt, 0.3, 4.2)
+    if u < 1:
+        old = m35.HOODIE_PAL; m35.HOODIE_PAL = DANIEL
+        dx = lerp(720, 1260, u)
+        m35.you_run(cv, dx, 1330, t * 14, s=0.9)
+        m35.HOODIE_PAL = old
+        small_box(cv, dx + 130, 910, 0.7)
+    else:
+        pass
+    if t >= chunk_t(22, 1):                                     # the car tears past after him
+        cu = prog(t, chunk_t(22, 1), chunk_t(22, 1) + 1.6)
+        cx = lerp(-500, 1700, ease(cu))
+        cv.rrect(cx - 260, 1110, cx + 260, 1260, 40, (8, 8, 12)); cv.rrect(cx - 170, 1030, cx + 130, 1130, 40, (8, 8, 12))
+        for wx in (cx - 170, cx + 170): cv.circ(wx, 1270, 54, (4, 4, 6))
+        cv.glow(cx + 270, 1160, 200, (255, 250, 230), 200)
+        for k in range(6):
+            y = 1050 + k * 40; cv.line([(cx - 300 - 260 * hrand(k, 3), y), (cx - 300, y)], (120, 120, 140), 4)
+    return (540, 960, 1.0)
+
+
+def sc_burner_end(cv, t, lt, i):
+    cv.rect(0, 0, W, H, (12, 10, 16))
+    cv.glow_ell(540, 900, 500, 500, (120, 170, 255), int(70 + 40 * math.sin(t * 10) ** 2))
+    cv.rrect(330, 520, 750, 1290, 40, (16, 16, 22)); cv.rrect(360, 560, 720, 960, 16, (150, 190, 255))
+    for r in range(4):
+        for c in range(3):
+            cv.circ(420 + c * 120, 1030 + r * 62, 22, (50, 50, 60))
+    cv.text((540, 610), "UNKNOWN", "mono", 26, (20, 30, 60))
+    if t >= chunk_t(23, 1):
+        q = prog(t, chunk_t(23, 1), chunk_t(23, 1) + 0.3)
+        cv.rrect(385, 660 + slide(q, 20), 695, 900 + slide(q, 20), 16, (230, 236, 250))
+        for k, w in enumerate(("Thank you", "for finding", "him.")):
+            cv.text((410, 710 + k * 62 + slide(q, 20)), w, "interx", 44, INK, anchor="lm")
+    shake = math.sin(t * 70) * 6 if lt < 1.2 else 0
+    return (540 + shake, 900, lerp(1.0, 1.1, ease(prog(lt, 0, 4))))
+
+
+def sc_realize(cv, t, lt, i):
+    cv.rect(0, 0, W, H, (10, 6, 10))
+    cv.glow_ell(540, 1300, 600, 400, (200, 20, 40), 60)
+    cv.text((540, 560), "YOU DIDN'T DELIVER", "interx", 64, GREY)
+    cv.text((540, 650), "THE MONEY.", "interx", 64, GREY)
+    if t >= chunk_t(24, 1):
+        q = eout(prog(t, chunk_t(24, 1), chunk_t(24, 1) + 0.4))
+        cv.text((540, 820), "YOU DELIVERED", "anton", 120 * (0.9 + 0.1 * q), RED)
+        cv.text((540, 950), "HIM.", "anton", 150 * (0.9 + 0.1 * q), RED); cv.glow(540, 880, 360, (220, 30, 50), int(80 * q))
+    return (540, 960, 1.0)
+
+
+def sc_mailbox(cv, t, lt, i):
+    cv.rect(0, 0, W, H, (40, 46, 70)); cv.glow_ell(800, 300, 700, 500, (255, 200, 150), 70)
+    cv.rect(0, 1350, W, H, (54, 50, 60))
+    open_u = ease(prog(t, chunk_t(25, 2), chunk_t(25, 2) + 0.5))
+    if open_u < 1:                                              # mailbox on the wall
+        cv.rrect(330, 700, 750, 1000, 30, (70, 74, 96)); cv.rrect(370, 760, 710, 800, 10, (30, 30, 40))
+        cv.rrect(420, 730 - 40 * ease(prog(lt, 0.4, 1.4)), 660, 790, 6, (236, 230, 214))
+        cv.text((540, 900), "4B", "interx", 60, (200, 204, 230))
+    if open_u > 0:                                              # the envelope: cash and a note
+        y = 560 + slide(open_u, 80)
+        cv.rrect(220, y, 860, y + 520, 20, (226, 214, 186))
+        for k in range(4): cash_stack(cv, 360 + (k % 2) * 300, y + 130 + (k // 2) * 110, 240, 90)
+        cv.text((540, y + 400), "$10,000", "interx", 90, (40, 120, 60))
+        if t >= chunk_t(25, 4):
+            nu = eout(prog(t, chunk_t(25, 4), chunk_t(25, 4) + 0.4))
+            cv.rect(300, y + 600 + slide(nu, 40), 780, y + 760 + slide(nu, 40), PAPER)
+            cv.text((540, y + 680 + slide(nu, 40)), "TELL NO ONE.", "anton", 80, (170, 30, 40))
+    you_stand(cv, 150, 1650, s=0.6, eyes=True, look=0.8)
+    return (540, 960, 1.0)
+
+
+def sc_end(cv, t, lt, i):
+    bg(cv, RED, 30)
+    for k, (c, txt) in enumerate([(GREEN, "KEEP IT"), (RED, "GIVE IT BACK")]):
+        u = prog(lt, 0.2 + k * 0.3, 0.6 + k * 0.3)
+        if u <= 0: continue
+        p = 1 + 0.02 * math.sin(t * 4 + k)
+        y = 620 + k * 230 + slide(u)
+        w2, h2 = 360 * p, 80 * p
+        cv.rrect(540 - w2, y - h2, 540 + w2, y + h2, h2, c); cv.glow_ell(540, y, w2, h2, c, 60)
+        cv.text((540, y), txt, "interx", 62, (12, 10, 18))
+    u = prog(lt, 1.6, 2.1)
+    if u > 0: cv.text((540, 1180 + slide(u, 30)), "Comment what you'd do", "interx", 56, WHITE)
+    u = prog(lt, 2.6, 3.4)
+    if u > 0: cv.text((540, 380), "THE END", "anton", 90, (200, 200, 214))
+    return (540, 960, 1.0)
+
+
+SCENES.update({"choose": sc_choose, "garage_in": sc_garage_in, "steps": sc_steps, "daniel": sc_daniel, "daniel_says": sc_daniel_says,
+               "headlights": sc_headlights, "run": sc_run, "burner_end": sc_burner_end, "realize": sc_realize, "mailbox": sc_mailbox, "end": sc_end})
+LABELS.update({"choose": "YOUR CALL", "garage_in": "6:00 AM · LEVEL −2", "steps": "6:00 AM · LEVEL −2", "daniel": "6:00 AM · LEVEL −2",
+               "daniel_says": "6:00 AM · LEVEL −2", "headlights": "6:00 AM · LEVEL −2", "run": "6:00 AM · LEVEL −2",
+               "mailbox": "THE NEXT MORNING", "end": "THE NEXT MORNING"})
+LABELS.pop("final", None)
+CLOCK += ["05:59", "06:00", "06:01", "06:02", "06:02", "06:03", "06:03", "06:05", "06:06", "08:40", "08:41"]
+RISK[:] = RISK[:16] + [97, 97, 98, 99, 99, 100, 100, 60, 40, 20, 20, 20]
+
+
 # ---------------------------------------------------------------- overlays
 def draw_hud(img, t, i):
     d = ImageDraw.Draw(img, "RGBA")
@@ -420,7 +618,10 @@ def draw_hud(img, t, i):
     d.text((80, 132), CLOCK[i], font=F("mono", 50), fill=WHITE, anchor="lm")
     c0 = chunk_t(2, 1)
     cash = 0 if t < c0 else (250000 if t > c0 + 0.9 else int(250000 * eout(prog(t, c0, c0 + 0.9))) // 1000 * 1000)
+    if t >= chunk_t(22, 0) + 1.0: cash = 0
+    if t >= chunk_t(25, 2): cash = 10000
     d.text((360, 132), "${:,}".format(cash), font=F("mono", 46), fill=AMBER, anchor="lm")
+    risk = min(risk, 100)
     d.text((640, 132), f"{int(risk)}%", font=F("mono", 46), fill=RED, anchor="lm")
     d.rounded_rectangle([790, 122, 1000, 142], radius=10, fill=(60, 50, 66))
     d.rounded_rectangle([790, 122, 790 + max(20, 210 * risk / 100), 142], radius=10, fill=RED)
@@ -490,7 +691,7 @@ def frame(t):
     cv = Cv(BG)
     cam = SCENES[l["scene"]](cv, t, lt, i)
     # punch-in on every scene change
-    if lt < 0.25 and l["scene"] not in ("door2", "bring", "police"):
+    if lt < 0.25 and l["scene"] not in ("door2", "bring", "police", "steps", "daniel", "daniel_says", "headlights", "run"):
         cx, cy, z = cam; cam = (cx, cy, z * (1 + 0.05 * (1 - eout(lt / 0.25))))
     img = camera(cv, *cam)
     img = post(img, t)
