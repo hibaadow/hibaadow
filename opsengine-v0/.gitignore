@@ -11,3 +11,4 @@ data/customers/*
 # build output for manual website upload
 launch/*.zip
 launch/outreach/.bcc
+/cleartowork-website.zip
