@@ -1,5 +1,7 @@
 # Phone cheat sheet and follow-ups
 
+**Wording rule (founder):** never write "no sales pitch" or similar in outreach; it puts people off.
+
 ## Phone calls (M&N Civils, BH Groundworks)
 Goal of the call: **get the right person's email**. Not to sell. 1 minute.
 

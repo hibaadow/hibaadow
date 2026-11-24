@@ -180,6 +180,9 @@ task**, prepare everything it needs (drafts, lists, exact steps), and hand over 
 to do in 15 minutes or less. When they say it's done, tick the box and commit.
 Do all build work yourself; only items in `launch/04_only_you_checklist.md` need the founder.
 
+Outreach wording: never say "no sales pitch" (or similar) in messages to firms; the founder finds it
+puts people off. Every outreach email sent for the founder BCCs the founder's Gmail so it shows in their inbox.
+
 ## Roadmap (next steps, in order)
 
 1. **Connectors:** real sending (WhatsApp Business API, email) and inbound capture

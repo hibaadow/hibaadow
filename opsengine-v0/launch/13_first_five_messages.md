@@ -17,7 +17,7 @@ only in a follow-up, not the first message: first messages land better short and
 > Hi Kane, I read about KN Electrical's work with Glenveagh and Glenbeigh. Quick question: how much
 > time goes on the paperwork main contractors ask for (Safe Pass, CSCS, insurance certs, RAMS)?
 > I'm setting up ClearToWork, a service that handles that admin for subcontractors, and I'd value
-> 10 minutes of your view. No sales pitch, just 3 questions. [your name]
+> 10 minutes of your view. Just 3 quick questions. [your name]
 
 ## 2. Summit Scaffolding Ltd: Keith Dwyer (director)
 - **Status:** Irish company since 2016 (CRO 583615). Building Ireland's 2024 feature names Keith
@@ -26,8 +26,8 @@ only in a follow-up, not the first message: first messages land better short and
 - **How to reach:** LinkedIn "Keith Dwyer Summit Scaffolding", or the contact page on summitscaffolding.ie.
 > Hi Keith, with Summit's team spread across Dublin and Wexford, I'd guess keeping everyone's Safe
 > Pass, CSCS and main contractor paperwork in date is a job in itself. I'm setting up ClearToWork, a
-> service that takes that admin off subcontractors. Could I ask you 3 quick questions? 10 minutes,
-> no sales pitch. [your name]
+> service that takes that admin off subcontractors. Could I ask you 3 quick questions? It would take
+> 10 minutes. [your name]
 
 ## 3. Maor Scaffolding: owner / office manager
 - **Status:** Clondalkin (Kingswood Cross, D22), founded 2006, profiled in 2024; sites include
@@ -36,7 +36,7 @@ only in a follow-up, not the first message: first messages land better short and
 > Hi there, I'm getting in touch about Maor's site paperwork. On big sites like Dublin Airport the
 > main contractors want a lot: Safe Pass, CSCS, insurance certs, RAMS. I'm setting up ClearToWork, a
 > service that chases and keeps all of that in date for subcontractors. Could the person who looks
-> after it spare 10 minutes for 3 questions? No sales pitch. Thanks, [your name]
+> after it spare 10 minutes for 3 questions? Thanks, [your name]
 
 ## 4. M&N Groundworks: owner / office manager
 - **Status:** company since 2004. A Building Ireland profile says it works with Sisk, JJ Rhattigan,
@@ -47,7 +47,7 @@ only in a follow-up, not the first message: first messages land better short and
 > Hi, I saw M&N works with main contractors like Sisk and John Paul. Quick question: how much time
 > does your office spend on the paperwork they ask for (Safe Pass, CSCS, insurance certs, RAMS)? I'm
 > setting up ClearToWork, a service that handles that admin for subcontractors, and I'd value 10
-> minutes of your view. No sales pitch, just 3 questions. [your name]
+> minutes of your view. Just 3 quick questions. [your name]
 
 ## 5. BH Groundworks Ltd: owner
 - **Status:** profile is from 2016 (Bray South Business Park, Bray), so **check it's still trading**
@@ -56,8 +56,8 @@ only in a follow-up, not the first message: first messages land better short and
   next firm on the list (O'Keeffe Civil).
 > Hi, I came across BH Groundworks' work for the councils, ESB and Irish Water. Those jobs come with
 > a lot of paperwork: Safe Pass, CSCS, insurance certs, RAMS. I'm setting up ClearToWork, a service
-> that takes that admin off subcontractors. Could I ask you 3 quick questions? 10 minutes, no sales
-> pitch. [your name]
+> that takes that admin off subcontractors. Could I ask you 3 quick questions? It would take
+> 10 minutes. [your name]
 
 ---
 

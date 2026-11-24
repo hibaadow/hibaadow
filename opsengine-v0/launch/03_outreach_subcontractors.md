@@ -12,7 +12,7 @@ the number on their website), local trade Facebook groups, people you know who w
 > Hi [name], quick question as a [trade] firm owner: how much time does your team spend
 > chasing Safe Pass photos, insurance certs and main contractor paperwork? I'm building a
 > service that handles that admin for subcontractors and want to get it right. Could I ask
-> you 3 quick questions? 10 minutes, no sales pitch.
+> you 3 quick questions? It would take 10 minutes.
 
 ## WhatsApp / text (if they gave you their number)
 > Hi [name], [your name] here. I'm talking to [trade] firms about the paperwork main
