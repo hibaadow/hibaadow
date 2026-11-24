@@ -61,6 +61,30 @@ only in a follow-up, not the first message: first messages land better short and
 
 ---
 
+## Sending by email instead
+Best for these trade firms (many owners rarely check LinkedIn). Rules that keep it legal and
+welcome (Irish / EU rules for business emails):
+- Send to the **company's published address** (info@, office@, or the website contact form).
+  Avoid guessing someone's personal email.
+- One email per firm, written for them (the messages above), never a bulk blast.
+- Say who you are and give an easy way out (the last line below).
+- Best sender: **hello@cleartowork.ie** once the domain is live. Until then, your Gmail is fine for
+  these 5.
+
+**Subject lines**
+1. KN Electrical: `Quick question about main contractor paperwork`
+2. Summit Scaffolding: `Safe Pass / CSCS admin across Dublin and Wexford`
+3. Maor Scaffolding: `Site paperwork on the big jobs: 3 quick questions`
+4. M&N Groundworks: `Quick question about Sisk / John Paul paperwork`
+5. BH Groundworks: `Council and utility jobs: the paperwork side`
+
+**Sign-off (add to each email)**
+> [your name]
+> ClearToWork · cleartowork.ie · [phone]
+> If this isn't for you, just reply "no thanks" and I won't contact you again.
+
+---
+
 ## Sources
 - [KN Electrical: Building Ireland](https://buildingirelandmagazine.com/taking-charge-of-your-electrical-needs/), [second profile](https://buildingirelandmagazine.com/?p=8247)
 - [Summit Scaffolding: Golden Pages](https://www.goldenpages.ie/summit-scaffolding-ltd-rathcoole-D24/), [Building Ireland 2024](https://buildingirelandmagazine.com/?p=10580), [Solocheck](https://www.solocheck.ie/Irish-Company/Summit-Scaffolding-Limited-583615)
