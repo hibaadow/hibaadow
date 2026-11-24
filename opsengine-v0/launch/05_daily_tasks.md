@@ -17,6 +17,11 @@ Tell Claude "done" when finished and it ticks the box.
       - CNAME `rsend` (sending)
       - CNAME `send` (sending)
       - TXT `_dmarc` (DMARC, recommended)
+- [ ] **Day 2c.** Free forwarding: hello@cleartowork.ie -> your Gmail via ImprovMX (free).
+      Now: make an ImprovMX account, add cleartowork.ie, alias `hello` -> your Gmail.
+      When the domain is Active: add ImprovMX's 2 MX records + 1 TXT (SPF) in Blacknight.
+      Then: Gmail "Send mail as" hello@cleartowork.ie through Resend SMTP (once Resend shows
+      the domain verified). Upgrade to a real mailbox when the first pilot customer signs.
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
 - [ ] **Day 4.** Send the first message to 5 subcontractors. (15 min)
