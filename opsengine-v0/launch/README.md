@@ -19,6 +19,7 @@ the founder does **one task a day, 15 minutes or less** (see `05_daily_tasks.md`
 | `12_pricing.md` | Internal pricing plan to test on calls (not public yet) |
 | `13_first_five_messages.md` | The first 5 firms checked, with personalised messages ready to paste |
 | `14_calls_and_followups.md` | Phone cheat sheet (questions firms ask) and one follow-up per firm |
+| `15_outreach_log.md` | Who was contacted, when, how, and when to follow up |
 | `pitch/ClearToWork_pitch.pdf` | One-page pitch PDF to attach to emails (source: `pitch/pitch.html`) |
 | `../../cleartowork-explainer/` | 57 s explainer video (house character + voice) for outreach and the website |
 | `../site/index.html` | The cleartowork.ie website (one page; served by Caddy, see `../deploy/`) |
