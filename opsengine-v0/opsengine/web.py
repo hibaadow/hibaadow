@@ -569,7 +569,16 @@ def parse_outbox(text):
 
 
 def view_report(portal, eng, cid, role):
-    return f'<section><div class="card msg">{md_to_html(weekly_summary(eng))}</div></section>'
+    mcs = []
+    for s in eng.customer.company.get("sites", []):
+        m = s.get("main_contractor")
+        if m and m not in mcs:
+            mcs.append(m)
+    links = "".join(f'<li><a href="/c/{cid}/pack?contractor={urllib.parse.quote(m)}" target="_blank">'
+                    f'{e_(eng.kb.main_contractors.get(m, {}).get("name", m))}</a></li>' for m in mcs)
+    packs = (f'<div class="card"><h3>Main contractor packs</h3><p class="muted">Everything each main contractor asks for, in one '
+             f'page you can print or save as PDF, with copies of the documents on file.</p><ul>{links}</ul></div>') if mcs else ""
+    return f'<section>{packs}<div class="card msg">{md_to_html(weekly_summary(eng))}</div></section>'
 
 
 CARD_TYPES = ("safe_pass", "cscs_excavator", "cscs_dumper", "cscs_slinger_signaller", "cscs_scaffolding")
@@ -824,6 +833,28 @@ class Handler(BaseHTTPRequestHandler):
                     body = f'<p class="flash err">No issue {e_(parts[3])} for this customer.</p><a href="/c/{cid}/issues">See all issues ›</a>'
                 else:
                     body = view_issue(p, eng, cid, role, parts[3])
+            elif tab in ("pack", "packfile"):
+                from .pack import build_pack
+                mc = q.get("contractor", [""])[0]
+                folder = p.state / "packs" / cid
+                if tab == "pack":
+                    try:
+                        out = build_pack(eng, mc, folder)
+                    except ValueError as exc:
+                        return self.send_html(f"<p>{e_(str(exc))}</p>", 404)
+                    page_html = (out / "pack.html").read_text(encoding="utf-8").replace(
+                        'href="evidence/', f'href="/c/{cid}/packfile?contractor={urllib.parse.quote(mc)}&name=')
+                    return self.send_html(page_html)
+                name = Path(q.get("name", [""])[0]).name
+                f = (folder / Path(mc).name / "evidence" / name)
+                if not name or not f.is_file():
+                    return self.send_html("Not found", 404)
+                data = f.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".pdf": "application/pdf"}.get(f.suffix.lower(), "application/octet-stream"))
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                return self.wfile.write(data)
             elif tab == "message":
                 body = view_message(p, eng, cid, role, q.get("path", [""])[0])
             elif tab in ("people", "subcontractors", "equipment"):

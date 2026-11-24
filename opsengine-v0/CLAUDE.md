@@ -79,6 +79,7 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/auth.py` | Logins: accounts, scrypt passwords, sessions; customers only see their own company |
 | `opsengine/inbound.py` | Inbound email (IMAP): replies and photos filed to the right customer and issue |
 | `opsengine/links.py` | Approve-by-link: signed, single-use, expiring tokens; approval emails |
+| `opsengine/pack.py` | Main contractor pack: one printable page + evidence copies per contractor (`pack`, portal Weekly report) |
 | `deploy/` | Server setup: systemd services/timers, Caddy HTTPS, backups, alerts (`deploy/SETUP.md`) |
 | `launch/` | Launch kit, daily founder tasks and the build sprint (`06_build_sprint.md`) |
 | `opsengine/validation.py` | Document validation before storage: dates, numbers, plausibility (AUDIT.md Phase 0) |
@@ -95,6 +96,7 @@ python -m opsengine web --live --secure       # real customers, logins required 
 python -m opsengine inbox                     # file inbound email (every 5 min on the server)
 python -m opsengine approval-emails           # email customers their pending approvals with links
 python -m opsengine erase-customer <id> --yes # GDPR erasure after export
+python -m opsengine pack --customer <folder> --contractor <id> --out packs   # main contractor pack (HTML, print to PDF)
 python -m unittest discover -s tests -v       # tests (always offline)
 python -m opsengine scan --customer <folder>  # see cli.py for all commands
 python -m opsengine new-customer <id> --name "..."   # then: check --customer data/customers/<id>

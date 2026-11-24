@@ -337,6 +337,12 @@ def _live_customers(root):
     return {json.loads((f / "company.json").read_text(encoding="utf-8"))["id"]: f for f in folders}
 
 
+def cmd_pack(args):
+    from .pack import build_pack
+    out = build_pack(_engine(args), args.contractor, args.out)
+    print(f"Pack written to {out / 'pack.html'} (open it in a browser; print or save as PDF)")
+
+
 def cmd_inbox(args):
     from .inbound import check_mailbox
     results = check_mailbox(_live_customers(args.root), state_dir=args.state)
@@ -536,6 +542,7 @@ def main(argv=None):
     sp.add_argument("--role", required=True, choices=["customer", "ops", "reviewer"]); sp.add_argument("--customer", help="customer id (customer role)")
     sp.add_argument("--password", help="omit to be asked"); sp.add_argument("--auth-dir", default=auth_dir)
     sp = add("users", cmd_users, customer=False); sp.add_argument("--auth-dir", default=auth_dir)
+    sp = add("pack", cmd_pack); sp.add_argument("--contractor", required=True); sp.add_argument("--out", default="packs")
     sp = add("inbox", cmd_inbox, customer=False); sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT))
     sp = add("approval-emails", cmd_approval_emails, customer=False); sp.add_argument("--root", default=str(scheduler.CUSTOMERS_ROOT))
     sp = add("erase-customer", cmd_erase_customer, customer=False); sp.add_argument("id")
