@@ -40,7 +40,8 @@ Tell Claude "done" when finished and it ticks the box.
       and Netlify HTTPS to turn green.
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
-- [ ] **Day 4.** Send the first message to 5 subcontractors. (15 min)
+- [x] **Day 4.** Send the first message to 5 subcontractors. (15 min)
+      Done 24 Nov: 14 firms emailed from hello@cleartowork.ie (see `15_outreach_log.md`).
 - [ ] **Day 5.** Paste any replies to Claude; send the drafted answers back. (10 min)
 
 ## Week 2: conversations

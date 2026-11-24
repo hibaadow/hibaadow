@@ -8,15 +8,25 @@ BODY = """{greet},
 
 {hook}
 
-ClearToWork keeps all of that in date for you: we check everything against what each main contractor wants, chase workers and brokers for anything missing or expiring, and keep a ready-to-send pack for every contractor.
+That's exactly what ClearToWork takes off your hands:
 
-We're offering a free 30-day trial to a few firms this month. Could the person who looks after your site paperwork spare 10 minutes for 3 quick questions, to see if it would suit you?
+- We check every worker's Safe Pass, CSCS, insurance and RAMS against what each of your main contractors requires, and show you every gap.
+- We chase it for you: card photos from your crew, certificates from your broker, course bookings when something has run out.
+- We remind you well before anything expires, so nobody gets turned away at the gate.
+- You always have an up-to-date pack ready to send to each main contractor.
 
-You can see what we do here (60-second video): https://cleartowork.netlify.app
+Nothing that costs money happens without your OK, and your workers don't need an app: they just reply with a photo of their card.
 
-Thanks,
+We're taking on a small number of Irish subcontractors for a free 30-day trial. On day one we run a full check and show you exactly where you stand. No cost, no commitment.
+
+Would you be open to a quick 10-minute call this week or next?
+
+See how it works in 60 seconds: https://cleartowork.netlify.app
+
+Kind regards,
 Hiba
-ClearToWork · hello@cleartowork.ie
+Founder, ClearToWork
+hello@cleartowork.ie · cleartowork.ie
 
 If this isn't for you, just reply "no thanks" and I won't contact you again."""
 
@@ -32,7 +42,7 @@ def main():
         payload = {"from": "Hiba | ClearToWork <hello@cleartowork.ie>", "to": [f["to"]], "bcc": [bcc],
                    "reply_to": "hello@cleartowork.ie", "subject": f["subject"], "text": text}
         req = urllib.request.Request("https://api.resend.com/emails", data=json.dumps(payload).encode(), method="POST",
-                                     headers={"Authorization": "Bearer proxy-injected", "Content-Type": "application/json"})
+                                     headers={"Authorization": "Bearer proxy-injected", "Content-Type": "application/json", "User-Agent": "cleartowork-outreach/1"})
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 status = "Sent (id " + json.load(r)["id"][:8] + ")"

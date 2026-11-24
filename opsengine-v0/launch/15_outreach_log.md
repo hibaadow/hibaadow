@@ -4,7 +4,31 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | Date | Firm | To | How | Message | Status | Follow-up due |
 | --- | --- | --- | --- | --- | --- | --- |
 | 24 Nov 2026 20:38 | Maor Scaffolding | info@maorscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Message 3 + video link | Sent | 1 Dec 2026 |
-| | KN Electrical Services | contact form, knelectricalservices.ie | Founder | Message 1 | To do | |
-| | Summit Scaffolding | contact page, summitscaffolding.ie | Founder | Message 2 | To do | |
 | | M&N Civils | call (01) 968 5045 for an email | Founder | Message 4 | To do | |
 | | BH Groundworks | (01) 2899 0909, or swap for O'Keeffe Civil | Founder | Message 5 | To do | |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+ | +5 working days |
+| 24 Nov 2026 20:53 | Summit Scaffolding | info@summitscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: summitscaffolding.ie/contact | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | KN Electrical Services | info@knes.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: knelectricalservices.ie/contact | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Delta Scaffolding | info@deltascaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: deltascaffolding.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Expert Scaffolding Dublin | expertscaffolding@live.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: expertscaffolding.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Baltic Drylining | info@balticdrylining.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: balticdrylining.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Commercial Ceilings & Partitions | info@commercialceilings.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: commercialceilings.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Partcore | info@partcore.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: partcore.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | RPR Drylining & Plastering | info@rprdrylining.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: rprdrylining.com/contact | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | CW Electrical | info@cwelectrical.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: cwelectrical.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Clarcon Construction | info@clarcon.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: clarcon.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | GS Earthworks | info@gsearthworks.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: gsearthworks.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Dublin Ground Works | info@dublingroundworks.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: dublingroundworks.ie | Sent (id 01a20f55) | +5 working days |
+| 24 Nov 2026 20:53 | Rossmore Civils | info@rehl.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: Uisce Eireann accredited contractor list, June 2025 | Sent (id 01a20f55) | +5 working days |
