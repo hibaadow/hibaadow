@@ -19,6 +19,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
+from . import config
 from .knowledge import ROOT
 
 LINK_DAYS = 7
@@ -109,5 +110,5 @@ def approval_email(eng, cid, steps, describe):
     for s in steps:
         lines += [f"- {describe(s)}", f"  {link_for(cid, s['id'])}", ""]
     lines += [f"Each link works once and expires in {LINK_DAYS} days. Nothing that costs money happens without your OK.",
-              "", "OpsEngine"]
+              "", config.brand()]
     return f"Your OK is needed: {len(steps)} item{'s' if len(steps) != 1 else ''}", "\n".join(lines)

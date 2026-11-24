@@ -1,5 +1,6 @@
 """Customer-facing weekly summary and the engine's own operating metrics."""
 import json
+from . import config
 
 from datetime import datetime
 from statistics import median
@@ -229,7 +230,7 @@ def export_records(engine, out_dir):
         "Files: compliance_register.csv (status of every requirement), issues.csv, actions.csv (every step, "
         "who approved it), communications.csv, appointments.csv, quotes.csv, audit_log.csv (append-only, "
         "hash-chained), documents.json (every version), evidence/ (files named by SHA-256).\n"
-        "OpsEngine coordinates and records; it does not certify compliance. Certificates are issued by the "
+        f"{config.brand()} coordinates and records; it does not certify compliance. Certificates are issued by the "
         "qualified people named in each record.\n", encoding="utf-8")
     engine.store.audit("engine", "records_exported", str(out), {"audit_intact": ok})
     return out

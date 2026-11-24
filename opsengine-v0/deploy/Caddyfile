@@ -1,5 +1,13 @@
-# Caddy gets and renews the HTTPS certificate automatically. Replace the domain.
-app.example.ie {
+# Caddy gets and renews HTTPS certificates automatically.
+# cleartowork.ie (and www) = the website in site/; app.cleartowork.ie = the portal.
+cleartowork.ie, www.cleartowork.ie {
+	root * /opt/opsengine/site
+	file_server
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000"
+}
+
+app.cleartowork.ie {
 	encode gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"

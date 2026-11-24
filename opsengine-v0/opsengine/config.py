@@ -38,3 +38,8 @@ def flag(name):
 def mock_ai():
     """USE_MOCK_AI=true: never call Claude. Sample photos get recorded reads; nothing else is faked."""
     return flag("USE_MOCK_AI")
+
+
+def brand():
+    """The name customers see (portal, emails, reports). OpsEngine is the engine underneath."""
+    return os.environ.get("BRAND_NAME", "").strip() or "ClearToWork"

@@ -79,7 +79,7 @@ def _resend_send(msg):
         raise PermanentFailure("no RESEND_API_KEY")
     plain = msg.get_body(("plain",))
     html = msg.get_body(("html",))
-    payload = {"from": msg["From"] or "OpsEngine <onboarding@resend.dev>", "to": [msg["To"]], "subject": msg["Subject"],
+    payload = {"from": msg["From"] or f"{config.brand()} <onboarding@resend.dev>", "to": [msg["To"]], "subject": msg["Subject"],
                "text": plain.get_content() if plain else ""}
     if html:
         payload["html"] = html.get_content()

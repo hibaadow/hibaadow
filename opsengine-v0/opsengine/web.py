@@ -230,8 +230,8 @@ def page(portal, role, cid, tab, title, body, flash=None, user=None):
 <form method="post" action="/demo/next-day"><input type="hidden" name="next" value="/c/{cid}/{tab}"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.4)">Run next day ▸</button></form>
 <form method="post" action="/demo/reset"><button class="ghost" style="color:inherit;border-color:rgba(255,255,255,.25)">Reset</button></form></span>"""
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
-<div class="top"><span class="brand"><i></i>OpsEngine</span><span class="roles">{roles}</span>
+<title>{e_(title)} · {e_(config.brand())}</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>{e_(config.brand())}</span><span class="roles">{roles}</span>
 {demo}</div>
 <nav class="sub">{nav}{pick}</nav><main>{flash_html}{body}</main></body></html>"""
 
@@ -477,7 +477,7 @@ def view_documents(portal, eng, cid, role):
 <form class="card form" method="post" action="/c/{cid}/upload" enctype="multipart/form-data">
 <label>Photo or scan<input type="file" name="file" accept="image/*,.pdf" required></label>
 <label>Whose is it?<select name="holder">{holder_options(eng)}</select></label>
-<label>What is it? (optional)<select name="type"><option value="">Let OpsEngine work it out</option>
+<label>What is it? (optional)<select name="type"><option value="">Let us work it out</option>
 {doc_type_options}</select></label>
 <label>&nbsp;<button>Upload</button></label></form>
 <h2>Or try a sample photo</h2><div class="grid">{samples}</div></section>
@@ -534,7 +534,7 @@ def view_messages(portal, eng, cid, role):
         arrow = "→" if c["direction"] == "out" else "←"
         rows.append(f'<tr><td class="mono">{e_(c["ts"][:16])}</td><td>{arrow}</td><td>{e_(c["to_name"] or "")}</td>'
                     f'<td>{e_(c["channel"] or "")}</td><td>{subject}</td><td class="small">{e_(eng.kb.wording.delivery(c["status"]))}</td></tr>')
-    return (f'<section><h1>Messages</h1><p class="muted">Every message OpsEngine wrote or received for {e_(eng.customer.company["name"])}. '
+    return (f'<section><h1>Messages</h1><p class="muted">Every message we wrote or received for {e_(eng.customer.company["name"])}. '
             'Nothing is actually sent in this demo: messages wait in the outbox.</p>'
             f'<div class="tbl"><table><thead><tr><th>When</th><th></th><th>Who</th><th>Channel</th><th>Subject</th><th>Delivery</th></tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table></div></section>')
@@ -630,7 +630,7 @@ def view_reviewer(portal, eng, cid, role):
             items.append(f'<div class="row"><div><h3>{e_(e.approval_summary(s, prior))}</h3><div class="meta">{e_(e.customer.company["name"])} · {link}</div></div>'
                          f'<div class="actions">{approve_buttons(c, s, role, "Release / sign off")}</div></div>')
     return (f'<section><h1>For the safety reviewer</h1><p class="muted">Drafted Safety Statements and RAMS, and high-risk corrective actions, '
-            f'wait here for a competent person. OpsEngine never releases or signs these off itself.</p>'
+            f'wait here for a competent person. The software never releases or signs these off itself.</p>'
             f'<div class="list">{"".join(items) or "<p class=muted>Nothing waiting for review.</p>"}</div></section>')
 
 
@@ -663,8 +663,8 @@ def view_insights(portal, eng, cid, role):
 def login_page(flash=None):
     msg = f'<div class="flash err">{e_(flash)}</div>' if flash else ""
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Log in · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
-<div class="top"><span class="brand"><i></i>OpsEngine</span></div>
+<title>Log in · {e_(config.brand())}</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>{e_(config.brand())}</span></div>
 <main style="max-width:420px">{msg}<div class="card"><h3>Log in</h3>
 <form method="post" action="/login"><p><label>Email<br><input name="email" type="email" autocomplete="username" required style="width:100%"></label></p>
 <p><label>Password<br><input name="password" type="password" autocomplete="current-password" required style="width:100%"></label></p>
@@ -676,8 +676,8 @@ CUSTOMER_BLOCKED_TABS = {"ops", "reviewer", "providers", "insights"}
 
 def link_page(title, inner):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>{e_(title)} · OpsEngine</title>{FONTS}<style>{CSS}</style></head><body>
-<div class="top"><span class="brand"><i></i>OpsEngine</span></div><main style="max-width:560px">{inner}</main></body></html>"""
+<meta name="robots" content="noindex"><title>{e_(title)} · {e_(config.brand())}</title>{FONTS}<style>{CSS}</style></head><body>
+<div class="top"><span class="brand"><i></i>{e_(config.brand())}</span></div><main style="max-width:560px">{inner}</main></body></html>"""
 
 
 def link_step(portal, token):
@@ -876,7 +876,7 @@ class Handler(BaseHTTPRequestHandler):
             who = f"{eng.customer.company['owner']['name']} (via email link)"
             if decision == "approve":
                 eng.approve(st["id"], who)
-                msg = "Approved. Thank you, OpsEngine has carried on."
+                msg = "Approved. Thank you, we've carried on with it."
             else:
                 eng.reject(st["id"], who, f.get("reason") or "Declined from email link")
                 msg = "Declined. Our team will follow up."
@@ -925,7 +925,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.redirect(back, "!Only the right person can approve this.")
                 if act == "approve":
                     eng.approve(step["id"], by)
-                    return self.redirect(back, f"Approved by {by}. OpsEngine has carried on.")
+                    return self.redirect(back, f"Approved by {by}. We've carried on with it.")
                 eng.reject(step["id"], by, f.get("reason", ""))
                 return self.redirect(back, "Declined. Our team will follow up.")
             if act == "upload":

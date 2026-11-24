@@ -10,6 +10,14 @@ the founder does **one task a day, 15 minutes or less** (see `05_daily_tasks.md`
 | `03_outreach_subcontractors.md` | Messages + the 10 discovery conversations with subcontractors |
 | `04_only_you_checklist.md` | The few things that legally need the founder, step by step |
 | `05_daily_tasks.md` | The day-by-day plan. Tick a box when done |
+| `06_build_sprint.md` | The pilot-ready build (logins, email, approve-by-link, hosting, GDPR) |
+| `07_pilot_onboarding.md` | Checklist for loading the first real customer |
+| `08_gdpr_pack.md` | Data protection drafts (privacy notice, processing terms, retention) |
+| `09_pilot_agreement.md` | Pilot agreement draft for a solicitor to check |
+| `10_onboarding_email.md` | The email asking a new pilot customer for their documents |
+| `../site/index.html` | The cleartowork.ie website (one page; served by Caddy, see `../deploy/`) |
+
+Brand: customers see **ClearToWork** (portal, emails, reports, website); OpsEngine is the engine.
 
 **How to use it:** start any session with *"OpsEngine, what's today's task?"*. Claude reads
 `05_daily_tasks.md`, finds the first unticked task, prepares everything for it, and hands over

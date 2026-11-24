@@ -13,8 +13,8 @@ minutes). Claude can talk you through the rest, or run it with you.
 - Note the server's IP address.
 
 ## 2. Point a domain at it (founder)
-- In your domain's DNS settings add an **A record**: `app` -> the server's IP address.
-- Result: `app.yourdomain.ie` reaches the server.
+- In your domain's DNS settings add an **A record**: `@` (cleartowork.ie), `www` and `app` -> the server's IP address.
+- Result: `app.cleartowork.ie` reaches the server.
 
 ## 3. Install (on the server, as root)
 ```bash
@@ -34,17 +34,17 @@ nano /opt/opsengine/.env       # also set PUBLIC_URL, EMAIL_*, SMTP_*, IMAP_*, A
 
 ## 5. HTTPS + services
 ```bash
-sed "s/app.example.ie/app.yourdomain.ie/" /opt/opsengine/deploy/Caddyfile > /etc/caddy/Caddyfile && systemctl reload caddy
+cp /opt/opsengine/deploy/Caddyfile /etc/caddy/Caddyfile && systemctl reload caddy   # serves cleartowork.ie + app.cleartowork.ie
 cp /opt/opsengine/deploy/*.service /opt/opsengine/deploy/*.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now opsengine-web opsengine-daily.timer opsengine-inbox.timer opsengine-backup.timer
-curl -s https://app.yourdomain.ie/health        # -> ok
+curl -s https://app.cleartowork.ie/health        # -> ok
 ```
 
 ## 6. First accounts and first customer
 ```bash
 cd /opt/opsengine
-sudo -u opsengine python3 -m opsengine add-user you@yourdomain.ie --name "Your Name" --role ops
+sudo -u opsengine python3 -m opsengine add-user you@cleartowork.ie --name "Your Name" --role ops
 sudo -u opsengine python3 -m opsengine new-customer acme_groundworks --name "Acme Groundworks"
 # fill in data/customers/acme_groundworks/ (see launch/07_pilot_onboarding.md), then:
 sudo -u opsengine python3 -m opsengine check --customer data/customers/acme_groundworks
@@ -53,7 +53,7 @@ sudo -u opsengine python3 -m opsengine add-user reviewer@safety.ie --name "Revie
 ```
 
 ## 7. Check it all works
-- Log in at `https://app.yourdomain.ie` as ops and as the customer (each sees only what they should).
+- Log in at `https://app.cleartowork.ie` as ops and as the customer (each sees only what they should).
 - `systemctl start opsengine-daily` then `journalctl -u opsengine-daily` (no errors).
 - `systemctl start opsengine-backup` and check `/opt/opsengine-backups/`.
 - Copy backups off the server weekly at least (object storage in an EU region, or download them).
