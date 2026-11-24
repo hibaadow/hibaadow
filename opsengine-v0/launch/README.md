@@ -16,6 +16,7 @@ the founder does **one task a day, 15 minutes or less** (see `05_daily_tasks.md`
 | `09_pilot_agreement.md` | Pilot agreement draft for a solicitor to check |
 | `10_onboarding_email.md` | The email asking a new pilot customer for their documents |
 | `11_outreach_list.md` | 22 Dublin/Leinster subcontractors to contact, with message templates |
+| `12_pricing.md` | Internal pricing plan to test on calls (not public yet) |
 | `../../cleartowork-explainer/` | 57 s explainer video (house character + voice) for outreach and the website |
 | `../site/index.html` | The cleartowork.ie website (one page; served by Caddy, see `../deploy/`) |
 
