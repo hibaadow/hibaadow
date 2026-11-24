@@ -9,8 +9,14 @@ Tell Claude "done" when finished and it ticks the box.
       doesn't sound like you. (10 min)
 - [x] **Day 2.** Choose a working name and email from Claude's shortlist. (10 min)
       Done: trading name **ClearToWork**, domain **cleartowork.ie** bought at Blacknight (24 Nov 2026).
-- [ ] **Day 2b.** When Blacknight confirms the domain is live: connect cleartowork.ie to Resend
-      (Claude walks you through the DNS records). (15 min)
+- [ ] **Day 2b.** When Blacknight shows cleartowork.ie as **Active**: add Resend's 4 DNS records in
+      Blacknight (copy each Name + Content from Resend > Domains > cleartowork.ie), then press
+      "I've added the records" in Resend. (15 min) Domain already added in Resend (Ireland region,
+      receiving off). Records:
+      - TXT `resend._domainkey` (DKIM)
+      - CNAME `rsend` (sending)
+      - CNAME `send` (sending)
+      - TXT `_dmarc` (DMARC, recommended)
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
 - [ ] **Day 4.** Send the first message to 5 subcontractors. (15 min)
