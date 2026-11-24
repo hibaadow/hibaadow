@@ -10,14 +10,15 @@ the number on their website), local trade Facebook groups, people you know who w
 
 ## LinkedIn / email (first message)
 > Hi [name], quick question as a [trade] firm owner: how much time does your team spend
-> chasing Safe Pass photos, insurance certs and main contractor paperwork? I'm building a
-> service that handles that admin for subcontractors and want to get it right. Could I ask
-> you 3 quick questions? It would take 10 minutes.
+> chasing Safe Pass photos, insurance certs and main contractor paperwork? ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions? It would take 10 minutes.
 
 ## WhatsApp / text (if they gave you their number)
 > Hi [name], [your name] here. I'm talking to [trade] firms about the paperwork main
 > contractors ask for (cards, certs, RAMS). Got 10 minutes this week for 3 questions?
-> Not selling anything yet, just want to learn.
+> We do the paperwork for you, and there's a free 30-day trial.
 
 ## Follow-up after 3 days
 > Hi [name], no worries if you're flat out. If easier, just reply with your biggest

@@ -12,14 +12,17 @@ Send 5 a day (Day 4 and Day 6 of the plan). Tick and note replies in the last co
 **A. Firms that say they work for big main contractors** (best fit: they face the most paperwork)
 > Hi [name], I saw [firm] works with main contractors like [contractor]. Quick question: how much
 > time does your office spend on the paperwork they ask for (Safe Pass, CSCS, insurance certs,
-> RAMS)? I'm setting up ClearToWork, a service that handles that admin for subcontractors, and I'd
-> love 10 minutes of your view. Just 3 quick questions.
+> RAMS)? ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions? It would take 10 minutes.
 
 **B. Everyone else**
 > Hi [name], quick question as a [trade] firm: when a main contractor asks for your documents
-> (cards, insurance, RAMS), who chases all that, and how long does it take? I'm building a service
-> that takes that admin off subcontractors and want to get it right. Could I ask you 3 questions?
-> It would take 10 minutes.
+> (cards, insurance, RAMS), who chases all that, and how long does it take? ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions? It would take 10 minutes.
 
 **Follow-up after 3 days**
 > Hi [name], no worries if you're flat out. If easier, just reply with your biggest site

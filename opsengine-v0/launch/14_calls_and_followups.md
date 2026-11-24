@@ -27,7 +27,9 @@ One follow-up only. Same email thread (reply to your own sent email).
 **Maor Scaffolding**
 > Hi again, just bringing this back to the top of your inbox. If someone at Maor looks after the
 > Safe Pass / CSCS / insurance paperwork for the big sites, I'd value 10 minutes of their view.
-> There's a 60-second video of what we do here: cleartowork.ie. Thanks, Hiba
+> We're offering a free 30-day trial to a few firms this month: we take over the chasing and
+> keep everything in date for each main contractor. There's a 60-second video of what we do
+> here: cleartowork.ie. Thanks, Hiba
 
 **KN Electrical / Summit (contact form)**
 > Hi, I sent a note through your website last week about main contractor paperwork (Safe Pass,

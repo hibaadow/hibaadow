@@ -4,6 +4,8 @@ Checked 24 Nov 2026 from public sources. Each message is written for the person 
 copy it into LinkedIn, the firm's website contact form, or an email. Replace nothing except
 [your name]. Send from your own account; paste replies to Claude for the next step.
 
+Every message says what ClearToWork does and mentions the free 30-day trial (founder's choice).
+
 Tip: attach or link the explainer video (`cleartowork-explainer/out/cleartowork_explainer_small.mp4`)
 only in a follow-up, not the first message: first messages land better short and plain.
 
@@ -14,10 +16,12 @@ only in a follow-up, not the first message: first messages land better short and
   Safe Electric registered, about 60% residential, 40% commercial, working for Glenveagh,
   Glenbeigh, KDM and BHA. Profiles may be a few years old.
 - **How to reach:** search LinkedIn for "Kane Nolan" + electrical; otherwise the firm's Google listing.
-> Hi Kane, I read about KN Electrical's work with Glenveagh and Glenbeigh. Quick question: how much
-> time goes on the paperwork main contractors ask for (Safe Pass, CSCS, insurance certs, RAMS)?
-> I'm setting up ClearToWork, a service that handles that admin for subcontractors, and I'd value
-> 10 minutes of your view. Just 3 quick questions. [your name]
+> Hi Kane, I read about KN Electrical's work with Glenveagh and Glenbeigh. Main contractors like
+> that ask for a lot of paperwork, so I wanted to tell you about ClearToWork. We keep your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions to see if it would suit you? It would take
+> 10 minutes. [your name]
 
 ## 2. Summit Scaffolding Ltd: Keith Dwyer (director)
 - **Status:** Irish company since 2016 (CRO 583615). Building Ireland's 2024 feature names Keith
@@ -25,8 +29,10 @@ only in a follow-up, not the first message: first messages land better short and
   Website: summitscaffolding.ie.
 - **How to reach:** LinkedIn "Keith Dwyer Summit Scaffolding", or the contact page on summitscaffolding.ie.
 > Hi Keith, with Summit's team spread across Dublin and Wexford, I'd guess keeping everyone's Safe
-> Pass, CSCS and main contractor paperwork in date is a job in itself. I'm setting up ClearToWork, a
-> service that takes that admin off subcontractors. Could I ask you 3 quick questions? It would take
+> Pass, CSCS and main contractor paperwork in date is a job in itself. ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions to see if it would suit you? It would take
 > 10 minutes. [your name]
 
 ## 3. Maor Scaffolding: owner / office manager
@@ -38,16 +44,20 @@ only in a follow-up, not the first message: first messages land better short and
 > service that chases and keeps all of that in date for subcontractors. Could the person who looks
 > after it spare 10 minutes for 3 questions? Thanks, [your name]
 
+(Sent 24 Nov 2026 by email, before the trial line was added. The follow-up mentions the trial.)
+
 ## 4. M&N Groundworks: owner / office manager
 - **Status:** company since 2004. A Building Ireland profile says it works with Sisk, JJ Rhattigan,
   John Paul and Careys. Addresses differ between listings (Ballycoolin D11, Donabate), so the office
   phone (01) 968 5045 from that profile may be out of date: check the Golden Pages listing first.
 - **How to reach:** LinkedIn "M&N Groundworks", or call the office and ask for the email of whoever
   handles compliance paperwork, then send this.
-> Hi, I saw M&N works with main contractors like Sisk and John Paul. Quick question: how much time
-> does your office spend on the paperwork they ask for (Safe Pass, CSCS, insurance certs, RAMS)? I'm
-> setting up ClearToWork, a service that handles that admin for subcontractors, and I'd value 10
-> minutes of your view. Just 3 quick questions. [your name]
+> Hi, I saw M&N works with main contractors like Sisk and John Paul, who ask for a lot of
+> paperwork. ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions to see if it would suit you? It would take
+> 10 minutes. [your name]
 
 ## 5. BH Groundworks Ltd: owner
 - **Status:** profile is from 2016 (Bray South Business Park, Bray), so **check it's still trading**
@@ -55,8 +65,10 @@ only in a follow-up, not the first message: first messages land better short and
 - **How to reach:** LinkedIn "BH Groundworks Bray"; if nothing current turns up, skip it and use the
   next firm on the list (O'Keeffe Civil).
 > Hi, I came across BH Groundworks' work for the councils, ESB and Irish Water. Those jobs come with
-> a lot of paperwork: Safe Pass, CSCS, insurance certs, RAMS. I'm setting up ClearToWork, a service
-> that takes that admin off subcontractors. Could I ask you 3 quick questions? It would take
+> a lot of paperwork: Safe Pass, CSCS, insurance certs, RAMS. ClearToWork keeps your crew's Safe Pass, CSCS, insurance certs and RAMS in date: we check
+> everything against what each main contractor wants, chase workers and brokers for anything
+> missing or expiring, and keep a ready-to-send pack for every contractor.
+> We're offering a free 30-day trial to a few firms this month. Could I ask you 3 quick questions to see if it would suit you? It would take
 > 10 minutes. [your name]
 
 ---
