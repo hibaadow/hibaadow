@@ -48,6 +48,7 @@ def main():
                 status = "Sent (id " + json.load(r)["id"][:8] + ")"
         except urllib.error.HTTPError as e:
             status = f"Failed: {e.code} {e.read().decode()[:120]}"
+        status = status.replace("\n", " ")
         print(f["firm"], "->", status)
         with log.open("a") as fh:
             fh.write(f"| {datetime.now():%d %b %Y %H:%M} | {f['firm']} | {f['to']} | Email from hello@cleartowork.ie (Resend) | "

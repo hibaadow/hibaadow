@@ -6,19 +6,6 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | 24 Nov 2026 20:38 | Maor Scaffolding | info@maorscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Message 3 + video link | Sent | 1 Dec 2026 |
 | | M&N Civils | call (01) 968 5045 for an email | Founder | Message 4 | To do | |
 | | BH Groundworks | (01) 2899 0909, or swap for O'Keeffe Civil | Founder | Message 5 | To do | |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
- | +5 working days |
 | 24 Nov 2026 20:53 | Summit Scaffolding | info@summitscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: summitscaffolding.ie/contact | Sent (id 01a20f55) | +5 working days |
 | 24 Nov 2026 20:53 | KN Electrical Services | info@knes.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: knelectricalservices.ie/contact | Sent (id 01a20f55) | +5 working days |
 | 24 Nov 2026 20:53 | Delta Scaffolding | info@deltascaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: deltascaffolding.ie | Sent (id 01a20f55) | +5 working days |
