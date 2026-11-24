@@ -21,6 +21,8 @@ the founder does **one task a day, 15 minutes or less** (see `05_daily_tasks.md`
 | `14_calls_and_followups.md` | Phone cheat sheet (questions firms ask) and one follow-up per firm |
 | `15_outreach_log.md` | Who was contacted, when, how, and when to follow up |
 | `16_whatsapp_messages.md` | WhatsApp messages to firms with business mobiles: tap a link, check, send |
+| `17_yes_reply.md` | What to send when a firm replies YES, and how their free check report is made |
+| `sample_check/` | The free site paperwork check report: builder script + SAMPLE report (PDF, PNG) |
 | `outreach/` | Email batches (one JSON per day) and the sender script |
 | `pitch/ClearToWork_pitch.pdf` | One-page pitch PDF to attach to emails (source: `pitch/pitch.html`) |
 | `../../cleartowork-explainer/` | 57 s explainer video (house character + voice) for outreach and the website |

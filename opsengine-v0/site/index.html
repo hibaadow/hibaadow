@@ -37,6 +37,10 @@
   .watch video { width:100%; aspect-ratio:9/16; border-radius:18px; background:#000; display:block; box-shadow:0 10px 30px rgba(0,0,0,.18); }
   .watch p { color:var(--muted); font-size:18px; margin:0; }
   @media (max-width:720px) { .watch { grid-template-columns:1fr; } .watch video { max-width:360px; margin:0 auto; } }
+  .check { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:center; }
+  .check img { width:100%; border-radius:14px; border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.08); background:#fff; }
+  .check ol { padding-left:20px; color:var(--muted); }
+  @media (max-width:760px){ .check { grid-template-columns:1fr; } }
   .faq details { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 20px; margin-bottom:10px; }
   .faq summary { font-weight:700; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:16px; }
   .faq summary::-webkit-details-marker { display:none; }
@@ -58,7 +62,7 @@
     <p>Every main contractor wants a different pile of documents before your lads can go on site.
        Safe Pass and CSCS cards, Safety Statements, RAMS, insurance at their minimums. We chase it, check it and keep it in date, so you don't have to.</p>
     <div class="ctas">
-      <a class="btn" href="mailto:hello@cleartowork.ie?subject=Free%2030-day%20pilot">Join the free pilot</a>
+      <a class="btn" href="mailto:hello@cleartowork.ie?subject=Free%20paperwork%20check&body=YES%2C%20I%27d%20like%20a%20free%20site%20paperwork%20check.%0A%0ACompany%3A%20%0APhone%3A%20">Get a free paperwork check</a>
       <a class="btn alt" href="#watch">Watch the video</a>
     </div>
   </div>
@@ -73,6 +77,23 @@
         <p>From a crew stuck at the gate to "all clear": how ClearToWork finds the gaps, chases the paperwork,
            checks every card and keeps you ready for any main contractor.</p>
       </div>
+    </div>
+  </section>
+
+  <section id="check">
+    <div class="check">
+      <div>
+        <h2>Free site paperwork check</h2>
+        <p>Find out exactly where your crew stands before a main contractor does.</p>
+        <ol>
+          <li>Reply YES and send us your crew list and whatever cards and certs you have. Phone photos are fine.</li>
+          <li>Within 48 hours you get a report: everything missing or expiring, for each of your main contractors.</li>
+          <li>Like it? We keep it all in date for you on a free 30-day trial. No cost, no commitment.</li>
+        </ol>
+        <p><a class="btn" href="mailto:hello@cleartowork.ie?subject=Free%20paperwork%20check&body=YES%2C%20I%27d%20like%20a%20free%20site%20paperwork%20check.%0A%0ACompany%3A%20%0APhone%3A%20">Get my free check</a></p>
+        <p class="note"><a href="media/ClearToWork_paperwork_check_SAMPLE.pdf">See a sample report (PDF)</a>. The sample uses a made-up company.</p>
+      </div>
+      <a href="media/ClearToWork_paperwork_check_SAMPLE.pdf"><img src="media/paperwork-check-sample.png" alt="Sample site paperwork check report: 30 items need action, 12 stop work on site now"></a>
     </div>
   </section>
 

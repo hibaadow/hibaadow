@@ -1,6 +1,6 @@
 """Send one personalised outreach email per firm through Resend, BCC the founder, and log it.
 python3 send_batch.py batch.json [--dry]"""
-import json, sys, time, urllib.request, urllib.error
+import json, re, sys, time, urllib.request, urllib.error
 from datetime import datetime
 from pathlib import Path
 
@@ -8,25 +8,23 @@ BODY = """{greet},
 
 {hook}
 
-That's exactly what ClearToWork takes off your hands:
+ClearToWork takes all of that off your hands, and to show you how, we'd like to do a free site paperwork check for {short}:
 
-- We check every worker's Safe Pass, CSCS, insurance and RAMS against what each of your main contractors requires, and show you every gap.
-- We chase it for you: card photos from your crew, certificates from your broker, course bookings when something has run out.
-- We remind you well before anything expires, so nobody gets turned away at the gate.
-- You always have an up-to-date pack ready to send to each main contractor.
+1. Reply YES and send us your crew list and whatever cards and certs you have. Phone photos are fine.
+2. Within 48 hours you get a report showing everything that's missing or expiring, for each of your main contractors.
+3. If you like it, we keep it all in date for you on a free 30-day trial: we chase workers for card photos, get certificates from your broker, line up courses (nothing that costs money without your OK) and keep a ready-to-send pack for every main contractor.
 
-Nothing that costs money happens without your OK, and your workers don't need an app: they just reply with a photo of their card.
+No cost, no commitment, and your workers don't need an app.
 
-We're taking on a small number of Irish subcontractors for a free 30-day trial. On day one we run a full check and show you exactly where you stand. No cost, no commitment.
+Here's a sample report, so you can see exactly what you'd get:
+https://cleartowork.ie/media/ClearToWork_paperwork_check_SAMPLE.pdf
 
-Would you be open to a quick 10-minute call this week or next?
-
-See how it works in 60 seconds: https://cleartowork.ie
+Just reply YES to get started.
 
 Kind regards,
 Hiba
 Founder, ClearToWork
-hello@cleartowork.ie · cleartowork.ie
+hello@cleartowork.ie · https://cleartowork.ie
 
 If this isn't for you, just reply "no thanks" and I won't contact you again."""
 
@@ -36,7 +34,8 @@ def main():
     bcc = (Path(__file__).parent / ".bcc").read_text().strip()
     log = Path(__file__).parent.parent / "15_outreach_log.md"
     for f in batch:
-        text = BODY.format(**f)
+        short = re.sub(r"\s*\(.*?\)|\s+(Ltd|Limited|Group|Services|Dublin)\b.*$", "", f["firm"]).strip()
+        text = BODY.format(short=short, **f)
         if dry:
             print(f"--- {f['firm']} <{f['to']}> | {f['subject']}\n{text}\n"); continue
         payload = {"from": "Hiba | ClearToWork <hello@cleartowork.ie>", "to": [f["to"]], "bcc": [bcc],
