@@ -769,6 +769,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if parts == ["health"]:
                 return self.send_html("ok")
+            if parts == ["whatsapp"]:
+                from . import whatsapp
+                challenge = whatsapp.verify({k: v[0] for k, v in q.items()})
+                return self.send_html(challenge, 200) if challenge is not None else self.send_html("Forbidden", 403)
             if len(parts) == 2 and parts[0] == "a":
                 eng, st, err = link_step(p, parts[1])
                 if err:
@@ -870,6 +874,19 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # show the problem instead of a blank page
             self.send_html(f"<pre>Something went wrong: {e_(repr(exc))}</pre>", 500)
 
+    def whatsapp_webhook(self):
+        """Meta's webhook: signed with the app secret, or refused. Always answer quickly with 200."""
+        from . import whatsapp
+        raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        if not whatsapp.signed(raw, self.headers.get("X-Hub-Signature-256", "")):
+            return self.send_html("Forbidden", 403)
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+            whatsapp.handle(payload, self.portal.customers, self.portal.state, today=self.portal.today)
+        except Exception as exc:                 # logged; Meta would otherwise retry for days
+            print(f"whatsapp webhook error: {exc!r}")
+        return self.send_html("ok")
+
     def form(self):
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length)
@@ -891,6 +908,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urllib.parse.urlparse(self.path)
         parts = [p for p in url.path.split("/") if p]
         p = self.portal
+        if parts == ["whatsapp"]:
+            return self.whatsapp_webhook()
         f, files = self.form()
         role = self.role()
         by = {"customer": None, "ops": "Ops team", "reviewer": "Safety reviewer (competent person)"}[role]

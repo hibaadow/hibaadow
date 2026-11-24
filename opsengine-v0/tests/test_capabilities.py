@@ -260,7 +260,7 @@ class Communication(Base):
                "EMAIL_FROM": "ops@example.ie", "OPSENGINE_ALLOW_SEND_IN_TESTS": "true"}
         with mock.patch.dict(os.environ, env), mock.patch.object(connectors.smtplib, "SMTP", FakeSMTP):
             self.assertEqual(connectors.send("email", "owner@x.example.ie", "Hi", "Body"), "sent")
-            self.assertTrue(connectors.send("whatsapp", "+353", "Hi", "Body").startswith("queued_in_outbox (no whatsapp"))
+            self.assertTrue(connectors.send("whatsapp", "+353", "Hi", "Body").startswith("queued_in_outbox (WHATSAPP_MODE=off"))
         self.assertIn(("send", "owner@x.example.ie", "Hi"), sent)
 
     def test_inbound_documents_are_logged(self):

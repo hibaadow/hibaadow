@@ -11,7 +11,8 @@ transactional email provider that offers SMTP (Postmark, Amazon SES, Resend, Bre
 EMAIL_MODE=resend: email is sent through Resend's HTTPS API (RESEND_API_KEY). Useful where mail
 ports are blocked. Without a verified domain, Resend only delivers to your own account address,
 from onboarding@resend.dev - fine for a first test.
-WhatsApp has no connector yet, so WhatsApp messages stay queued in the outbox."""
+WHATSAPP_MODE=cloud: WhatsApp messages are sent through Meta's Cloud API (see whatsapp.py);
+otherwise they stay queued in the outbox."""
 import json
 import os
 import smtplib
@@ -100,11 +101,17 @@ def _resend_send(msg):
         raise PermanentFailure(f"resend {exc.code}: {detail}") from exc
 
 
-def send(channel, address, subject, body, ref=None, html=None, transport=None):
+def send(channel, address, subject, body, ref=None, html=None, transport=None, state_dir=None):
     """Return the delivery status: sent, failed: <reason>, or queued_in_outbox (<why>).
     transport(msg) replaces SMTP (tests)."""
     if transport is None and os.environ.get("OPSENGINE_OFFLINE") == "1" and not config.flag("OPSENGINE_ALLOW_SEND_IN_TESTS"):
         return "queued_in_outbox (offline)"
+    if channel == "whatsapp":
+        from . import whatsapp
+        from .knowledge import ROOT
+        if transport is None and whatsapp.mode() != "cloud":
+            return "queued_in_outbox (WHATSAPP_MODE=off)"
+        return whatsapp.send(address, subject, body, state_dir or ROOT / "state", post=transport)
     if channel != "email":
         return f"queued_in_outbox (no {channel} connector yet)"
     if transport is None and email_mode() not in ("smtp", "resend"):

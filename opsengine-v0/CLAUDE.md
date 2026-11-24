@@ -72,11 +72,12 @@ These are product rules, not style preferences. Never weaken them in code.
 | `opsengine/vision.py` | Claude vision: photo/scan -> document JSON + confidence score |
 | `opsengine/scheduler.py` | Daily run per customer: scan, advance, chase after 2 days, escalate after 5 |
 | `opsengine/onboarding.py` | Create a customer folder from the template; list what is missing |
-| `opsengine/connectors.py` | Sending: outbox always; email via SMTP when `EMAIL_MODE=smtp`; WhatsApp queued |
+| `opsengine/connectors.py` | Sending: outbox always; email via SMTP/Resend (`EMAIL_MODE`); WhatsApp via Cloud API when `WHATSAPP_MODE=cloud` |
 | `opsengine/insights.py` | Patterns and recommendations across customers (spec 11) |
 | `data/sample/*/assets.json` | Plant, equipment and facilities register (inspections, spec 6) |
 | `opsengine/web.py` | Clickable portal (stdlib): customer, ops and safety reviewer views on the real engine |
 | `opsengine/auth.py` | Logins: accounts, scrypt passwords, sessions; customers only see their own company |
+| `opsengine/whatsapp.py` | WhatsApp Cloud API: sending (24-hour window + template), webhook `/whatsapp` for incoming photos |
 | `opsengine/inbound.py` | Inbound email (IMAP): replies and photos filed to the right customer and issue |
 | `opsengine/links.py` | Approve-by-link: signed, single-use, expiring tokens; approval emails |
 | `opsengine/pack.py` | Main contractor pack: one printable page + evidence copies per contractor (`pack`, portal Weekly report) |
