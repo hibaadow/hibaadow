@@ -1,6 +1,6 @@
 # Pilot agreement (draft for a solicitor to check)
 
-Plain-English draft for the free 60-day pilot. Not legal advice: have a solicitor read it before
+Plain-English draft for the free 30-day pilot. Not legal advice: have a solicitor read it before
 the first customer signs. Placeholders are in [brackets].
 
 ---
@@ -11,7 +11,7 @@ Between **[Your name], trading as ClearToWork**, [address] ("ClearToWork", "we")
 and **[Customer company name]**, [address] ("you").
 
 **1. What we'll do (the pilot)**
-For 60 days from [start date] we will:
+For 30 days from [start date] we will:
 - check your workers, documents and equipment against the requirements of the main contractors
   you name, and show you what's missing or about to expire;
 - chase workers, your insurance broker and providers for missing cards, certificates and

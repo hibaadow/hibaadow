@@ -11,7 +11,7 @@ RAW = [
     ("check",   "Every card and cert is checked before anything is closed. And a qualified safety professional signs off your safety documents.", {"checked": "_", "qualified": "*", "professional": "*"}),
     ("ready",   "You get a weekly summary, and a record you can show any main contractor.", {"weekly summary,": "_", "any main contractor.": "*"}),
     ("gate2",   "Next time, your crew walks straight on site.", {"straight on site.": "_"}),
-    ("cta",     "ClearToWork. Your crew, clear to work. Free sixty-day pilot for Irish subcontractors, at cleartowork dot I E.", {"ClearToWork.": "_", "clear to work.": "*", "Free sixty-day pilot": "*"}),
+    ("cta",     "ClearToWork. Your crew, clear to work. Free thirty-day pilot for Irish subcontractors, at cleartowork dot I E.", {"ClearToWork.": "_", "clear to work.": "*", "Free thirty-day pilot": "*"}),
 ]
 SAY = {"ClearToWork": "Clear To Work"}
 

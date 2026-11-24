@@ -30,7 +30,7 @@ the number on their website), local trade Facebook groups, people you know who w
 4. What do you use today (spreadsheet, folders, an app, a consultant)? What does it cost?
 5. If someone handled all of it for you, what would that be worth a month?
 
-**If they're keen:** "We're taking 3 firms on a free 60-day pilot. Want to be one?"
+**If they're keen:** "We're taking 3 firms on a free 30-day pilot. Want to be one?"
 Send them `01_one_page_pitch.md` as a PDF afterwards.
 
 ## Tracking (keep in a simple note)

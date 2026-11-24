@@ -193,7 +193,7 @@ def sc_cta(cv, t, lt, i):
     if u > 0:
         y = 880 + slide(u)
         cv.rrect(170, y, 910, y + 130, 65, (255, 207, 51))
-        cv.text((540, y + 65), "Free 60-day pilot", "interx", 54, INK)
+        cv.text((540, y + 65), "Free 30-day pilot", "interx", 54, INK)
         cv.text((540, y + 210), "cleartowork.ie", "interx", 64, WHITE)
     you_stand(cv, 540, 1880, s=0.5, eyes=True, look=0.0)
     return (540, 960, 1.0)

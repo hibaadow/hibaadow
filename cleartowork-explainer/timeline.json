@@ -69,21 +69,21 @@
    "i": 2,
    "scene": "night",
    "start": 11.38,
-   "dur": 4.63,
+   "dur": 4.644,
    "chunks": [
     [
      11.38,
-     12.769,
+     12.773,
      "So you spend _your_ _evenings_"
     ],
     [
-     12.769,
-     14.388,
+     12.773,
+     14.389,
      "*chasing* cards and paperwork,"
     ],
     [
-     14.388,
-     16.01,
+     14.389,
+     16.024,
      "instead of _running_ _your_ _business._"
     ]
    ],
@@ -93,12 +93,12 @@
   {
    "i": 3,
    "scene": "brand",
-   "start": 16.509,
+   "start": 16.524,
    "dur": 1.572,
    "chunks": [
     [
-     16.509,
-     18.081,
+     16.524,
+     18.096,
      "That's where _ClearToWork_ comes in."
     ]
    ],
@@ -108,27 +108,27 @@
   {
    "i": 4,
    "scene": "find",
-   "start": 18.331,
-   "dur": 5.376,
+   "start": 18.346,
+   "dur": 5.401,
    "chunks": [
     [
-     18.331,
-     19.667,
+     18.346,
+     19.682,
      "We check your crew and"
     ],
     [
-     19.667,
-     21.643,
+     19.682,
+     21.683,
      "documents against what _each_ _main_"
     ],
     [
-     21.643,
-     23.103,
+     21.683,
+     23.14,
      "_contractor_ needs, and show you"
     ],
     [
-     23.103,
-     23.707,
+     23.14,
+     23.747,
      "*every* *gap.*"
     ]
    ],
@@ -138,32 +138,32 @@
   {
    "i": 5,
    "scene": "chase",
-   "start": 23.957,
-   "dur": 7.315,
+   "start": 23.997,
+   "dur": 7.346,
    "chunks": [
     [
-     23.957,
-     25.115,
+     23.997,
+     25.16,
      "Then we _chase_ it for"
     ],
     [
-     25.115,
-     26.816,
+     25.16,
+     26.886,
      "you. New card photos from"
     ],
     [
-     26.816,
-     28.468,
+     26.886,
+     28.527,
      "your workers. Certificates from your"
     ],
     [
-     28.468,
-     29.852,
+     28.527,
+     29.923,
      "broker. Training lined up,"
     ],
     [
-     29.852,
-     31.272,
+     29.923,
+     31.343,
      "with your *OK* first."
     ]
    ],
@@ -173,27 +173,27 @@
   {
    "i": 6,
    "scene": "check",
-   "start": 31.522,
-   "dur": 7.646,
+   "start": 31.592,
+   "dur": 7.671,
    "chunks": [
     [
-     31.522,
-     32.927,
+     31.592,
+     32.997,
      "Every card and cert is"
     ],
     [
-     32.927,
-     35.091,
+     32.997,
+     35.161,
      "_checked_ before anything is closed."
     ],
     [
-     35.091,
-     37.029,
+     35.161,
+     37.117,
      "And a *qualified* safety *professional*"
     ],
     [
-     37.029,
-     39.168,
+     37.117,
+     39.263,
      "signs off your safety documents."
     ]
    ],
@@ -203,22 +203,22 @@
   {
    "i": 7,
    "scene": "ready",
-   "start": 39.418,
+   "start": 39.513,
    "dur": 3.851,
    "chunks": [
     [
-     39.418,
-     40.76,
+     39.513,
+     40.855,
      "You get a _weekly_ _summary,_"
     ],
     [
-     40.76,
-     41.802,
+     40.855,
+     41.897,
      "and a record you can"
     ],
     [
-     41.802,
-     43.269,
+     41.897,
+     43.364,
      "show *any* *main* *contractor.*"
     ]
    ],
@@ -228,17 +228,17 @@
   {
    "i": 8,
    "scene": "gate2",
-   "start": 43.769,
+   "start": 43.864,
    "dur": 2.102,
    "chunks": [
     [
-     43.769,
-     45.07,
+     43.864,
+     45.165,
      "Next time, your crew walks"
     ],
     [
-     45.07,
-     45.871,
+     45.165,
+     45.966,
      "_straight_ _on_ _site._"
     ]
    ],
@@ -248,38 +248,38 @@
   {
    "i": 9,
    "scene": "cta",
-   "start": 46.371,
-   "dur": 6.796,
+   "start": 46.466,
+   "dur": 6.717,
    "chunks": [
     [
-     46.371,
-     47.761,
+     46.466,
+     47.858,
      "_ClearToWork._ Your crew,"
     ],
     [
-     47.761,
-     48.548,
+     47.858,
+     48.644,
      "*clear* *to* *work.*"
     ],
     [
-     48.548,
-     50.572,
-     "*Free* *sixty-day* *pilot* for Irish"
+     48.644,
+     50.595,
+     "*Free* *thirty-day* *pilot* for Irish"
     ],
     [
-     50.572,
-     53.134,
+     50.595,
+     53.145,
      "subcontractors, at cleartowork dot I"
     ],
     [
-     53.134,
-     53.167,
+     53.145,
+     53.183,
      "E."
     ]
    ],
-   "text": "Clear To Work. Your crew, clear to work. Free sixty-day pilot for Irish subcontractors, at cleartowork dot I E.",
+   "text": "Clear To Work. Your crew, clear to work. Free thirty-day pilot for Irish subcontractors, at cleartowork dot I E.",
    "voice": "narr"
   }
  ],
- "duration": 57.17
+ "duration": 57.18
 }

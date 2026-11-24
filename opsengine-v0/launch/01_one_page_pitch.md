@@ -30,7 +30,7 @@ for each problem, follows up on its own and keeps a tamper-evident record of eve
 That means faster, cheaper and more thorough than doing it by hand.
 
 ## Pilot offer (first 3 firms)
-- **60 days free.** We onboard your workers, documents and current main contractors.
+- **30 days free.** We onboard your workers, documents and current main contractors.
 - **You get:** a compliance check on day one, all gaps chased and tracked, a weekly summary,
   and a "ready for site" view per main contractor.
 - **After the pilot:** a fixed monthly fee based on team size (to be agreed with you;
