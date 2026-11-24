@@ -1,0 +1,5 @@
+# Netlify: publish only the ClearToWork website (cleartowork.ie). Nothing else in this repo goes online.
+[build]
+  base = "opsengine-v0/site"
+  publish = "."
+  command = ""
