@@ -27,6 +27,12 @@ Tell Claude "done" when finished and it ticks the box.
       Then press "Check again" in ImprovMX.
       Then: Gmail "Send mail as" hello@cleartowork.ie through Resend SMTP (once Resend shows
       the domain verified). Upgrade to a real mailbox when the first pilot customer signs.
+- [ ] **Day 2d.** Website on cleartowork.ie (Netlify, free). Done: site live at cleartowork.netlify.app,
+      cleartowork.ie added in Netlify (24 Nov). When Blacknight's DNS page unlocks, add:
+      - A `@` (cleartowork.ie) -> `75.2.60.5`
+      - CNAME `www` -> `cleartowork.netlify.app`
+      Netlify then turns on HTTPS by itself. (Blacknight has no ALIAS records, so the A record is right.)
+      Full list for Blacknight = 9 records: 2 Netlify + 3 ImprovMX + 4 Resend.
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
 - [ ] **Day 4.** Send the first message to 5 subcontractors. (15 min)
