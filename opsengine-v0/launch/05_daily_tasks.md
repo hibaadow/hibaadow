@@ -17,7 +17,7 @@ Tell Claude "done" when finished and it ticks the box.
       - CNAME `rsend` (sending)
       - CNAME `send` (sending)
       - TXT `_dmarc` (DMARC, recommended)
-- [ ] **Day 2c.** Free forwarding: hello@cleartowork.ie -> your Gmail via ImprovMX (free).
+- [x] **Day 2c.** Free forwarding: hello@cleartowork.ie -> your Gmail via ImprovMX (free).
       Now: make an ImprovMX account, add cleartowork.ie, alias `hello` -> your Gmail.
       Done: ImprovMX account, alias hello@ -> Gmail, catch-all removed (24 Nov).
       When the domain is Active, add in Blacknight (host = cleartowork.ie / @):
@@ -25,7 +25,9 @@ Tell Claude "done" when finished and it ticks the box.
       - MX priority 20 -> `mx2.improvmx.com`
       - TXT -> `v=spf1 include:spf.improvmx.com ~all` (check the exact value in ImprovMX)
       Then press "Check again" in ImprovMX.
-      Then: Gmail "Send mail as" hello@cleartowork.ie through Resend SMTP (once Resend shows
+      Done 24 Nov 20:35: forwarding works; Gmail "Send mail as" Hiba | ClearToWork <hello@cleartowork.ie>
+      added through Resend SMTP (smtp.resend.com:465, user resend, sending-only key for cleartowork.ie).
+      Was: Gmail "Send mail as" hello@cleartowork.ie through Resend SMTP (once Resend shows
       the domain verified). Upgrade to a real mailbox when the first pilot customer signs.
 - [ ] **Day 2d.** Website on cleartowork.ie (Netlify, free). Done: site live at cleartowork.netlify.app,
       cleartowork.ie added in Netlify (24 Nov). When Blacknight's DNS page unlocks, add:
