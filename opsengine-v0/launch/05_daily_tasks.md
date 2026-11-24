@@ -9,7 +9,7 @@ Tell Claude "done" when finished and it ticks the box.
       doesn't sound like you. (10 min)
 - [x] **Day 2.** Choose a working name and email from Claude's shortlist. (10 min)
       Done: trading name **ClearToWork**, domain **cleartowork.ie** bought at Blacknight (24 Nov 2026).
-- [ ] **Day 2b.** When Blacknight shows cleartowork.ie as **Active**: add Resend's 4 DNS records in
+- [x] **Day 2b.** When Blacknight shows cleartowork.ie as **Active**: add Resend's 4 DNS records in
       Blacknight (copy each Name + Content from Resend > Domains > cleartowork.ie), then press
       "I've added the records" in Resend. (15 min) Domain already added in Resend (Ireland region,
       receiving off). Records:
@@ -33,7 +33,8 @@ Tell Claude "done" when finished and it ticks the box.
       - CNAME `www` -> `cleartowork.netlify.app`
       Netlify then turns on HTTPS by itself. (Blacknight has no ALIAS records, so the A record is right.)
       Full list for Blacknight = 9 records: 2 Netlify + 3 ImprovMX + 4 Resend.
-      Done 24 Nov 19:53: all 9 added in Blacknight; Resend verifying. Waiting for Resend, ImprovMX
+      Done 24 Nov 19:53: all 9 added in Blacknight. Resend verified 19:55; first email sent from
+      hello@cleartowork.ie. Waiting for Resend, ImprovMX
       and Netlify HTTPS to turn green.
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
