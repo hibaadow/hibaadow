@@ -24,14 +24,6 @@
   "hook": "Scaffolding crews get asked for a lot before they can go on site: Safe Pass, CSCS scaffolding cards, insurance certs, RAMS, and every main contractor wants it slightly differently."
  },
  {
-  "firm": "Roof Doc",
-  "to": "info@roofdoc.ie",
-  "source": "roofdoc.ie",
-  "greet": "Hi there",
-  "subject": "Roofing crews and main contractor paperwork",
-  "hook": "I saw Roof Doc does commercial and industrial roofing and cladding. Roofing and cladding crews get asked for a lot before they go up: Safe Pass, CSCS, working-at-height and harness training, insurance certs, RAMS, and every main contractor wants it slightly differently."
- },
- {
   "firm": "Clad-Primeco",
   "to": "info@cladprimeco.ie",
   "source": "cladprimeco.ie",
@@ -112,11 +104,19 @@
   "hook": "Formwork crews get asked for a lot before they go on site: Safe Pass, CSCS cards, insurance certs, RAMS and lift plans, and every main contractor wants it slightly differently."
  },
  {
-  "firm": "Palco Heating & Plumbing",
-  "to": "admin@palco.ie",
-  "source": "palco.ie",
+  "firm": "Allspec Glass & Glazing",
+  "to": "info@allspecglass.com",
+  "source": "allspecglass.com",
   "greet": "Hi there",
-  "subject": "Commercial mechanical jobs: the paperwork side",
-  "hook": "I saw Palco does commercial mechanical work across Meath and Dublin. Commercial jobs come with a lot of paperwork for each main contractor: Safe Pass, CSCS, F-gas and other certificates, insurance certs, RAMS."
+  "subject": "Glazing crews and main contractor paperwork",
+  "hook": "I saw Allspec works as a subcontractor to many of the top building companies in Ireland. Each of them wants a pile of paperwork before your crew can start: Safe Pass, CSCS, working-at-height training, insurance certs, RAMS."
+ },
+ {
+  "firm": "Finfab (Finnegan Steel Fabrication)",
+  "to": "info@finfab.com",
+  "source": "finfab.com",
+  "greet": "Hi there",
+  "subject": "Steel erection crews and site paperwork",
+  "hook": "With Finfab fabricating and erecting structural steel across Dublin and Leinster, you'll know how much main contractors ask for before an erection crew starts: Safe Pass, CSCS, MEWP and slinger/signaller cards, insurance certs, RAMS and lift plans."
  }
 ]
