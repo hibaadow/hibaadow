@@ -85,6 +85,18 @@ welcome (Irish / EU rules for business emails):
 
 ---
 
+## Contact details found (24 Nov 2026)
+Only published company addresses: never guess a person's email.
+| Firm | Email | Otherwise |
+| --- | --- | --- |
+| Maor Scaffolding | **info@maorscaffolding.ie** (one directory listing; check on maorscaffolding.com) | (01) 412 4726 |
+| KN Electrical Services | not published in search results | contact page on **knelectricalservices.ie**, or (01) 451 6880 (Ballymount, D12, 2023) |
+| Summit Scaffolding | not published (only a guessed name format; don't use) | contact page on **summitscaffolding.ie**, or the office number on the site |
+| M&N Groundworks (now trading as **M&N Civils Ltd**, Greenhills Rd, D12, 2023) | not published | call (01) 968 5045 and ask who handles compliance paperwork + their email |
+| BH Groundworks | not published | (01) 2899 0909 from a 2016 profile; may be out of date |
+
+---
+
 ## Sources
 - [KN Electrical: Building Ireland](https://buildingirelandmagazine.com/taking-charge-of-your-electrical-needs/), [second profile](https://buildingirelandmagazine.com/?p=8247)
 - [Summit Scaffolding: Golden Pages](https://www.goldenpages.ie/summit-scaffolding-ltd-rathcoole-D24/), [Building Ireland 2024](https://buildingirelandmagazine.com/?p=10580), [Solocheck](https://www.solocheck.ie/Irish-Company/Summit-Scaffolding-Limited-583615)
