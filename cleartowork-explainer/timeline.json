@@ -1,0 +1,285 @@
+{
+ "lines": [
+  {
+   "i": 0,
+   "scene": "gate",
+   "start": 0.5,
+   "dur": 3.824,
+   "chunks": [
+    [
+     0.5,
+     1.516,
+     "It's *seven* A.M."
+    ],
+    [
+     1.516,
+     2.352,
+     "Your crew is at the"
+    ],
+    [
+     2.352,
+     3.787,
+     "gate, and they're *not* *getting*"
+    ],
+    [
+     3.787,
+     4.324,
+     "*on* *site.*"
+    ]
+   ],
+   "text": "It's seven A.M. Your crew is at the gate, and they're not getting on site.",
+   "voice": "narr"
+  },
+  {
+   "i": 1,
+   "scene": "papers",
+   "start": 4.574,
+   "dur": 6.555,
+   "chunks": [
+    [
+     4.574,
+     6.326,
+     "One Safe Pass *expired* last"
+    ],
+    [
+     6.326,
+     8.209,
+     "week. The main contractor wants"
+    ],
+    [
+     8.209,
+     9.332,
+     "your _insurance_ _cert._"
+    ],
+    [
+     9.332,
+     10.328,
+     "And a new RAMS,"
+    ],
+    [
+     10.328,
+     11.129,
+     "*by* *Friday.*"
+    ]
+   ],
+   "text": "One Safe Pass expired last week. The main contractor wants your insurance cert. And a new RAMS, by Friday.",
+   "voice": "narr"
+  },
+  {
+   "i": 2,
+   "scene": "night",
+   "start": 11.38,
+   "dur": 4.63,
+   "chunks": [
+    [
+     11.38,
+     12.769,
+     "So you spend _your_ _evenings_"
+    ],
+    [
+     12.769,
+     14.388,
+     "*chasing* cards and paperwork,"
+    ],
+    [
+     14.388,
+     16.01,
+     "instead of _running_ _your_ _business._"
+    ]
+   ],
+   "text": "So you spend your evenings chasing cards and paperwork, instead of running your business.",
+   "voice": "narr"
+  },
+  {
+   "i": 3,
+   "scene": "brand",
+   "start": 16.509,
+   "dur": 1.572,
+   "chunks": [
+    [
+     16.509,
+     18.081,
+     "That's where _ClearToWork_ comes in."
+    ]
+   ],
+   "text": "That's where Clear To Work comes in.",
+   "voice": "narr"
+  },
+  {
+   "i": 4,
+   "scene": "find",
+   "start": 18.331,
+   "dur": 5.376,
+   "chunks": [
+    [
+     18.331,
+     19.667,
+     "We check your crew and"
+    ],
+    [
+     19.667,
+     21.643,
+     "documents against what _each_ _main_"
+    ],
+    [
+     21.643,
+     23.103,
+     "_contractor_ needs, and show you"
+    ],
+    [
+     23.103,
+     23.707,
+     "*every* *gap.*"
+    ]
+   ],
+   "text": "We check your crew and documents against what each main contractor needs, and show you every gap.",
+   "voice": "narr"
+  },
+  {
+   "i": 5,
+   "scene": "chase",
+   "start": 23.957,
+   "dur": 7.315,
+   "chunks": [
+    [
+     23.957,
+     25.115,
+     "Then we _chase_ _it_ for"
+    ],
+    [
+     25.115,
+     26.816,
+     "you. New card photos from"
+    ],
+    [
+     26.816,
+     28.468,
+     "*your* workers. Certificates from *your*"
+    ],
+    [
+     28.468,
+     29.852,
+     "broker. Training lined up,"
+    ],
+    [
+     29.852,
+     31.272,
+     "*with* *your* *OK* *first.*"
+    ]
+   ],
+   "text": "Then we chase it for you. New card photos from your workers. Certificates from your broker. Training lined up, with your OK first.",
+   "voice": "narr"
+  },
+  {
+   "i": 6,
+   "scene": "check",
+   "start": 31.522,
+   "dur": 7.646,
+   "chunks": [
+    [
+     31.522,
+     32.927,
+     "Every card and cert is"
+    ],
+    [
+     32.927,
+     35.091,
+     "_checked_ before anything is closed."
+    ],
+    [
+     35.091,
+     37.029,
+     "And a *qualified* *safety* *professional*"
+    ],
+    [
+     37.029,
+     39.168,
+     "signs off your *safety* documents."
+    ]
+   ],
+   "text": "Every card and cert is checked before anything is closed. And a qualified safety professional signs off your safety documents.",
+   "voice": "narr"
+  },
+  {
+   "i": 7,
+   "scene": "ready",
+   "start": 39.418,
+   "dur": 3.851,
+   "chunks": [
+    [
+     39.418,
+     40.76,
+     "You get a _weekly_ _summary,_"
+    ],
+    [
+     40.76,
+     41.802,
+     "and a record you can"
+    ],
+    [
+     41.802,
+     43.269,
+     "show *any* *main* *contractor.*"
+    ]
+   ],
+   "text": "You get a weekly summary, and a record you can show any main contractor.",
+   "voice": "narr"
+  },
+  {
+   "i": 8,
+   "scene": "gate2",
+   "start": 43.769,
+   "dur": 2.102,
+   "chunks": [
+    [
+     43.769,
+     45.07,
+     "Next time, your crew walks"
+    ],
+    [
+     45.07,
+     45.871,
+     "_straight_ _on_ _site._"
+    ]
+   ],
+   "text": "Next time, your crew walks straight on site.",
+   "voice": "narr"
+  },
+  {
+   "i": 9,
+   "scene": "cta",
+   "start": 46.371,
+   "dur": 6.796,
+   "chunks": [
+    [
+     46.371,
+     47.761,
+     "_ClearToWork._ Your crew,"
+    ],
+    [
+     47.761,
+     48.548,
+     "*clear* *to* *work.*"
+    ],
+    [
+     48.548,
+     50.572,
+     "*Free* *sixty-day* *pilot* for Irish"
+    ],
+    [
+     50.572,
+     53.134,
+     "subcontractors, at cleartowork dot I"
+    ],
+    [
+     53.134,
+     53.167,
+     "E."
+    ]
+   ],
+   "text": "Clear To Work. Your crew, clear to work. Free sixty-day pilot for Irish subcontractors, at cleartowork dot I E.",
+   "voice": "narr"
+  }
+ ],
+ "duration": 57.17
+}

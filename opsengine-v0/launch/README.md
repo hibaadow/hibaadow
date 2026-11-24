@@ -15,6 +15,8 @@ the founder does **one task a day, 15 minutes or less** (see `05_daily_tasks.md`
 | `08_gdpr_pack.md` | Data protection drafts (privacy notice, processing terms, retention) |
 | `09_pilot_agreement.md` | Pilot agreement draft for a solicitor to check |
 | `10_onboarding_email.md` | The email asking a new pilot customer for their documents |
+| `11_outreach_list.md` | 22 Dublin/Leinster subcontractors to contact, with message templates |
+| `../../cleartowork-explainer/` | 57 s explainer video (house character + voice) for outreach and the website |
 | `../site/index.html` | The cleartowork.ie website (one page; served by Caddy, see `../deploy/`) |
 
 Brand: customers see **ClearToWork** (portal, emails, reports, website); OpsEngine is the engine.
