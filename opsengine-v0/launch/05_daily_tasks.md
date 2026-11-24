@@ -33,6 +33,8 @@ Tell Claude "done" when finished and it ticks the box.
       - CNAME `www` -> `cleartowork.netlify.app`
       Netlify then turns on HTTPS by itself. (Blacknight has no ALIAS records, so the A record is right.)
       Full list for Blacknight = 9 records: 2 Netlify + 3 ImprovMX + 4 Resend.
+      Done 24 Nov 19:53: all 9 added in Blacknight; Resend verifying. Waiting for Resend, ImprovMX
+      and Netlify HTTPS to turn green.
 - [ ] **Day 3.** Send Message 1 to 5 safety consultants (Claude gives you the search and the
       ready-to-paste notes). (15 min)
 - [ ] **Day 4.** Send the first message to 5 subcontractors. (15 min)
