@@ -21,7 +21,7 @@ We're taking on a small number of Irish subcontractors for a free 30-day trial. 
 
 Would you be open to a quick 10-minute call this week or next?
 
-See how it works in 60 seconds: https://cleartowork.netlify.app
+See how it works in 60 seconds: https://cleartowork.ie
 
 Kind regards,
 Hiba

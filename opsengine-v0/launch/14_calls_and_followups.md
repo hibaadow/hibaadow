@@ -40,7 +40,6 @@ One follow-up only. Same email thread (reply to your own sent email).
 > Hi [name], thanks for taking my call. Just following up on the note I sent: if 10 minutes on the
 > paperwork side suits this week, I'd really appreciate it. Thanks, Hiba
 
-Until cleartowork.ie works, use **cleartowork.netlify.app** in place of cleartowork.ie.
 
 ## After that
 No reply after the follow-up = stop. Move to the next firm on `11_outreach_list.md`.
