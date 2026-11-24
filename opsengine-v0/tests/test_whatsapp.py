@@ -105,6 +105,13 @@ class ReceiveTests(unittest.TestCase):
         comms = Engine(BREMORE, state_dir=self.tmp).store.comms()
         self.assertTrue(any(c["direction"] == "in" and c["channel"] == "whatsapp" for c in comms))
 
+    def test_photo_gets_an_honest_thank_you(self):
+        whatsapp.handle(webhook("353870000202", type="image", image={"id": "m1", "mime_type": "image/png"}),
+                        self.customers, self.tmp, fetch=self.fetch, post=self.post)
+        reply = self.posts[-1]["text"]["body"]
+        self.assertIn("Thanks Tomasz, got it", reply)
+        self.assertIn("We'll check it", reply)            # offline: not accepted yet, so it doesn't say it was
+
     def test_reply_releases_held_message(self):
         whatsapp.Window(self.tmp).hold("353870000202", "The full chase message")
         whatsapp.handle(webhook("353870000202", type="text", text={"body": "ok"}), self.customers, self.tmp,

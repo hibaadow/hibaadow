@@ -196,6 +196,24 @@ def download(media_id):
         return r.read(), meta.get("mime_type", "")
 
 
+def acknowledgement(eng, holder, name, status):
+    """The automatic reply to a photo: always honest about whether it was accepted yet."""
+    first = (name or "").split()[0] if name else "there"
+    if status == "ingested":
+        body = f"Thanks {first}, got it. Your document is checked and on file."
+    else:
+        body = f"Thanks {first}, got it. We'll check it and come back to you if we need anything else."
+    worker = eng.customer.workers.get(holder) if holder != "company" else None
+    lang = (worker or {}).get("language", "en")
+    if lang != "en":
+        from . import llm
+        from .knowledge import LANGUAGE_NAMES
+        translated = llm.translate(body, LANGUAGE_NAMES.get(lang, lang))
+        if translated:                       # never a fake translation: English if Claude is unavailable
+            body = f"{translated}\n\n{body}"
+    return body
+
+
 def messages(payload):
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
@@ -251,5 +269,6 @@ def handle(payload, customers, state_dir, today=None, fetch=None, post=None, cal
                                               [f"WhatsApp photo could not be read automatically: {exc}"], "whatsapp")
                 r = {"status": "needs_review", "review": review}
             summary["photo"] = r["status"]
+            summary["reply"] = send(num, "", acknowledgement(eng, holder, name, r["status"]), state, post=post)
         out.append(summary)
     return out
