@@ -5,7 +5,7 @@ Do them **in this order**, and only when the daily plan says so. Fees and rules 
 the current official page when you do each one (Claude will look it up with you).
 
 ## Before the first pilot (free pilots can start without most of this)
-- [ ] **Pick a working name and email.** Claude suggests names; you choose one; set up a free
+- [x] **Pick a working name and email.** ClearToWork · cleartowork.ie. Claude suggests names; you choose one; set up a free
       email for outreach. ~15 min.
 - [ ] **Find the safety partner** (see `02_outreach_safety_consultants.md`). No safety document
       goes to a customer without their review.
