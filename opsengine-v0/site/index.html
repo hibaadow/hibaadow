@@ -33,6 +33,16 @@
   .pilot ul { margin:0 0 20px; padding-left:20px; }
   .pilot .btn { background:var(--hivis); color:var(--ink); }
   .note { color:var(--muted); font-size:15px; }
+  .watch { display:grid; grid-template-columns:minmax(0,340px) 1fr; gap:32px; align-items:center; }
+  .watch video { width:100%; aspect-ratio:9/16; border-radius:18px; background:#000; display:block; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+  .watch p { color:var(--muted); font-size:18px; margin:0; }
+  @media (max-width:720px) { .watch { grid-template-columns:1fr; } .watch video { max-width:360px; margin:0 auto; } }
+  .faq details { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 20px; margin-bottom:10px; }
+  .faq summary { font-weight:700; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:16px; }
+  .faq summary::-webkit-details-marker { display:none; }
+  .faq summary::after { content:"+"; font-weight:800; color:var(--go); }
+  .faq details[open] summary::after { content:"−"; }
+  .faq details p { margin:10px 0 0; color:var(--muted); font-size:16px; }
   footer { padding:28px 0 40px; color:var(--muted); font-size:14px; border-top:1px solid var(--line); margin-top:24px; }
 </style>
 </head>
@@ -49,9 +59,22 @@
        Safe Pass and CSCS cards, Safety Statements, RAMS, insurance at their minimums. We chase it, check it and keep it in date, so you don't have to.</p>
     <div class="ctas">
       <a class="btn" href="mailto:hello@cleartowork.ie?subject=Free%2030-day%20pilot">Join the free pilot</a>
-      <a class="btn alt" href="#how">How it works</a>
+      <a class="btn alt" href="#watch">Watch the video</a>
     </div>
   </div>
+
+  <section id="watch">
+    <div class="watch">
+      <video controls playsinline preload="metadata" poster="media/explainer-poster.jpg">
+        <source src="media/cleartowork-explainer.mp4" type="video/mp4">
+      </video>
+      <div>
+        <h2>See it in 60 seconds</h2>
+        <p>From a crew stuck at the gate to "all clear": how ClearToWork finds the gaps, chases the paperwork,
+           checks every card and keeps you ready for any main contractor.</p>
+      </div>
+    </div>
+  </section>
 
   <section id="how">
     <h2>How it works</h2>
@@ -84,6 +107,33 @@
       <a class="btn" href="mailto:hello@cleartowork.ie?subject=Free%2030-day%20pilot">Apply for a pilot place</a>
     </div>
     <p class="note">ClearToWork coordinates and records compliance work. It doesn't certify compliance or take on legal duty-holder roles. Certificates come from the qualified people named in each record.</p>
+  </section>
+
+  <section class="faq" id="questions">
+    <h2>Common questions</h2>
+    <details><summary>What does it cost?</summary>
+      <p>The pilot is free for 30 days. After that it's a fixed monthly fee based on the size of your team, agreed with you
+         before the pilot ends. No contract: you can stop any time.</p></details>
+    <details><summary>Do my workers need to download an app?</summary>
+      <p>No. We message them on their phone when something is due, and they reply with a photo of their card. That's it.</p></details>
+    <details><summary>Who signs off our Safety Statement and RAMS?</summary>
+      <p>A qualified safety professional reviews and signs off every safety document before it's released. Software
+         never signs anything off.</p></details>
+    <details><summary>Does this replace our safety consultant or PSCS?</summary>
+      <p>No. We take the admin off your plate: chasing, checking and record-keeping. Legal duty-holder roles, inspections
+         and training stay with qualified people; we organise them and keep the proof.</p></details>
+    <details><summary>Will you spend money or book things without asking?</summary>
+      <p>Never. Anything that costs money or commits you, like a course booking, waits for your OK, which you can give
+         with one tap from an email.</p></details>
+    <details><summary>What if a photo of a card is unclear?</summary>
+      <p>Nothing is guessed. If a card or certificate can't be read with confidence, a person checks it, and if it's still
+         unclear we ask for a new photo.</p></details>
+    <details><summary>Where is our data kept, and who sees it?</summary>
+      <p>In the EU. Only you and our team see your company's records, and worker details are used only for their site
+         paperwork. If you leave, we give you a copy and delete the rest.</p></details>
+    <details><summary>What do you need from us to get started?</summary>
+      <p>Phone photos are fine: your Safety Statement, insurance certificates, a list of your workers and sites, and the
+         requirements your main contractors gave you. We'll chase anything that's missing.</p></details>
   </section>
 
   <footer>© ClearToWork · Ireland · <a href="mailto:hello@cleartowork.ie">hello@cleartowork.ie</a></footer>
