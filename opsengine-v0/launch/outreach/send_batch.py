@@ -16,8 +16,8 @@ ClearToWork takes all of that off your hands, and to show you how, we'd like to 
 
 No cost, no commitment, and your workers don't need an app.
 
-Here's a sample report, so you can see exactly what you'd get:
-https://cleartowork.ie/media/ClearToWork_paperwork_check_SAMPLE.pdf
+See how ClearToWork works in 60 seconds:
+https://cleartowork.ie
 
 Just reply YES to get started.
 
