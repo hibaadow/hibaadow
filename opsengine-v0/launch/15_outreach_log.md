@@ -34,3 +34,8 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | 26 Nov 2026 08:01 | M & P Walls | info@mandpwalls.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: mandpwalls.ie | Sent (id 01a216df) | +5 working days |
 | 26 Nov 2026 08:01 | Allspec Glass & Glazing | info@allspecglass.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: allspecglass.com | Sent (id 01a216df) | +5 working days |
 | 26 Nov 2026 08:01 | Finfab (Finnegan Steel Fabrication) | info@finfab.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: finfab.com | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 | GMN Drylining | 083 832 2388 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | O'Keeffe Civil | 086 357 0860 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Hardwood Scaffolding and Plant | 087 093 7537 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Eleon Contracting | 089 981 8686 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | New Rise Scaffolding | 083 819 6381 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
