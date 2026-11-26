@@ -19,3 +19,18 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | 24 Nov 2026 20:53 | GS Earthworks | info@gsearthworks.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: gsearthworks.ie | Sent (id 01a20f55) | +5 working days |
 | 24 Nov 2026 20:53 | Dublin Ground Works | info@dublingroundworks.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: dublingroundworks.ie | Sent (id 01a20f55) | +5 working days |
 | 24 Nov 2026 20:53 | Rossmore Civils | info@rehl.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: Uisce Eireann accredited contractor list, June 2025 | Sent (id 01a20f55) | +5 working days |
+| 26 Nov 2026 08:00 | All Ireland Scaffolding | info@allirelandscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: allirelandscaffolding.ie/contact-us | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:00 | ScaffRite | info@scaffrite.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: scaffrite.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:00 | Millbrook Scaffolding | info@millbrookscaffolding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: millbrookscaffolding.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:00 | Clad-Primeco | info@cladprimeco.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: cladprimeco.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:00 | DD Roofing & Cladding | info@ddroofingandcladding.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: ddroofingandcladding.ie/contact | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Advanced Roofing & Cladding | info@advancedroofing.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: advancedroofing.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | O'Brien Roofing & Cladding | info@obrienroofing.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: obrienroofing.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Firestoppers | info@firestoppers.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: firestoppers.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Firemark | info@firemark.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: firemark.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Fireseal Group | info@fireseal.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: fireseal.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Flame Stop | info@flamestop.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: flamestop.ie/contact | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Burke Passive Fire Protection | info@burkepfp.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: burkepfp.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | M & P Walls | info@mandpwalls.ie | Email from hello@cleartowork.ie (Resend) | Trial message; source: mandpwalls.ie | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Allspec Glass & Glazing | info@allspecglass.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: allspecglass.com | Sent (id 01a216df) | +5 working days |
+| 26 Nov 2026 08:01 | Finfab (Finnegan Steel Fabrication) | info@finfab.com | Email from hello@cleartowork.ie (Resend) | Trial message; source: finfab.com | Sent (id 01a216df) | +5 working days |
