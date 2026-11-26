@@ -39,3 +39,13 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | 26 Nov 2026 | Hardwood Scaffolding and Plant | 087 093 7537 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | Eleon Contracting | 089 981 8686 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | New Rise Scaffolding | 083 819 6381 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Premium Scaffolding | 085 876 1515 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Advanced Scaffolding Services | 087 721 8641 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | BT Scaffolding | 083 823 7779 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Diamond Scaffolding | 086 083 9623 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Irish Scaffolding Services | 085 105 4442 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Westside Formwork | 087 250 9795 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | SMG Formwork | 087 224 4745 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | North East Reinforcement | 087 136 0593 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Hickeys Formwork | 087 855 0944 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | MC Formwork | 087 410 0361 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
