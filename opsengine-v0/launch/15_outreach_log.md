@@ -52,3 +52,8 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 
 ## What replies taught us
 - 26 Nov, Diamond Scaffolding: already use a company app for compliance. Positioning: we are not another app; we do the chasing and admin work an app leaves to the office.
+- 26 Nov, Diamond Scaffolding (detail): their own bespoke app covers safety packages, tickets and certs, truck
+  walk-arounds, inductions, daily sign-ins, handovers, GA3 inspections, daywork sheets. They believe most of the
+  scaffolding industry has something similar. **Decision:** stop adding new scaffolding firms; target trades and
+  smaller firms with no office admin and no app (drylining, groundworks, electrical, fire-stopping, formwork,
+  glazing, roofing, M&E). Opening line for them: "No app to learn: we do the admin for you."
