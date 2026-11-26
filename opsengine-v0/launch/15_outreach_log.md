@@ -42,10 +42,13 @@ One line per message sent. Follow up once after 5 working days if no reply (`14_
 | 26 Nov 2026 | Premium Scaffolding | 085 876 1515 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | Advanced Scaffolding Services | 087 721 8641 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | BT Scaffolding | 083 823 7779 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
-| 26 Nov 2026 | Diamond Scaffolding | 086 083 9623 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+| 26 Nov 2026 | Diamond Scaffolding | 086 083 9623 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Replied: not for them, already use a company app. Do not contact again | none |
 | 26 Nov 2026 | Irish Scaffolding Services | 085 105 4442 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | Westside Formwork | 087 250 9795 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | SMG Formwork | 087 224 4745 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | North East Reinforcement | 087 136 0593 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | Hickeys Formwork | 087 855 0944 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
 | 26 Nov 2026 | MC Formwork | 087 410 0361 | WhatsApp from the founder's phone | Founder's wording (admin + 3 businesses, 30 days free) | Sent | +5 working days (one follow-up max) |
+
+## What replies taught us
+- 26 Nov, Diamond Scaffolding: already use a company app for compliance. Positioning: we are not another app; we do the chasing and admin work an app leaves to the office.
