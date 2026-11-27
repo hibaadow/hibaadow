@@ -956,7 +956,7 @@ def emoji(ch, size):
 
 
 # ---------------------------------------------------------------- captions
-VO = json.load(open(f"{SCR}/vo/vo.json"))
+VO = json.load(open(f"{SCR}/vo/vo.json")) if os.path.exists(f"{SCR}/vo/vo.json") else []   # only needed for Last Bus itself
 
 
 def parse_chunk(ch):

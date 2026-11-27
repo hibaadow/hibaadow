@@ -1,0 +1,570 @@
+{
+ "lines": [
+  {
+   "i": 0,
+   "scene": "hook2",
+   "start": 0.5,
+   "dur": 3.648,
+   "chunks": [
+    [
+     0.5,
+     1.811,
+     "Remember the couple with all"
+    ],
+    [
+     1.811,
+     2.846,
+     "the *surrogate* *babies?*"
+    ],
+    [
+     2.846,
+     4.148,
+     "Here's what _happened_ _next._"
+    ]
+   ],
+   "text": "Remember the couple with all the surrogate babies? Here's what happened next.",
+   "voice": "narr"
+  },
+  {
+   "i": 1,
+   "scene": "recap",
+   "start": 4.398,
+   "dur": 6.711,
+   "chunks": [
+    [
+     4.398,
+     5.704,
+     "Quick recap: _Kayla_ was a"
+    ],
+    [
+     5.704,
+     7.898,
+     "surrogate for *Sylvia* *and* *Guojun,*"
+    ],
+    [
+     7.898,
+     8.765,
+     "*and* then found out *other*"
+    ],
+    [
+     8.765,
+     10.377,
+     "*women* were carrying babies for"
+    ],
+    [
+     10.377,
+     11.109,
+     "them too."
+    ]
+   ],
+   "text": "Quick recap: Kayla was a surrogate for Sylvia and Gwo-jun, and then found out other women were carrying babies for them too.",
+   "voice": "narr"
+  },
+  {
+   "i": 2,
+   "scene": "correct",
+   "start": 11.608,
+   "dur": 6.79,
+   "chunks": [
+    [
+     11.608,
+     13.157,
+     "And one _correction_ from part"
+    ],
+    [
+     13.157,
+     14.467,
+     "one: the children in that"
+    ],
+    [
+     14.467,
+     15.892,
+     "house weren't all babies."
+    ],
+    [
+     15.892,
+     17.088,
+     "They were aged from *two*"
+    ],
+    [
+     17.088,
+     18.398,
+     "*months* to *thirteen* *years.*"
+    ]
+   ],
+   "text": "And one correction from part one: the children in that house weren't all babies. They were aged from two months to thirteen years.",
+   "voice": "narr"
+  },
+  {
+   "i": 3,
+   "scene": "hospital",
+   "start": 18.898,
+   "dur": 8.182,
+   "chunks": [
+    [
+     18.898,
+     20.878,
+     "It started back in _2025,_"
+    ],
+    [
+     20.878,
+     22.394,
+     "when a young child in"
+    ],
+    [
+     22.394,
+     23.747,
+     "_the_ couple's care ended up"
+    ],
+    [
+     23.747,
+     24.709,
+     "in hospital with a *head*"
+    ],
+    [
+     24.709,
+     26.487,
+     "*injury,* and _the_ hospital _called_"
+    ],
+    [
+     26.487,
+     27.08,
+     "_the_ _police._"
+    ]
+   ],
+   "text": "It started back in twenty twenty-five, when a young child in the couple's care ended up in hospital with a head injury, and the hospital called the police.",
+   "voice": "narr"
+  },
+  {
+   "i": 4,
+   "scene": "found",
+   "start": 27.331,
+   "dur": 4.34,
+   "chunks": [
+    [
+     27.331,
+     28.965,
+     "Police went to their mansion"
+    ],
+    [
+     28.965,
+     30.275,
+     "in _Arcadia_ and found *fifteen*"
+    ],
+    [
+     30.275,
+     31.671,
+     "*children* living there."
+    ]
+   ],
+   "text": "Police went to their mansion in Arcadia and found fifteen children living there.",
+   "voice": "narr"
+  },
+  {
+   "i": 5,
+   "scene": "cameras",
+   "start": 31.92,
+   "dur": 2.991,
+   "chunks": [
+    [
+     31.92,
+     33.329,
+     "One report says the house"
+    ],
+    [
+     33.329,
+     34.911,
+     "had *thirty-two* *cameras* inside."
+    ]
+   ],
+   "text": "One report says the house had thirty-two cameras inside.",
+   "voice": "narr"
+  },
+  {
+   "i": 6,
+   "scene": "released",
+   "start": 35.161,
+   "dur": 3.717,
+   "chunks": [
+    [
+     35.161,
+     36.366,
+     "The couple were _arrested,_"
+    ],
+    [
+     36.366,
+     37.566,
+     "but released a few days"
+    ],
+    [
+     37.566,
+     38.878,
+     "later *without* *charges.*"
+    ]
+   ],
+   "text": "The couple were arrested, but released a few days later without charges.",
+   "voice": "narr"
+  },
+  {
+   "i": 7,
+   "scene": "custody",
+   "start": 39.128,
+   "dur": 3.442,
+   "chunks": [
+    [
+     39.128,
+     39.757,
+     "In the end,"
+    ],
+    [
+     39.757,
+     41.768,
+     "*twenty-one* *children* were taken into"
+    ],
+    [
+     41.768,
+     42.57,
+     "_protective_ _custody._"
+    ]
+   ],
+   "text": "In the end, twenty-one children were taken into protective custody.",
+   "voice": "narr"
+  },
+  {
+   "i": 8,
+   "scene": "business",
+   "start": 43.07,
+   "dur": 5.321,
+   "chunks": [
+    [
+     43.07,
+     44.214,
+     "And here's the _twist:_ the"
+    ],
+    [
+     44.214,
+     45.95,
+     "couple allegedly ran their own"
+    ],
+    [
+     45.95,
+     47.703,
+     "*surrogacy* *company* out of that"
+    ],
+    [
+     47.703,
+     48.391,
+     "_same_ _house._"
+    ]
+   ],
+   "text": "And here's the twist: the couple allegedly ran their own surrogacy company out of that same house.",
+   "voice": "narr"
+  },
+  {
+   "i": 9,
+   "scene": "lies",
+   "start": 48.641,
+   "dur": 4.774,
+   "chunks": [
+    [
+     48.641,
+     50.263,
+     "_Prosecutors_ say they told at"
+    ],
+    [
+     50.263,
+     51.933,
+     "least *two* *surrogates* that Sylvia"
+    ],
+    [
+     51.933,
+     53.415,
+     "was _struggling_ _to_ _get_ _pregnant._"
+    ]
+   ],
+   "text": "Prosecutors say they told at least two surrogates that Sylvia was struggling to get pregnant.",
+   "voice": "narr"
+  },
+  {
+   "i": 10,
+   "scene": "charged",
+   "start": 53.915,
+   "dur": 7.911,
+   "chunks": [
+    [
+     53.915,
+     55.994,
+     "Then, in _October_ _2026,_"
+    ],
+    [
+     55.994,
+     57.943,
+     "the Los Angeles District Attorney"
+    ],
+    [
+     57.943,
+     59.347,
+     "finally *charged* *them,*"
+    ],
+    [
+     59.347,
+     61.327,
+     "with conspiracy to commit *child*"
+    ],
+    [
+     61.327,
+     61.826,
+     "*abuse.*"
+    ]
+   ],
+   "text": "Then, in October twenty twenty-six, the Los Angeles District Attorney finally charged them, with conspiracy to commit child abuse.",
+   "voice": "narr"
+  },
+  {
+   "i": 11,
+   "scene": "alleged",
+   "start": 62.076,
+   "dur": 5.785,
+   "chunks": [
+    [
+     62.076,
+     64.408,
+     "Prosecutors _allege_ that *fifteen* *of*"
+    ],
+    [
+     64.408,
+     66.239,
+     "*the* *sixteen* children living in"
+    ],
+    [
+     66.239,
+     67.861,
+     "that home were *repeatedly* *abused.*"
+    ]
+   ],
+   "text": "Prosecutors allege that fifteen of the sixteen children living in that home were repeatedly abused.",
+   "voice": "narr"
+  },
+  {
+   "i": 12,
+   "scene": "witness",
+   "start": 68.11,
+   "dur": 3.65,
+   "chunks": [
+    [
+     68.11,
+     69.64,
+     "Sylvia is also accused of"
+    ],
+    [
+     69.64,
+     71.432,
+     "trying to *stop* *witnesses* from"
+    ],
+    [
+     71.432,
+     71.76,
+     "talking."
+    ]
+   ],
+   "text": "Sylvia is also accused of trying to stop witnesses from talking.",
+   "voice": "narr"
+  },
+  {
+   "i": 13,
+   "scene": "plea",
+   "start": 72.01,
+   "dur": 4.207,
+   "chunks": [
+    [
+     72.01,
+     73.657,
+     "They both pleaded *not* *guilty,*"
+    ],
+    [
+     73.657,
+     75.424,
+     "and Guojun's lawyer _denies_ the"
+    ],
+    [
+     75.424,
+     76.217,
+     "allegations."
+    ]
+   ],
+   "text": "They both pleaded not guilty, and Gwo-jun's lawyer denies the allegations.",
+   "voice": "narr"
+  },
+  {
+   "i": 14,
+   "scene": "bail",
+   "start": 76.467,
+   "dur": 4.255,
+   "chunks": [
+    [
+     76.467,
+     77.708,
+     "Bail was set at *twenty*"
+    ],
+    [
+     77.708,
+     78.867,
+     "*million* *dollars* each,"
+    ],
+    [
+     78.867,
+     80.19,
+     "and a judge _refused_ to"
+    ],
+    [
+     80.19,
+     80.722,
+     "lower it."
+    ]
+   ],
+   "text": "Bail was set at twenty million dollars each, and a judge refused to lower it.",
+   "voice": "narr"
+  },
+  {
+   "i": 15,
+   "scene": "nanny",
+   "start": 81.221,
+   "dur": 3.966,
+   "chunks": [
+    [
+     81.221,
+     81.91,
+     "And the _nanny?_"
+    ],
+    [
+     81.91,
+     82.913,
+     "There's a *warrant* out _for_"
+    ],
+    [
+     82.913,
+     84.235,
+     "her arrest, and police have"
+    ],
+    [
+     84.235,
+     85.187,
+     "been _looking_ _for_ _her._"
+    ]
+   ],
+   "text": "And the nanny? There's a warrant out for her arrest, and police have been looking for her.",
+   "voice": "narr"
+  },
+  {
+   "i": 16,
+   "scene": "mothers",
+   "start": 85.438,
+   "dur": 4.169,
+   "chunks": [
+    [
+     85.438,
+     87.204,
+     "Meanwhile, some of the _surrogates_"
+    ],
+    [
+     87.204,
+     88.492,
+     "are *fighting* *for* *custody* of"
+    ],
+    [
+     88.492,
+     89.606,
+     "the babies they carried."
+    ]
+   ],
+   "text": "Meanwhile, some of the surrogates are fighting for custody of the babies they carried.",
+   "voice": "narr"
+  },
+  {
+   "i": 17,
+   "scene": "sentence",
+   "start": 89.857,
+   "dur": 5.925,
+   "chunks": [
+    [
+     89.857,
+     90.919,
+     "If they're _convicted,_"
+    ],
+    [
+     90.919,
+     93.042,
+     "Guojun faces up to *seventeen*"
+    ],
+    [
+     93.042,
+     93.793,
+     "*years* in prison,"
+    ],
+    [
+     93.793,
+     95.336,
+     "and Sylvia up to *nearly*"
+    ],
+    [
+     95.336,
+     95.782,
+     "*twelve.*"
+    ]
+   ],
+   "text": "If they're convicted, Gwo-jun faces up to seventeen years in prison, and Sylvia up to nearly twelve.",
+   "voice": "narr"
+  },
+  {
+   "i": 18,
+   "scene": "pending",
+   "start": 96.282,
+   "dur": 4.75,
+   "chunks": [
+    [
+     96.282,
+     97.876,
+     "But the trial *hasn't* *happened*"
+    ],
+    [
+     97.876,
+     99.109,
+     "*yet,* and _until_ it does,"
+    ],
+    [
+     99.109,
+     101.032,
+     "they're _innocent_ _until_ _proven_ _guilty._"
+    ]
+   ],
+   "text": "But the trial hasn't happened yet, and until it does, they're innocent until proven guilty.",
+   "voice": "narr"
+  },
+  {
+   "i": 19,
+   "scene": "end3",
+   "start": 101.532,
+   "dur": 4.429,
+   "chunks": [
+    [
+     101.532,
+     103.126,
+     "So follow for *part* *three,*"
+    ],
+    [
+     103.126,
+     104.707,
+     "because when the _verdict_ comes"
+    ],
+    [
+     104.707,
+     105.961,
+     "in, I'll tell you everything."
+    ]
+   ],
+   "text": "So follow for part three, because when the verdict comes in, I'll tell you everything.",
+   "voice": "narr"
+  }
+ ],
+ "duration": 109.96
+}
